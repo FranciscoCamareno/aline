@@ -146,6 +146,28 @@ export function StatusPanel({ services, onClose, onError }: Props) {
           </ol>
         )}
       </section>
+
+      <section>
+        <h3>{t('statusPanel.licenses')}</h3>
+        <p className="muted">{t('statusPanel.licensesHint')}</p>
+        <ul className="link-list">
+          <li>
+            <a href={`${import.meta.env.BASE_URL}LICENSE.txt`} target="_blank" rel="noopener">
+              {t('statusPanel.ownLicense')}
+            </a>
+          </li>
+          <li>
+            <a
+              href={`${import.meta.env.BASE_URL}THIRD-PARTY-NOTICES.txt`}
+              target="_blank"
+              rel="noopener"
+              data-testid="third-party-notices"
+            >
+              {t('statusPanel.thirdParty')}
+            </a>
+          </li>
+        </ul>
+      </section>
     </aside>
   );
 }

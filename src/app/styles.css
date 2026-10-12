@@ -462,3 +462,12 @@ input {
   gap: 8px;
   margin-top: 16px;
 }
+
+.link-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 2.2;
+}
+.link-list a {
+  color: var(--accent);
+}

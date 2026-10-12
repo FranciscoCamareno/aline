@@ -9,7 +9,7 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "assets": "node scripts/copy-excalidraw-assets.mjs",
+    "assets": "node scripts/copy-excalidraw-assets.mjs && node scripts/third-party-notices.ts",
     "dev": "pnpm assets && vite",
     "build": "pnpm assets && tsc -b && vite build",
     "preview": "vite preview --port 4173 --strictPort",
@@ -66,5 +66,11 @@
     "vitest": "5.0.3",
     "workbox-build": "7.4.1",
     "workbox-window": "7.4.1"
+  },
+  "license": "MIT",
+  "author": "F. C.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FranciscoCamareno/aline.git"
   }
 }

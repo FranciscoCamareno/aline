@@ -79,7 +79,11 @@
     "diagnostics": "Registro de diagnóstico",
     "diagnosticsHint": "Solo en este dispositivo; no contiene el texto de tus notas.",
     "diagnosticsEmpty": "Sin entradas.",
-    "exportDiagnostics": "Exportar diagnóstico"
+    "exportDiagnostics": "Exportar diagnóstico",
+    "licenses": "Licencias",
+    "licensesHint": "Esta aplicación es software libre con licencia MIT e incluye software y fuentes de terceros.",
+    "ownLicense": "Licencia de la aplicación (MIT)",
+    "thirdParty": "Avisos y licencias de terceros"
   },
   "storageAlert": {
     "quotaHigh": "El almacenamiento del navegador está casi lleno.",

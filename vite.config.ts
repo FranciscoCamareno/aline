@@ -34,7 +34,7 @@ export default defineConfig({
       workbox: {
         // Núcleo completo precacheado, incluidas las fuentes latinas del motor y los chunks
         // que se cargan después (locales de Excalidraw, subsetting de fuentes).
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,json,txt}'],
         // Xiaolai (CJK, ~13 MB) se excluye del precache y se cachea al primer uso.
         globIgnores: ['**/fonts/Xiaolai/**'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,

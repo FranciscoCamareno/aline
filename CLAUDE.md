@@ -12,7 +12,7 @@ Current state: phases 0 and 1 of the plan are done (local core, read-only compat
 
 pnpm 12.11.2 is pinned in `packageManager`. If `pnpm` isn't on PATH, use `npx -y pnpm@12.11.2 <cmd>` (and run Playwright via `npx -y pnpm@12.11.2 exec playwright …` so its `webServer` can find pnpm).
 
-- `pnpm dev` — Vite dev server (first copies Excalidraw fonts to `public/fonts`, gitignored)
+- `pnpm dev` — Vite dev server. Runs `pnpm assets` first: copies Excalidraw fonts to `public/fonts` (Liberation excluded) and generates `public/THIRD-PARTY-NOTICES.txt` + `public/LICENSE.txt` (all gitignored)
 - `pnpm build` — copy fonts + `tsc -b` + `vite build` (generates the Workbox SW)
 - `pnpm verify` — typecheck + lint + unit tests + build; run before declaring work done
 - `pnpm test` — Vitest unit tests (`tests/unit`, node env, `fake-indexeddb`)
@@ -24,6 +24,8 @@ pnpm 12.11.2 is pinned in `packageManager`. If `pnpm` isn't on PATH, use `npx -y
 - `pnpm licenses` / `pnpm licenses:check` — regenerate `docs/licencias.md`; `check` fails on a non-allowlisted license
 - `scripts/*.ts` run directly with Node (type stripping), hence Node ≥ 22.18
 - `pnpm test:fase0` — engine-viability suite (Playwright) against the standalone harness in `spikes/fase0/` (built with `vite.spike.config.ts`, port 4174, not part of the product build). Results go to `spikes/fase0/results/`; the report is `docs/fase-0-viabilidad.md`. `pnpm spike:fase0 --host` serves it on the LAN for manual iPad tests.
+
+Licensing: own code is MIT (`LICENSE`). The built app must ship third-party notices — `scripts/third-party-notices.ts` builds them from each package's license file, falling back to vendored texts in `licenses/` or the README license section, and reads each font's copyright from its WOFF2 `name` table. If a new dependency or font has no license text, the script reports it; add the upstream text under `licenses/upstream/` rather than shipping without it. Liberation Sans 1.05 (GPLv2+exception) is deliberately not distributed. Commits use the owner's GitHub noreply identity (`F. C. <146028852+FranciscoCamareno@users.noreply.github.com>`), never a personal email.
 
 Dependencies are pinned exactly (`.npmrc save-exact`). TypeScript is held at 6.0.x because typescript-eslint doesn't support ≥6.1. tsconfig is very strict (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`, `erasableSyntaxOnly` — so no constructor parameter properties or enums).
 

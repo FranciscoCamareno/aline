@@ -73,12 +73,12 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **Estado:** completada. Las tareas 1.2 a 1.9 están implementadas y probadas (38 pruebas unitarias y 12 recorridos E2E; ver README, «Verificación»).
 
-**Pendiente de 1.1:** el workflow de CI (`.github/workflows/ci.yml`) y el primer commit están hechos, pero el repositorio aún no tiene remoto. Crear el remoto y comprobar que el CI pasa queda en manos del propietario.
+**1.1:** repositorio publicado en https://github.com/FranciscoCamareno/aline (rama `main`, licencia MIT). El CI se ejecuta en cada envío.
 
 **Lo que queda fuera de la fase:**
 
 - **«Abrir otro almacén» (FA-01b)** llega con varios almacenes (2.2).
-- **Licencias de las fuentes del lienzo:** hay que verificarlas en sus repositorios de origen antes de publicar.
+- **Licencias de las fuentes del lienzo:** comprobadas (ver [licencias.md](licencias.md)). Liberation Sans 1.05 (GPLv2 con excepción) no se distribuye.
 - **Exportación de emergencia:** es un JSON provisional, hasta la copia ZIP (2.3).
 
 | # | Tarea | Requisitos | Tamaño |
@@ -212,7 +212,7 @@ La ruta crítica hasta la beta es: **serializador (2.1) → Drive (4.5) → Sync
 | Crear la cuenta de alojamiento (Cloudflare Pages propuesto) y fijar el origen de producción | PWA en el iPad, 4.x | Durante las fases 2–3 |
 | Crear el proyecto de Google Cloud, Drive API, cliente OAuth web y pantalla de consentimiento en pruebas | 4.4–4.7 | Durante las fases 2–3 |
 | Cuenta o carpeta de Drive de prueba, separada del contenido personal | 4.7 | Fase 4 |
-| Decidir la licencia del código (MIT propuesta) | Publicar el repositorio | Antes de publicar |
+| ~~Decidir la licencia del código~~ | Hecho: MIT, `Copyright (c) 2026 F. C.` | — |
 | Dedicación disponible (D-09) | Calcular fechas | Cuando se quiera un calendario |
 
 Ninguna de estas acciones se ejecuta de forma automática: crear cuentas, publicar o modificar una cuenta de Google requiere la decisión del propietario (diseño §1.1).

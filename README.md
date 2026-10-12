@@ -176,7 +176,6 @@ El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-
 | Desactivar la biblioteca externa de Excalidraw                                          | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                | —                                                                |
 | Abrir otro almacén y varios almacenes por navegador                                     | El almacén inaccesible ofrece reintentar o un almacén temporal; elegir otro llega con el plan 2.2                                       | `app/StartupError.tsx`                                           |
 | Escritura del formato abierto en disco (`vault/`)                                       | Especificado en `docs/formato-almacen.md` con JSON Schema; el serializador llega con el plan 2.1                                        | `domain/format.ts`                                               |
-| Licencias de las fuentes del lienzo                                                     | El paquete no las incluye; verificar en los repositorios de origen antes de publicar                                                    | `docs/licencias.md`                                              |
 
 ## Decisiones de implementación
 
@@ -192,6 +191,7 @@ El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-
   una sola vez. Una futura exportación `.excalidraw` tendrá que volver a incrustarlos.
 - **Almacén temporal:** usa `fake-indexeddb` (dependencia de ejecución, cargada solo en ese
   caso) para dar una IndexedDB en memoria cuando la del navegador no está disponible.
+- **Liberation Sans 1.05 excluida:** no se copia a `public/fonts`; el estilo de letra antiguo «Normal» del motor usa la fuente sin serifa del sistema.
 - **Fuentes:** la fuente CJK Xiaolai (unos 13 MB) no se precachea; se guarda en caché la
   primera vez que se usa.
 - **Conflictos:** al abrir un documento con dos cabezas se edita la más reciente y la sesión
@@ -199,7 +199,11 @@ El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-
 
 ## Licencias
 
-Excalidraw tiene licencia MIT. El inventario de dependencias está en
-[docs/licencias.md](docs/licencias.md) (`pnpm licenses`). Las licencias de las fuentes del
-lienzo están pendientes de verificar. La licencia del código propio (se propone MIT) la decide el
-propietario antes de publicar.
+El código propio es software libre con licencia **MIT** (`LICENSE`, Copyright (c) 2026 F. C.).
+
+La aplicación compilada incluye Excalidraw (MIT), otras dependencias y fuentes de terceros. Para cumplir sus licencias, `pnpm assets` genera dos archivos que se publican en `dist/` y se enlazan desde «Estado y diagnóstico → Licencias»:
+
+- `THIRD-PARTY-NOTICES.txt`: los avisos de copyright y el texto de licencia de cada paquete y de cada fuente;
+- `LICENSE.txt`: la licencia MIT de la aplicación.
+
+Los textos que los paquetes npm no incluyen están en [licenses/](licenses/). El inventario y la verificación de las fuentes están en [docs/licencias.md](docs/licencias.md). La fuente Liberation Sans 1.05 no se distribuye porque su licencia (GPLv2 con excepción y cláusulas añadidas) no encaja con el proyecto.

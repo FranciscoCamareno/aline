@@ -38,3 +38,21 @@ test('tras instalar el Service Worker, la app abre sin conexión', async ({ page
   await expect(page.locator('.cm-content')).toBeVisible();
   await context.setOffline(false);
 });
+
+test('la aplicación distribuye su licencia MIT y los avisos de terceros', async ({ request }) => {
+  const own = await (await request.get('/LICENSE.txt')).text();
+  expect(own).toContain('MIT License');
+  expect(own).toContain('Copyright (c) 2026 F. C.');
+
+  const notices = await (await request.get('/THIRD-PARTY-NOTICES.txt')).text();
+  expect(notices).toContain('@excalidraw/excalidraw 0.18.1 — MIT');
+  expect(notices).toContain('Copyright (c) 2020 Excalidraw');
+  expect(notices).toContain('Copyright (c) 2022 WorkOS');
+  expect(notices).toContain('SIL OPEN FONT LICENSE Version 1.1');
+  expect(notices).toContain('Fuente Virgil');
+  // Liberation 1.05 no se distribuye (ver docs/licencias.md).
+  expect(notices).not.toContain('Fuente Liberation');
+  expect(
+    (await request.get('/fonts/Liberation/LiberationSans-Regular.woff2')).headers()['content-type'],
+  ).not.toContain('font');
+});

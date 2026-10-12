@@ -18,5 +18,10 @@ if (!existsSync(source)) {
 }
 rmSync(target, { recursive: true, force: true });
 mkdirSync(target, { recursive: true });
-cpSync(source, target, { recursive: true });
+// Liberation 1.05 (GPLv2 con excepción y cláusulas de Red Hat) no se distribuye: ver docs/licencias.md.
+const EXCLUDED = ['Liberation'];
+cpSync(source, target, {
+  recursive: true,
+  filter: (src) => !EXCLUDED.some((name) => src.includes(join('fonts', name))),
+});
 console.log(`Fuentes de Excalidraw copiadas a ${target}`);

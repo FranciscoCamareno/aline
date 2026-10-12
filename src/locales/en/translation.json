@@ -79,7 +79,11 @@
     "diagnostics": "Diagnostics log",
     "diagnosticsHint": "Kept on this device only; it does not contain your notes' text.",
     "diagnosticsEmpty": "No entries.",
-    "exportDiagnostics": "Export diagnostics"
+    "exportDiagnostics": "Export diagnostics",
+    "licenses": "Licenses",
+    "licensesHint": "This app is free software under the MIT license and includes third-party software and fonts.",
+    "ownLicense": "App license (MIT)",
+    "thirdParty": "Third-party notices and licenses"
   },
   "storageAlert": {
     "quotaHigh": "Browser storage is almost full.",
