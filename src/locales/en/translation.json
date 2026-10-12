@@ -1,0 +1,107 @@
+{
+  "app": {
+    "name": "MindNote",
+    "loading": "Opening vault…",
+    "startupError": "Could not open the local vault: {{message}}",
+    "toggleLibrary": "Show or hide library",
+    "language": "Language",
+    "openStatus": "Status and diagnostics"
+  },
+  "startup": {
+    "title": "This browser's vault cannot be opened",
+    "explanation": "Nothing has been deleted. It may be a temporary browser lock, private browsing, or a vault created by a newer version of the app.",
+    "retry": "Retry",
+    "temporary": "Work in a temporary vault",
+    "temporaryBanner": "Temporary in-memory vault: everything here is lost when the tab closes. Use “Emergency export” before leaving."
+  },
+  "library": {
+    "title": "Library",
+    "newCanvas": "New canvas",
+    "newNote": "New note",
+    "untitledCanvas": "Untitled canvas",
+    "untitledNote": "Untitled note",
+    "empty": "No documents yet.",
+    "rename": "Rename",
+    "kindCanvas": "Canvas",
+    "kindNote": "Note",
+    "conflict": "Conflict"
+  },
+  "title": {
+    "edit": "Edit title",
+    "save": "Save title",
+    "cancel": "Cancel"
+  },
+  "status": {
+    "idle": "No changes",
+    "pending-changes": "Pending changes",
+    "saved-local": "Saved on this device",
+    "pending-folder": "Pending write to folder",
+    "pending-sync": "Pending sync",
+    "synced": "Synced",
+    "needs-auth": "Needs authorization",
+    "conflict": "Conflict",
+    "out-of-space": "Out of space",
+    "error": "Save failed"
+  },
+  "readOnly": {
+    "unsupported-version": "This document uses a newer format version than this app. It is shown read-only so nothing is lost.",
+    "invalid-content": "This document does not match the expected format. It is shown read-only; see “Status and diagnostics”."
+  },
+  "notes": {
+    "editor": "Markdown editor",
+    "preview": "Preview",
+    "showPreview": "Show preview",
+    "hidePreview": "Hide preview",
+    "invalidFrontmatter": "This note's frontmatter is not valid; it is kept as text.",
+    "brokenLink": "Broken internal link"
+  },
+  "statusPanel": {
+    "title": "Status and diagnostics",
+    "close": "Close",
+    "vault": "Vault",
+    "vaultId": "Identifier",
+    "format": "Format version",
+    "device": "Device",
+    "appVersion": "App version",
+    "temporary": "Temporary (in memory)",
+    "storage": "Browser storage",
+    "persisted": "Persistence granted",
+    "persistedYes": "Yes",
+    "persistedNo": "No: the browser may delete data if it needs space",
+    "persistedUnknown": "Unknown",
+    "usage": "Space used",
+    "usageValue": "{{usage}} of {{quota}} ({{percent}} %)",
+    "unknown": "Unknown",
+    "quotaHigh": "Storage is almost full. Make an emergency export and free some space.",
+    "backupNote": "Browser storage is not a substitute for a backup.",
+    "emergencyExport": "Emergency export",
+    "emergencyExportHint": "Downloads all local content (documents, versions and files) as a single JSON file. Interim until the ZIP backup.",
+    "diagnostics": "Diagnostics log",
+    "diagnosticsHint": "Kept on this device only; it does not contain your notes' text.",
+    "diagnosticsEmpty": "No entries.",
+    "exportDiagnostics": "Export diagnostics"
+  },
+  "storageAlert": {
+    "quotaHigh": "Browser storage is almost full.",
+    "outOfSpace": "Out of space: changes are NOT being saved.",
+    "openStatus": "View status",
+    "emergencyExport": "Emergency export"
+  },
+  "errors": {
+    "invalid-title": "The title is not valid.",
+    "not-found": "Document not found.",
+    "quota-exceeded": "Browser storage is full. The change was NOT saved.",
+    "storage-failure": "Local save failed. The change was NOT saved.",
+    "not-implemented": "Pending feature.",
+    "unsupported-version": "Unsupported format version: the document is read-only.",
+    "unknown": "Unexpected error."
+  },
+  "pwa": {
+    "updateAvailable": "A new version is available.",
+    "update": "Update",
+    "updating": "Saving before updating…",
+    "updateFailed": "Not updated: some changes could not be saved.",
+    "offlineReady": "The app is ready to work offline.",
+    "dismiss": "Dismiss"
+  }
+}

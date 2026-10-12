@@ -1,0 +1,107 @@
+{
+  "app": {
+    "name": "MindNote",
+    "loading": "Abriendo el almacén…",
+    "startupError": "No se pudo abrir el almacén local: {{message}}",
+    "toggleLibrary": "Mostrar u ocultar biblioteca",
+    "language": "Idioma",
+    "openStatus": "Estado y diagnóstico"
+  },
+  "startup": {
+    "title": "No se puede abrir el almacén de este navegador",
+    "explanation": "No se ha borrado nada. Puede ser un bloqueo temporal del navegador, el modo privado o un almacén creado por una versión más nueva de la aplicación.",
+    "retry": "Reintentar",
+    "temporary": "Trabajar en un almacén temporal",
+    "temporaryBanner": "Almacén temporal en memoria: lo que hagas aquí se pierde al cerrar la pestaña. Usa «Exportación de emergencia» antes de salir."
+  },
+  "library": {
+    "title": "Biblioteca",
+    "newCanvas": "Nuevo lienzo",
+    "newNote": "Nueva nota",
+    "untitledCanvas": "Lienzo sin título",
+    "untitledNote": "Nota sin título",
+    "empty": "Aún no hay documentos.",
+    "rename": "Renombrar",
+    "kindCanvas": "Lienzo",
+    "kindNote": "Nota",
+    "conflict": "Conflicto"
+  },
+  "title": {
+    "edit": "Editar título",
+    "save": "Guardar título",
+    "cancel": "Cancelar"
+  },
+  "status": {
+    "idle": "Sin cambios",
+    "pending-changes": "Cambios pendientes",
+    "saved-local": "Guardado en este dispositivo",
+    "pending-folder": "Pendiente de escribir en carpeta",
+    "pending-sync": "Pendiente de sincronizar",
+    "synced": "Sincronizado",
+    "needs-auth": "Necesita autorización",
+    "conflict": "Conflicto",
+    "out-of-space": "Sin espacio",
+    "error": "Error al guardar"
+  },
+  "readOnly": {
+    "unsupported-version": "Este documento usa una versión de formato más nueva que esta aplicación. Se muestra en solo lectura para no perder nada.",
+    "invalid-content": "Este documento no cumple el formato esperado. Se muestra en solo lectura; consulta «Estado y diagnóstico»."
+  },
+  "notes": {
+    "editor": "Editor Markdown",
+    "preview": "Vista previa",
+    "showPreview": "Mostrar vista previa",
+    "hidePreview": "Ocultar vista previa",
+    "invalidFrontmatter": "El encabezado (frontmatter) de esta nota no es válido; se conserva como texto.",
+    "brokenLink": "Enlace interno roto"
+  },
+  "statusPanel": {
+    "title": "Estado y diagnóstico",
+    "close": "Cerrar",
+    "vault": "Almacén",
+    "vaultId": "Identificador",
+    "format": "Versión del formato",
+    "device": "Dispositivo",
+    "appVersion": "Versión de la aplicación",
+    "temporary": "Temporal (en memoria)",
+    "storage": "Almacenamiento del navegador",
+    "persisted": "Persistencia concedida",
+    "persistedYes": "Sí",
+    "persistedNo": "No: el navegador podría borrar los datos si necesita espacio",
+    "persistedUnknown": "Desconocida",
+    "usage": "Espacio usado",
+    "usageValue": "{{usage}} de {{quota}} ({{percent}} %)",
+    "unknown": "Desconocido",
+    "quotaHigh": "El almacenamiento está casi lleno. Haz una exportación de emergencia y libera espacio.",
+    "backupNote": "El almacenamiento del navegador no sustituye a una copia de seguridad.",
+    "emergencyExport": "Exportación de emergencia",
+    "emergencyExportHint": "Descarga todo el contenido local (documentos, versiones y archivos) en un único JSON. Es provisional hasta la copia ZIP.",
+    "diagnostics": "Registro de diagnóstico",
+    "diagnosticsHint": "Solo en este dispositivo; no contiene el texto de tus notas.",
+    "diagnosticsEmpty": "Sin entradas.",
+    "exportDiagnostics": "Exportar diagnóstico"
+  },
+  "storageAlert": {
+    "quotaHigh": "El almacenamiento del navegador está casi lleno.",
+    "outOfSpace": "No queda espacio: los cambios NO se están guardando.",
+    "openStatus": "Ver estado",
+    "emergencyExport": "Exportación de emergencia"
+  },
+  "errors": {
+    "invalid-title": "El título no es válido.",
+    "not-found": "No se encontró el documento.",
+    "quota-exceeded": "No queda espacio en el navegador. El cambio NO se ha guardado.",
+    "storage-failure": "Falló el guardado local. El cambio NO se ha guardado.",
+    "not-implemented": "Función pendiente.",
+    "unsupported-version": "Versión de formato no soportada: el documento está en solo lectura.",
+    "unknown": "Error inesperado."
+  },
+  "pwa": {
+    "updateAvailable": "Hay una nueva versión disponible.",
+    "update": "Actualizar",
+    "updating": "Guardando antes de actualizar…",
+    "updateFailed": "No se actualizó: hay cambios que no se pudieron guardar.",
+    "offlineReady": "La aplicación está lista para funcionar sin conexión.",
+    "dismiss": "Cerrar"
+  }
+}

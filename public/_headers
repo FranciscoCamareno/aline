@@ -1,0 +1,12 @@
+# Cabeceras para Cloudflare Pages (diseño §13, §14.2). BORRADOR: no es la CSP final.
+# Validar primero en modo informe; al configurar Drive, añadir solo los endpoints exactos de
+# Google tras probar sus scripts y ventanas. 'unsafe-inline' en style-src lo requiere el motor
+# de lienzo y CodeMirror (estilos en línea); revisar en la fase de endurecimiento.
+/*
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/sw.js
+  Cache-Control: no-cache

@@ -1,0 +1,12 @@
+node_modules
+dist
+dev-dist
+coverage
+playwright-report
+test-results
+*.local
+.env.local
+.env.*.local
+# Copiado desde node_modules por scripts/copy-excalidraw-assets.mjs
+public/fonts
+dist-spike

@@ -1,0 +1,218 @@
+{
+  "fecha": "2026-10-12T17:55:34.835Z",
+  "0.1_rendimiento": {
+    "cpu_x1": {
+      "elements": 1000,
+      "mountMedianMs": 162,
+      "mountsMs": [220, 183, 162, 162, 160],
+      "pipeline": {
+        "bytes": 623448,
+        "serializeMs": 22,
+        "deserializeMs": 25,
+        "reopenTotalMs": 186,
+        "elementsAfterReopen": 1000
+      },
+      "drag": {
+        "pointermoveEvents": 61,
+        "eventsOver16ms": 2,
+        "maxEventMs": 152,
+        "frameP95Ms": 33.400000000000546,
+        "moved": true
+      }
+    },
+    "cpu_x4": {
+      "elements": 1000,
+      "mountMedianMs": 1260,
+      "mountsMs": [1629, 1394, 1260, 1091, 1117],
+      "pipeline": {
+        "bytes": 623539,
+        "serializeMs": 181,
+        "deserializeMs": 133,
+        "reopenTotalMs": 1288,
+        "elementsAfterReopen": 1000
+      },
+      "drag": {
+        "pointermoveEvents": 122,
+        "eventsOver16ms": 4,
+        "maxEventMs": 592,
+        "frameP95Ms": 116.59999999999854,
+        "moved": true
+      }
+    }
+  },
+  "0.2_enlace": {
+    "viaApi": "mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c",
+    "roundTrip": {
+      "restore": "mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c",
+      "codec": "mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c"
+    },
+    "onLinkOpen": [
+      {
+        "elementId": "A",
+        "link": "mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c"
+      }
+    ],
+    "ventanasAbiertas": 0,
+    "editorUiDisponible": true,
+    "viaEditorUi": "mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c"
+  },
+  "0.3_customData": {
+    "roundTrip": {
+      "mindnote": {
+        "nodeId": "nodo-A"
+      }
+    },
+    "trasDuplicar_elementosConMarca": 2,
+    "trasCopiarPegar_elementosConMarca": 3,
+    "trasDeshacer": {
+      "mindnote": {
+        "nodeId": "nodo-A"
+      }
+    }
+  },
+  "0.5_conectorSuelto": {
+    "inicial": {
+      "existe": true,
+      "borrada": false,
+      "startBinding": "A",
+      "endBinding": "B"
+    },
+    "trasBorrarB": {
+      "existe": true,
+      "borrada": false,
+      "startBinding": "A",
+      "endBinding": null
+    },
+    "B_borrado": true,
+    "trasDeshacer": {
+      "existe": true,
+      "borrada": false,
+      "startBinding": "A",
+      "endBinding": "B"
+    },
+    "B_trasDeshacer_borrado": false
+  },
+  "0.6_proyeccion": {
+    "elementosIniciales": 11,
+    "ocultos": 9,
+    "visiblesTrasColapsar": ["R", "ny4dtlr5IxsvRvNDm6kTF"],
+    "0.7_exportacion": {
+      "svgContieneRAIZ": true,
+      "svgContieneOcultos": false,
+      "svgAncho": "160",
+      "pngBytes": 4345
+    },
+    "deshacerConColapso": {
+      "enEscena": [
+        {
+          "id": "R",
+          "del": false
+        },
+        {
+          "id": "C2",
+          "del": true
+        },
+        {
+          "id": "ny4dtlr5IxsvRvNDm6kTF",
+          "del": false
+        }
+      ],
+      "C2": {
+        "id": "C2",
+        "del": true
+      }
+    },
+    "trasExpandir": {
+      "elementos": 11,
+      "G1_conservaPosicion": true,
+      "R_movido": true
+    },
+    "conectorTrasExpandir": {
+      "distanciaInicioARaiz": 30
+    },
+    "conectorTrasMoverDeNuevo": {
+      "distanciaInicioARaiz": 1
+    },
+    "deshacerTrasExpandir": {
+      "visibles": 10,
+      "ids": [
+        "C1",
+        "E-DvPj3OqMsC3rFLVmqlH",
+        "G1",
+        "QCol4XGWeSGk80udDUErJ",
+        "R",
+        "ToyYXWgyMTfOiynKxSIfd",
+        "aC1G1",
+        "aRC1",
+        "aRC2",
+        "ny4dtlr5IxsvRvNDm6kTF"
+      ]
+    }
+  },
+  "0.6c_proyeccionOpacidad": {
+    "ocultos": 9,
+    "seleccionarTodo": ["R"],
+    "clicSobreOculto_selecciona": [],
+    "deshacerConColapso": {
+      "C2_borrado": false,
+      "C2_opacidad": 0,
+      "C2_y": 420,
+      "elementos": 11
+    },
+    "exportacion": {
+      "contieneRAIZ": true,
+      "contieneOcultos": false
+    },
+    "trasExpandir": {
+      "elementos": 11,
+      "opacidadesRestauradas": true,
+      "bloqueados": 0,
+      "distanciaInicioConectorARaiz": 1
+    },
+    "G1_conservaPosicion": true,
+    "deshacerTrasExpandir": {
+      "elementos": 11,
+      "borrados": []
+    },
+    "elementosIniciales": 11
+  },
+  "0.6b_deshacer100": {
+    "x0": 100,
+    "x100": 600,
+    "afterUndo": 100,
+    "afterRedo": 600,
+    "undoVuelveAlInicio": true,
+    "redoVuelveAlFinal": true
+  },
+  "0.4_lapiz_indicativo": {
+    "trasLapiz": {
+      "trazos": 1,
+      "pen": {
+        "pointerDown": {
+          "pen": 1
+        },
+        "freedrawCreated": 1,
+        "freedrawByPointer": {
+          "pen": 1
+        },
+        "lastPointerType": "pen",
+        "penMode": true,
+        "penDetected": true,
+        "pressureSamples": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+      }
+    },
+    "toqueConPenMode": {
+      "trazos": 1,
+      "penMode": true
+    },
+    "toqueSinPenMode": {
+      "trazos": 2
+    },
+    "trazoTrasReabrir": {
+      "puntos": 12,
+      "puntosIguales": true,
+      "presionesIguales": true,
+      "simulatePressure": true
+    }
+  }
+}

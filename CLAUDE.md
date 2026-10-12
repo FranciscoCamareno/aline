@@ -1,0 +1,63 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+Personal mind-map + connected-notes PWA. The authoritative spec is `docs/Diseno-tecnico-sistema.md` (Spanish); code comments cite it as `diseño §N`. The phased roadmap is `docs/Plan-de-fases.md`; phase 0 findings are in `docs/fase-0-viabilidad.md` (notably: collapsed branches must stay in the scene with opacity 0 + locked — removing them from the scene breaks undo; `customData` is copied on duplicate/paste, so it is not an identity). Respect its decisions — changing the canvas engine, storage model or sync protocol requires recording an architecture change, not just editing code. UI strings, comments and docs are in Spanish (es/en translations in `src/locales/`).
+
+Current state: phases 0 and 1 of the plan are done (local core, read-only compatibility, diagnostics, emergency export, hash worker, open-format spec in `docs/formato-almacen.md`). Next is phase 2 (open-format serializer, multiple vaults, ZIP backup, trash, history, conflict UI). Drive, sync, local-folder, conflict resolution, history UI, search, export/ZIP, mind-map branches and pen mode are **pending** — their contracts live in `src/ports/` and stub adapters throw `DomainError('not-implemented')` via `notImplemented()`. Never make a stub simulate success. The README has the full pending table; keep it updated when implementing something.
+
+## Commands
+
+pnpm 12.11.2 is pinned in `packageManager`. If `pnpm` isn't on PATH, use `npx -y pnpm@12.11.2 <cmd>` (and run Playwright via `npx -y pnpm@12.11.2 exec playwright …` so its `webServer` can find pnpm).
+
+- `pnpm dev` — Vite dev server (first copies Excalidraw fonts to `public/fonts`, gitignored)
+- `pnpm build` — copy fonts + `tsc -b` + `vite build` (generates the Workbox SW)
+- `pnpm verify` — typecheck + lint + unit tests + build; run before declaring work done
+- `pnpm test` — Vitest unit tests (`tests/unit`, node env, `fake-indexeddb`)
+- Single unit test: `pnpm exec vitest run tests/unit/vault.test.ts -t "renombrar"`
+- `pnpm test:e2e` — Playwright/Chromium against `pnpm build && pnpm preview` on port 4173. First time: `pnpm exec playwright install chromium`
+- Single e2e test: `pnpm exec playwright test tests/e2e/core.spec.ts -g "nota Markdown"`
+- `pnpm format` / `pnpm lint`
+- `pnpm schemas` — regenerate `docs/formato/schemas/v1/*.schema.json` from `src/domain/format.ts`; a unit test fails if they drift
+- `pnpm licenses` / `pnpm licenses:check` — regenerate `docs/licencias.md`; `check` fails on a non-allowlisted license
+- `scripts/*.ts` run directly with Node (type stripping), hence Node ≥ 22.18
+- `pnpm test:fase0` — engine-viability suite (Playwright) against the standalone harness in `spikes/fase0/` (built with `vite.spike.config.ts`, port 4174, not part of the product build). Results go to `spikes/fase0/results/`; the report is `docs/fase-0-viabilidad.md`. `pnpm spike:fase0 --host` serves it on the LAN for manual iPad tests.
+
+Dependencies are pinned exactly (`.npmrc save-exact`). TypeScript is held at 6.0.x because typescript-eslint doesn't support ≥6.1. tsconfig is very strict (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`, `erasableSyntaxOnly` — so no constructor parameter properties or enums).
+
+## Architecture
+
+Client-side modular monolith; no app server. Layering is enforced by `no-restricted-imports` in `eslint.config.js`:
+
+- `domain/` — pure types/rules (Revision zod schema, frontmatter, tags, sidecar). No React/Dexie/Excalidraw.
+- `ports/` + `application/` — only depend on domain/shared and port interfaces. `VaultService` is the single entry point for content changes (create/open/save note & canvas, rename).
+- `adapters/` — `indexeddb` (Dexie), `excalidraw` (scene codec), `drive`/`filesystem` (stubs).
+- `features/` + `app/` — React UI; must not import drive/filesystem adapters. `app/services.ts` is the composition root.
+
+### Revision model (the core invariant)
+
+Content is never mutated in place. Every save is a new immutable `Revision` with `parentIds` = heads the editor knew about, `contentRefs` pointing to SHA-256-addressed blobs. `DexieVaultRepository.commit` does, in **one Dexie transaction**: insert blobs (idempotent by hash), verify all referenced blobs exist, add revision, update `documents.headRevisionIds`, add `historyIndex` and `outbox` entries. If the stored heads ≠ `knownHeads`, the new revision becomes an extra head and the result is `status: 'conflict'` — never overwrite. Don't `await` non-Dexie promises (e.g. `crypto.subtle`) inside the transaction; hash beforehand.
+
+`VaultService` keeps one shared `EditSession` per document (editor and rename share it) and a per-document write queue (`serialized`), and `open*` waits on pending writes. When a doc has multiple heads, the session tracks only the opened head so a save never silently merges a conflict.
+
+Notes: stored blob = frontmatter (`schema_version`, `id`, `title`, `tags`, unknown keys preserved) + body; the editor only sees the body, and frontmatter is re-serialized from revision metadata on every save/rename. Hashes are over exact UTF-8 bytes.
+
+Canvas: the application treats scenes as opaque `.excalidraw` JSON. `adapters/excalidraw/sceneCodec.ts` serializes with Excalidraw's `serializeAsJSON(..., 'local')`, replaces each file `dataURL` with `mindnote-asset:<sha256>` (bytes stored as separate blobs) and reverses it on load. `contentSignature` makes scroll/zoom/selection changes not produce revisions. The canvas sidecar (`domain/sidecar.ts`) is created and carried forward unchanged; it is the future authority for links/branches — don't put product data only in Excalidraw `customData`.
+
+Autosave (`app/useAutosave.ts` + `shared/coalesce.ts`): 500 ms debounce, 2 s max wait, flush on pointerup (deferred 50 ms because Excalidraw's last onChange follows pointerup), visibilitychange/pagehide and unmount. UI shows "Guardado en este dispositivo" only after the transaction commits; never "Sincronizado" for a local write.
+
+Read compatibility (`domain/compat.ts`): `open*` sets `EditSession.readOnly` when a revision, note frontmatter, sidecar or scene has a newer version than supported or fails its schema; save/rename then throw `unsupported-version` and the views render read-only. Never "upgrade" or rewrite such content.
+
+Process-level glue lives in `app/runtime.ts`: `logDiagnostic` (local, size-rotated log in the `diagnostics` table — never note text or tokens; pass errors through `describeError`) and `registerFlusher`/`flushAllWrites`, which the PWA update prompt awaits (plus `VaultService.whenIdle` and terminating the hash worker) before activating a new service worker. Hashing in `shared/hash.ts` is pluggable: the app installs the worker client (`workers/hashClient.ts`, worker only above 16 KB); unit tests use Web Crypto. If IndexedDB can't open, `StartupError` offers a temporary in-memory vault (`fake-indexeddb`, a runtime dependency loaded only on that path).
+
+IndexedDB schema v1 (`adapters/indexeddb/db.ts`) already declares tables for future features (remoteFiles, linkIndex, searchDocuments, controls…) to avoid migrations. Vault and device identity live in `deviceSettings` (keys `vault`, `device`); device preferences use `pref:<key>` (e.g. the last opened document).
+
+### Privacy/network constraints
+
+No external requests without Drive enabled (an e2e test asserts this): Excalidraw fonts are self-hosted via `window.EXCALIDRAW_ASSET_PATH`, the main menu omits external links, Markdown preview disables raw HTML and turns images into links, `mindnote://document/<uuid>` links are intercepted in-app. `public/_headers` holds a draft Report-Only CSP, not final.
+
+## Verification honesty
+
+Chromium e2e does not validate iPad/Safari, Apple Pencil, palm rejection or the performance targets in spec §16.1. Don't claim those verified without running them on real hardware/benchmarks.

@@ -1,0 +1,51 @@
+# Integración continua (plan 1.1): instalación congelada, verificación completa y recorridos E2E.
+# Las pruebas de Chromium no certifican Safari en iPad, el Apple Pencil ni el rendimiento.
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: Formato
+        run: pnpm format:check
+
+      - name: Licencias
+        run: pnpm licenses:check
+
+      - name: Typecheck, lint, pruebas unitarias y compilación
+        run: pnpm verify
+
+      - name: Instalar Chromium para Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Recorridos E2E
+        run: pnpm test:e2e
+
+      - name: Informe de Playwright en caso de fallo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results
+          retention-days: 7
