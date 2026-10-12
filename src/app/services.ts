@@ -85,7 +85,10 @@ export function bootstrap(
 
       const service = new VaultService(repo);
       const knowledge = new KnowledgeService(repo, new DexieKnowledgeStore(db));
-      if ((await service.listDocuments()).length === 0) {
+      // Un almacén enlazado a una carpeta recibe su contenido al sincronizar: no se le añade el
+      // lienzo inicial, que acabaría publicado en el almacén compartido.
+      const bound = Boolean(await repo.getDevicePreference('binding'));
+      if (!bound && (await service.listDocuments()).length === 0) {
         await service.createDocument('canvas', firstCanvasTitle);
       }
       diagnostics.record(

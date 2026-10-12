@@ -46,9 +46,12 @@ export interface IncomingStagingEntry {
   id: string;
   payload: unknown;
 }
+/** Copia legible observada en un destino (diseño §8.3). path = "<destino>|<ruta>". */
 export interface ExternalObservationEntry {
   path: string;
   hash: string;
+  lastModified: number;
+  revisionId?: string;
   observedAt: string;
 }
 /** Índices derivados (diseño §6): enlaces y documentos de búsqueda, reconstruibles. */

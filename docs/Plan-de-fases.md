@@ -1,6 +1,6 @@
 # Plan de fases: del núcleo local a la versión beta
 
-Versión 1.4 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
+Versión 1.5 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
 
 Este plan parte de lo que ya está construido y llega hasta una **beta utilizable** y después a la **versión 1.0**. Conserva la numeración de fases del diseño técnico (§17) para no crear dos mapas distintos. No incluye fechas: el diseño exige no darlas sin conocer la dedicación disponible (D-09). Los tamaños S, M y L indican complejidad relativa, no tiempo.
 
@@ -169,7 +169,44 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **→ Hito alfa local.**
 
-### Fase 4 — Almacenamiento externo y sincronización
+### Fase 4 — Almacenamiento externo y sincronización (en curso: parte local completada el 13/10/2026)
+
+**Estado:**
+
+- **Hechas y probadas:** 4.1, 4.2, 4.3, 4.6 y 4.7 contra la carpeta local, en Chromium y Edge y con las pruebas del protocolo.
+- **Pendientes porque necesitan Google Cloud:** 4.4, 4.5 y 4.8.
+- **Alojamiento:** listo en https://aline.projeck.workers.dev. Es un Cloudflare Worker con assets estáticos (`wrangler.jsonc`) y aplica `public/_headers`.
+
+**Decisiones de esta parte:**
+
+- **El motor no depende del destino.** La carpeta implementa `RemoteStore`, el mismo contrato que implementará Drive, así que el protocolo ya está probado entre «dispositivos».
+- **Contrato `RemoteStore` concretado:**
+  - `pull` devuelve identificadores y las revisiones se leen bajo demanda;
+  - `getObject` devuelve también el tipo MIME;
+  - hay índices y copias legibles.
+- **Qué falta publicar se calcula comparando** las revisiones locales con las marcas de publicación por destino (tabla `remoteFiles`). La cola `outbox` se vacía al publicar.
+- **Corrección durante las pruebas:** un equipo que borraba definitivamente un documento volvía a descargar sus versiones de la carpeta. Ahora las órdenes de retirada locales se publican al empezar el ciclo y nunca se descargan versiones retiradas.
+- **Recarga automática.** Si el documento abierto cambia en otro sitio y no hay cambios sin guardar, se recarga solo; si los hay, aparece el aviso.
+- **Sin lienzo inicial en almacenes de carpeta.** Un almacén abierto desde una carpeta no recibe el lienzo de bienvenida: su contenido llega de la carpeta.
+
+**Observación del alojamiento:** Cloudflare añade las cabeceras `Report-To` y `NEL` (registro de errores de red). Con ellas, el navegador puede enviar a Cloudflare informes de fallos de conexión. Es un dato técnico del proveedor, no contenido, pero conviene revisarlo frente a RNF-05 y, si se quiere, desactivarlo en la configuración de Cloudflare.
+
+**Lo que tiene que hacer el propietario para continuar con Drive (diseño §14.3):**
+
+1. En https://console.cloud.google.com, crear un proyecto (por ejemplo «aline») y habilitar **Google Drive API**. Habilitar **Google Picker API** solo si se quiere abrir archivos ajenos a la aplicación.
+2. Configurar la pantalla de consentimiento OAuth:
+   - tipo **Externo**, en modo **Pruebas**;
+   - tu cuenta como usuario de prueba;
+   - alcance únicamente `https://www.googleapis.com/auth/drive.file`.
+3. Crear credenciales **ID de cliente OAuth** de tipo **Aplicación web**, con estos «Orígenes autorizados de JavaScript» (sin rutas):
+   - `https://aline.projeck.workers.dev`
+   - `http://localhost:5173`
+   - `http://localhost:4173`
+
+   No hacen falta URI de redirección: se usa el modelo de token de Google Identity Services.
+4. Pasarme el **ID de cliente**. Es público por diseño. **Nunca** el secreto del cliente, que no se usa.
+5. Configurarlo como variable de compilación `VITE_GOOGLE_CLIENT_ID`: en `.env.local` para desarrollo y en las variables de compilación de Cloudflare para el despliegue.
+
 
 **Prerrequisitos del propietario** (ver §5): alojamiento con origen HTTPS estable, proyecto de Google Cloud con Drive API, cliente OAuth web y pantalla de consentimiento en pruebas, y una cuenta o carpeta de Drive de prueba.
 

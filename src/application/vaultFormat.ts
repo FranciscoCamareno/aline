@@ -75,17 +75,18 @@ function json(value: unknown): Uint8Array {
   return utf8Encode(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function objectPath(hash: string, role: 'note' | 'canvas' | 'extensions'): string {
+/** Ruta de un objeto según su papel (diseño §6). La comparten la copia ZIP, la carpeta y Drive. */
+export function objectPath(hash: string, role: 'note' | 'canvas' | 'extensions'): string {
   const ext = role === 'note' ? 'md' : role === 'canvas' ? 'excalidraw' : 'json';
   return `objects/${hash}.${ext}`;
 }
 
-function assetPath(blob: StoredBlob): string {
+export function assetPath(blob: Pick<StoredBlob, 'hash' | 'mimeType'>): string {
   const mime = blob.mimeType.split(';')[0]!.trim().toLowerCase();
   return `assets/${blob.hash}.${MIME_EXTENSION[mime] ?? 'bin'}`;
 }
 
-const VAULT_README = `# Almacén MindNote (formato abierto v1)
+export const VAULT_README = `# Almacén MindNote (formato abierto v1)
 
 Este directorio se puede leer sin la aplicación. Especificación completa:
 docs/formato-almacen.md en el repositorio de la aplicación.
@@ -136,39 +137,61 @@ export function vaultToFiles(
 
   for (const control of content.controls) files.set(`controls/${control.id}.json`, json(control));
 
-  files.set(
-    `heads/${deviceId}.json`,
-    json(
-      headsFileSchema.parse({
-        schemaVersion: 1,
-        deviceId,
-        generatedAt,
-        heads: Object.fromEntries(content.documents.map((d) => [d.id, d.headRevisionIds])),
-      }),
-    ),
-  );
-  files.set(
-    'catalog.json',
-    json(
-      catalogSchema.parse({
-        schemaVersion: 1,
-        vaultId: content.vault.id,
-        deviceId,
-        generatedAt,
-        documents: content.documents.map((d) => ({
-          id: d.id,
-          kind: d.kind,
-          title: d.title,
-          folderId: d.folderId,
-          tags: d.tags,
-          deleted: d.deleted,
-          headRevisionIds: d.headRevisionIds,
-        })),
-      }),
-    ),
-  );
+  for (const [path, bytes] of indexFiles(deviceId, content.documents, content.vault, generatedAt)) {
+    files.set(path, bytes);
+  }
   return files;
 }
+
+/** heads/<dispositivo>.json y catalog.json: índices aceleradores, nunca autoridad (§6). */
+export function indexFiles(
+  deviceId: string,
+  documents: DocumentRecord[],
+  vault: VaultContent['vault'],
+  generatedAt: string,
+): Array<[string, Uint8Array]> {
+  return [
+    [
+      `heads/${deviceId}.json`,
+      json(
+        headsFileSchema.parse({
+          schemaVersion: 1,
+          deviceId,
+          generatedAt,
+          heads: Object.fromEntries(documents.map((d) => [d.id, d.headRevisionIds])),
+        }),
+      ),
+    ],
+    [
+      'catalog.json',
+      json(
+        catalogSchema.parse({
+          schemaVersion: 1,
+          vaultId: vault.id,
+          deviceId,
+          generatedAt,
+          documents: documents.map((d) => ({
+            id: d.id,
+            kind: d.kind,
+            title: d.title,
+            folderId: d.folderId,
+            tags: d.tags,
+            deleted: d.deleted,
+            headRevisionIds: d.headRevisionIds,
+          })),
+        }),
+      ),
+    ],
+  ];
+}
+
+/** Extensión → tipo MIME de un archivo del formato (al leer objetos y assets). */
+export function mimeForPath(path: string): string {
+  const ext = /\.([a-z0-9]+)$/.exec(path)?.[1] ?? 'bin';
+  return EXTENSION_MIME[ext] ?? 'application/octet-stream';
+}
+
+export { json as jsonBytes };
 
 function parseJson(path: string, bytes: Uint8Array, problems: ReadProblem[]): unknown {
   try {

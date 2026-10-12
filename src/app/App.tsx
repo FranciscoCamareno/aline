@@ -8,6 +8,8 @@ import { ConflictPanel } from '../features/history/ConflictPanel.tsx';
 import { DetailsPanel } from '../features/knowledge/DetailsPanel.tsx';
 import { SearchPalette } from '../features/knowledge/SearchPalette.tsx';
 import { KnowledgeRuntime } from './knowledgeRuntime.ts';
+import { RemoteChip } from './RemoteChip.tsx';
+import { SyncRuntime } from './syncRuntime.ts';
 import { HistoryPanel } from '../features/history/HistoryPanel.tsx';
 import { CanvasView } from '../features/canvas/CanvasView.tsx';
 import { LibrarySidebar } from '../features/library/LibrarySidebar.tsx';
@@ -58,6 +60,8 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   /** Índices de enlaces y búsqueda del almacén abierto. */
   const [runtime, setRuntime] = useState<KnowledgeRuntime | null>(null);
+  /** Sincronización con la carpeta conectada (plan 4.2). */
+  const [sync, setSync] = useState<SyncRuntime | null>(null);
   /** Contador por documento: al cambiarlo, la vista se monta de nuevo con el contenido guardado. */
   const [reloads, setReloads] = useState<Record<string, number>>({});
   /** Documento abierto que otra pestaña acaba de modificar. */
@@ -77,6 +81,17 @@ export function App() {
   const reloadView = useCallback(
     (documentId: string) => setReloads((r) => ({ ...r, [documentId]: (r[documentId] ?? 0) + 1 })),
     [],
+  );
+  /**
+   * El documento abierto cambió en otra pestaña, otro dispositivo o fuera de la aplicación: si no
+   * hay cambios sin guardar se recarga solo; si los hay, se avisa y no se pisa nada.
+   */
+  const showRemoteChange = useCallback(
+    (documentId: string) => {
+      if (useUiStore.getState().saveStatus === 'pending-changes') setChangedElsewhere(documentId);
+      else reloadView(documentId);
+    },
+    [reloadView],
   );
 
   const reportError = useCallback(
@@ -101,6 +116,19 @@ export function App() {
           const knowledge = new KnowledgeRuntime(app);
           knowledge.start();
           setRuntime(knowledge);
+          const syncRuntime = new SyncRuntime(
+            app,
+            (status) => useUiStore.getState().setRemote(status),
+            (documentIds) => {
+              // Cambios llegados de otro dispositivo o de una edición externa.
+              void app.service.listDocuments().then(setDocuments);
+              for (const id of documentIds) knowledge.schedule(id);
+              const current = useUiStore.getState().activeId;
+              if (current && documentIds.includes(current)) showRemoteChange(current);
+            },
+          );
+          void syncRuntime.start();
+          setSync(syncRuntime);
           void app.storage.then((report) => {
             const ratio = quotaRatio(report);
             if (ratio !== null && ratio >= QUOTA_WARNING_RATIO) {
@@ -115,7 +143,7 @@ export function App() {
         },
       );
     },
-    [t, setDocuments, setActive],
+    [t, setDocuments, setActive, showRemoteChange],
   );
 
   useEffect(() => {
@@ -123,6 +151,7 @@ export function App() {
   }, [start]);
 
   useEffect(() => () => runtime?.stop(), [runtime]);
+  useEffect(() => () => sync?.stop(), [sync]);
   const runSearch = useCallback(
     (query: string) => runtime?.search(query) ?? Promise.resolve({ hits: [], ms: 0 }),
     [runtime],
@@ -157,14 +186,14 @@ export function App() {
       void services.service.listDocuments().then(setDocuments);
       runtime?.schedule(event.data.documentId);
       if (event.data.documentId === useUiStore.getState().activeId) {
-        setChangedElsewhere(event.data.documentId);
+        showRemoteChange(event.data.documentId);
       }
     };
     return () => {
       unsubscribe();
       channel.close();
     };
-  }, [services, runtime, setDocuments]);
+  }, [services, runtime, setDocuments, showRemoteChange]);
 
   /** Operaciones que reescriben la cabeza: antes se vacían los guardados pendientes del editor. */
   const runOnDocument = useCallback(
@@ -370,6 +399,7 @@ export function App() {
         <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
           {t(`status.${saveStatus}`)}
         </span>
+        <RemoteChip onOpen={() => setPanel('status')} />
         <button
           type="button"
           className="icon-button"
@@ -518,7 +548,12 @@ export function App() {
         )}
       </main>
       {statusOpen && (
-        <StatusPanel services={services} onClose={() => setPanel(null)} onError={reportError} />
+        <StatusPanel
+          services={services}
+          sync={sync}
+          onClose={() => setPanel(null)}
+          onError={reportError}
+        />
       )}
       {panel === 'history' && active && (
         <HistoryPanel

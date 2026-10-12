@@ -775,3 +775,26 @@ button.danger {
   display: block;
   padding-left: 0;
 }
+
+/* Fase 4: estado de la carpeta conectada. */
+.remote-chip {
+  font-size: 0.8rem;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.remote-ok {
+  color: var(--ok);
+}
+.remote-pending,
+.remote-syncing {
+  color: var(--warn);
+}
+.remote-needs-permission,
+.remote-mismatch,
+.remote-unavailable,
+.remote-error {
+  color: var(--danger);
+  font-weight: 600;
+}

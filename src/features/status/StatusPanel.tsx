@@ -4,6 +4,8 @@ import type { StorageReport } from '../../adapters/indexeddb/storage.ts';
 import { exportDiagnostics, runEmergencyExport } from '../../app/emergency.ts';
 import type { AppServices } from '../../app/services.ts';
 import type { DiagnosticRecord } from '../../ports/Diagnostics.ts';
+import type { SyncRuntime } from '../../app/syncRuntime.ts';
+import { StorageSection } from './StorageSection.tsx';
 import { VaultsSection } from './VaultsSection.tsx';
 
 /** Umbral de aviso de cuota alta (diseño §7.1). */
@@ -22,12 +24,13 @@ function formatBytes(bytes: number | null, unknown: string): string {
 
 interface Props {
   services: AppServices;
+  sync: SyncRuntime | null;
   onClose: () => void;
   onError: (error: unknown) => void;
 }
 
 /** Estado del almacén y del navegador, exportación de emergencia y registro de diagnóstico. */
-export function StatusPanel({ services, onClose, onError }: Props) {
+export function StatusPanel({ services, sync, onClose, onError }: Props) {
   const { t } = useTranslation();
   const [report, setReport] = useState<StorageReport | null>(null);
   const [entries, setEntries] = useState<DiagnosticRecord[] | null>(null);
@@ -88,6 +91,8 @@ export function StatusPanel({ services, onClose, onError }: Props) {
           <dd>{__APP_VERSION__}</dd>
         </dl>
       </section>
+
+      <StorageSection services={services} sync={sync} onError={onError} />
 
       <VaultsSection services={services} onError={onError} />
 

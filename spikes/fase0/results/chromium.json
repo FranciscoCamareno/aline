@@ -1,15 +1,15 @@
 {
-  "fecha": "2026-10-12T19:27:41.576Z",
+  "fecha": "2026-10-12T23:14:48.068Z",
   "0.1_rendimiento": {
     "cpu_x1": {
       "elements": 1000,
-      "mountMedianMs": 59,
-      "mountsMs": [71, 67, 55, 49, 59],
+      "mountMedianMs": 54,
+      "mountsMs": [69, 73, 49, 45, 54],
       "pipeline": {
-        "bytes": 623503,
-        "serializeMs": 9,
-        "deserializeMs": 10,
-        "reopenTotalMs": 65,
+        "bytes": 623540,
+        "serializeMs": 6,
+        "deserializeMs": 11,
+        "reopenTotalMs": 59,
         "elementsAfterReopen": 1000
       },
       "drag": {
@@ -22,20 +22,20 @@
     },
     "cpu_x4": {
       "elements": 1000,
-      "mountMedianMs": 234,
-      "mountsMs": [225, 234, 232, 290, 283],
+      "mountMedianMs": 811,
+      "mountsMs": [835, 811, 675, 495, 1032],
       "pipeline": {
-        "bytes": 623538,
-        "serializeMs": 25,
+        "bytes": 623519,
+        "serializeMs": 22,
         "deserializeMs": 18,
-        "reopenTotalMs": 251,
+        "reopenTotalMs": 280,
         "elementsAfterReopen": 1000
       },
       "drag": {
         "pointermoveEvents": 122,
         "eventsOver16ms": 4,
-        "maxEventMs": 120,
-        "frameP95Ms": 33.19999999999982,
+        "maxEventMs": 296,
+        "frameP95Ms": 100,
         "moved": true
       }
     }
@@ -95,12 +95,12 @@
   "0.6_proyeccion": {
     "elementosIniciales": 11,
     "ocultos": 9,
-    "visiblesTrasColapsar": ["R", "TdV6P7GtkY996PP_3U1SS"],
+    "visiblesTrasColapsar": ["R", "XlxztxVd50rMM5ulWlQaH"],
     "0.7_exportacion": {
       "svgContieneRAIZ": true,
       "svgContieneOcultos": false,
       "svgAncho": "160",
-      "pngBytes": 4289
+      "pngBytes": 4360
     },
     "deshacerConColapso": {
       "enEscena": [
@@ -113,7 +113,7 @@
           "del": true
         },
         {
-          "id": "TdV6P7GtkY996PP_3U1SS",
+          "id": "XlxztxVd50rMM5ulWlQaH",
           "del": false
         }
       ],
@@ -138,14 +138,14 @@
       "ids": [
         "C1",
         "G1",
-        "NnEWein6yHoM8s5AU8Tn3",
+        "JTDmNCNnrVakLfHI-0qgd",
         "R",
-        "S9tE-lmn6QpGaZRCaSPE2",
-        "TdV6P7GtkY996PP_3U1SS",
+        "XlxztxVd50rMM5ulWlQaH",
         "aC1G1",
         "aRC1",
         "aRC2",
-        "f6ndRYiF5dUnjruY1Igcc"
+        "dk8TW6uYs2yrN6TVaTIQC",
+        "hyIgfb9cK6g5p2q5OSEHu"
       ]
     }
   },

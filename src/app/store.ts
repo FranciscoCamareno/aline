@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { DocumentRecord } from '../domain/revision.ts';
 import type { PersistenceStatus } from '../ports/RemoteStore.ts';
+import type { RemoteStatus } from './syncRuntime.ts';
 
 /**
  * Estado de interfaz (diseño §3): selección, paneles y estado visual. No es la fuente de verdad
@@ -28,6 +29,9 @@ interface UiState {
   knowledgeVersion: number;
   /** Progreso del indexado inicial; null cuando la búsqueda está lista. */
   indexing: { done: number; total: number } | null;
+  /** Destino conectado (carpeta) y su estado; null si el almacén solo está en el navegador. */
+  remote: RemoteStatus | null;
+  setRemote: (remote: RemoteStatus | null) => void;
   setDocuments: (documents: DocumentRecord[]) => void;
   upsertDocument: (document: DocumentRecord) => void;
   removeDocument: (id: string) => void;
@@ -50,6 +54,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   focus: null,
   knowledgeVersion: 0,
   indexing: null,
+  remote: null,
+  setRemote: (remote) => set({ remote }),
   setDocuments: (documents) => set({ documents }),
   upsertDocument: (document) =>
     set((state) => ({

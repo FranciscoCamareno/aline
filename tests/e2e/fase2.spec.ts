@@ -98,12 +98,14 @@ test('conflicto entre dos pestañas: se conservan ambas y se resuelve (RF-37, CA
   const id = await newNote(page, 'base común');
 
   const other = await context.newPage();
+  // La pestaña B no recibe avisos (como un equipo sin conexión): edita sobre la versión vieja.
+  await other.addInitScript(() => {
+    delete (window as { BroadcastChannel?: unknown }).BroadcastChannel;
+  });
   await other.goto('/');
   await expect(other.locator('.cm-content')).toContainText('base común');
 
   await replaceNoteText(page, 'cambio desde la pestaña A');
-  // La pestaña B recibe el aviso, pero edita sin recargar: su cambio queda como otra rama.
-  await expect(other.getByTestId('changed-elsewhere')).toBeVisible();
   await other.locator('.cm-content').click();
   await other.keyboard.press('ControlOrMeta+a');
   await other.keyboard.type('cambio desde la pestaña B');

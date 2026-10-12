@@ -642,6 +642,52 @@ export class VaultService {
     return result.document;
   }
 
+  /**
+   * Edición hecha fuera de la aplicación en una copia legible (diseño §8.3): revisión `external`
+   * con los bytes exactos del archivo y cuyo padre es la versión de la que salió la copia. Si
+   * la aplicación ya tenía una edición posterior, ambas quedan en conflicto; nada se sobrescribe.
+   * Devuelve el id de la revisión creada, o null si el archivo no corresponde a esta nota.
+   */
+  importExternalNote(
+    documentId: Uuid,
+    parentRevisionId: Uuid,
+    bytes: Uint8Array,
+  ): Promise<string | null> {
+    return this.serialized(documentId, async () => {
+      const doc = await this.repo.getDocument(documentId);
+      const parent = await this.repo.getRevision(parentRevisionId);
+      if (doc?.kind !== 'note' || parent?.documentId !== documentId) return null;
+      let text: string;
+      try {
+        text = utf8Decode(bytes);
+      } catch {
+        return null; // No es UTF-8 válido: no se importa como nota.
+      }
+      const parsed = parseNoteMarkdown(text);
+      // Un frontmatter con otro UUID pertenece a otra nota: no se asocia en silencio.
+      if (parsed.frontmatter && parsed.frontmatter.id !== documentId) return null;
+      let title = parent.metadata.title;
+      try {
+        if (parsed.frontmatter) title = validateTitle(parsed.frontmatter.title);
+      } catch {
+        // Título vacío o inválido en el archivo: se conserva el anterior.
+      }
+      const tags = parsed.frontmatter ? dedupeTags(parsed.frontmatter.tags) : parent.metadata.tags;
+      const blob = await toBlob(bytes, MIME.markdown);
+      const result = await this.repo.commit({
+        documentId,
+        kind: 'note',
+        operation: 'external',
+        knownHeads: [parentRevisionId],
+        metadata: { ...parent.metadata, title, tags, deleted: false },
+        contentRefs: { body: blob.hash, extensions: null, assets: [] },
+        blobs: [blob],
+      });
+      for (const listener of this.listeners) listener(result);
+      return result.revision.id;
+    });
+  }
+
   /** Contenido completo y coherente, tras vaciar las escrituras pendientes (copia ZIP). */
   async exportContent(): Promise<VaultContent> {
     await this.whenIdle();

@@ -223,5 +223,43 @@
     "meta": "{{count}} resultados en {{ms}} ms",
     "empty": "Sin resultados.",
     "elements": "{{count}} elementos coinciden"
+  },
+  "storage": {
+    "title": "Dónde se guarda",
+    "browserOnly": "Solo en este navegador. Conecta una carpeta para tener el almacén en disco y abrirlo desde otros equipos.",
+    "folder": "Este navegador + carpeta «{{name}}»",
+    "lastSync": "Última comprobación de la carpeta: {{time}}",
+    "phase": {
+      "idle": "conectada",
+      "syncing": "escribiendo…",
+      "ok": "al día",
+      "pending_one": "{{count}} versión pendiente de escribir en la carpeta",
+      "pending_other": "{{count}} versiones pendientes de escribir en la carpeta",
+      "needs-permission": "necesita permiso para usar la carpeta",
+      "mismatch": "la carpeta contiene otro almacén",
+      "unavailable": "la carpeta no está disponible",
+      "error": "error al escribir en la carpeta"
+    },
+    "chip": {
+      "idle": "Carpeta",
+      "syncing": "Escribiendo…",
+      "ok": "Carpeta al día",
+      "pending_one": "{{count}} pendiente",
+      "pending_other": "{{count}} pendientes",
+      "needs-permission": "Permiso de carpeta",
+      "mismatch": "Otro almacén",
+      "unavailable": "Carpeta no disponible",
+      "error": "Error de carpeta"
+    },
+    "syncNow": "Sincronizar ahora",
+    "reconnect": "Reconectar carpeta",
+    "disconnect": "Desconectar",
+    "connectFolder": "Conectar una carpeta de este equipo…",
+    "folderUnsupported": "Este navegador no permite elegir carpetas (necesita Chrome o Edge en un ordenador). En el iPad el almacén vive en el navegador; usa las copias ZIP.",
+    "folderHint": "La carpeta recibe el formato abierto: notas en Markdown legibles con cualquier editor, versiones y copias. Puedes editar las copias de «readable/»: se importan como versiones nuevas. No uses a la vez la carpeta de Google Drive para escritorio y la conexión directa a Drive.",
+    "mismatch": "La carpeta «{{folder}}» contiene otro almacén («{{vault}}»). No se mezclan: puedes abrirlo en este navegador como un almacén aparte.",
+    "openFolderVault": "Abrir ese almacén aquí",
+    "driveNotConfigured": "Google Drive: pendiente. Falta el proyecto de Google Cloud con la API de Drive y un cliente OAuth (VITE_GOOGLE_CLIENT_ID).",
+    "driveNotImplemented": "Google Drive: el cliente OAuth está configurado, pero la conexión aún no está implementada (fase 4.4)."
   }
 }

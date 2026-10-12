@@ -223,5 +223,43 @@
     "meta": "{{count}} results in {{ms}} ms",
     "empty": "No results.",
     "elements": "{{count}} elements match"
+  },
+  "storage": {
+    "title": "Where it is stored",
+    "browserOnly": "In this browser only. Connect a folder to keep the vault on disk and open it from other computers.",
+    "folder": "This browser + folder “{{name}}”",
+    "lastSync": "Last folder check: {{time}}",
+    "phase": {
+      "idle": "connected",
+      "syncing": "writing…",
+      "ok": "up to date",
+      "pending_one": "{{count}} version pending to write to the folder",
+      "pending_other": "{{count}} versions pending to write to the folder",
+      "needs-permission": "needs permission to use the folder",
+      "mismatch": "the folder contains another vault",
+      "unavailable": "the folder is not available",
+      "error": "error writing to the folder"
+    },
+    "chip": {
+      "idle": "Folder",
+      "syncing": "Writing…",
+      "ok": "Folder up to date",
+      "pending_one": "{{count}} pending",
+      "pending_other": "{{count}} pending",
+      "needs-permission": "Folder permission",
+      "mismatch": "Another vault",
+      "unavailable": "Folder unavailable",
+      "error": "Folder error"
+    },
+    "syncNow": "Sync now",
+    "reconnect": "Reconnect folder",
+    "disconnect": "Disconnect",
+    "connectFolder": "Connect a folder on this computer…",
+    "folderUnsupported": "This browser cannot pick folders (it needs Chrome or Edge on a computer). On iPad the vault lives in the browser; use ZIP backups.",
+    "folderHint": "The folder receives the open format: Markdown notes readable with any editor, versions and copies. You can edit the copies in “readable/”: they are imported as new versions. Do not use the Google Drive desktop folder and the direct Drive connection at the same time.",
+    "mismatch": "The folder “{{folder}}” contains another vault (“{{vault}}”). They are not mixed: you can open it in this browser as a separate vault.",
+    "openFolderVault": "Open that vault here",
+    "driveNotConfigured": "Google Drive: pending. The Google Cloud project with the Drive API and an OAuth client (VITE_GOOGLE_CLIENT_ID) is missing.",
+    "driveNotImplemented": "Google Drive: the OAuth client is configured, but the connection is not implemented yet (phase 4.4)."
   }
 }

@@ -54,6 +54,8 @@ export default tseslint.config(
   },
   {
     files: ['src/features/**', 'src/app/**'],
+    // La raíz de composición es el único sitio de app/ que conecta adaptadores remotos.
+    ignores: ['src/app/composition/**'],
     rules: forbid(
       ['**/adapters/drive/**', '**/adapters/filesystem/**'],
       'La interfaz no llama directamente a Drive ni a la carpeta; usa casos de uso.',
