@@ -1,6 +1,10 @@
 /** Entrega un archivo al usuario tras una acción explícita suya (sin envío a ningún servicio). */
 export function downloadText(filename: string, text: string, mimeType = 'application/json'): void {
-  const url = URL.createObjectURL(new Blob([text], { type: mimeType }));
+  downloadBlob(filename, new Blob([text], { type: mimeType }));
+}
+
+export function downloadBlob(filename: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;

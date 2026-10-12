@@ -1,6 +1,6 @@
 # Plan de fases: del núcleo local a la versión beta
 
-Versión 1.2 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
+Versión 1.3 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
 
 Este plan parte de lo que ya está construido y llega hasta una **beta utilizable** y después a la **versión 1.0**. Conserva la numeración de fases del diseño técnico (§17) para no crear dos mapas distintos. No incluye fechas: el diseño exige no darlas sin conocer la dedicación disponible (D-09). Los tamaños S, M y L indican complejidad relativa, no tiempo.
 
@@ -95,7 +95,21 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **Se avanza cuando** la app abre sin cuenta, funciona sin red tras instalarse y el formato está documentado. Las dos primeras condiciones ya están verificadas.
 
-### Fase 2 — Datos: formato abierto, copias, papelera, historial y conflictos
+### Fase 2 — Datos: formato abierto, copias, papelera, historial y conflictos (completada el 12/10/2026)
+
+**Estado:** completada. Las tareas 2.1 a 2.7 están implementadas y probadas: 60 pruebas unitarias y 19 recorridos E2E (ver README, «Verificación»).
+
+**Decisiones tomadas durante la fase:**
+
+- **ZIP:** la raíz del archivo es el propio directorio del almacén (`vault.json` en la raíz).
+- **Restauración:** conserva el identificador del almacén y crea un dispositivo nuevo. No genera salida pendiente hacia Drive.
+- **Combinar a mano:** solo para notas. En lienzos se conserva una versión o ambas, duplicando.
+- **Robustez:** la prueba de cierre abrupto (CA-10) se hace en Chromium bloqueando los eventos de salida. Un corte eléctrico o la caída del navegador completo no se han probado.
+
+**Queda fuera de la fase:**
+
+- poda selectiva de versiones (RF-46, prevista en 6.6);
+- tamaño máximo de copia en el iPad (§12.2), sin medir.
 
 | # | Tarea | Requisitos y CA | Tamaño |
 | --- | --- | --- | --- |

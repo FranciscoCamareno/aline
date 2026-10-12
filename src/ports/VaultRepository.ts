@@ -39,6 +39,30 @@ export interface ResolveInput {
   keepRevisionId: Uuid;
 }
 
+/** Contenido completo de un almacén: lo que viaja en el formato abierto (diseño §6). */
+export interface VaultContent {
+  vault: Vault;
+  documents: DocumentRecord[];
+  revisions: Revision[];
+  blobs: Map<string, StoredBlob>;
+  controls: VersionPrune[];
+}
+
+/** Entrada del historial sin cargar cuerpos (diseño §7.2). */
+export interface HistoryEntry {
+  revisionId: Uuid;
+  documentId: Uuid;
+  createdAt: string;
+  operation: RevisionOperation;
+  title: string;
+}
+
+export interface PurgeResult {
+  revisions: number;
+  /** Bytes de blobs que dejaron de estar referenciados y se borraron. */
+  freedBytes: number;
+}
+
 export interface VaultSnapshot {
   vault: Vault;
   documents: DocumentRecord[];
@@ -54,6 +78,13 @@ export interface VaultRepository {
   resolve(documentId: Uuid, parents: Uuid[], choice: ResolveInput): Promise<Revision>;
   restore(documentId: Uuid, revisionId: Uuid): Promise<Revision>;
   exportSnapshot(): Promise<VaultSnapshot>;
+  /** Generación coherente de todo el contenido, en una sola transacción de lectura (§12.2). */
+  exportContent(): Promise<VaultContent>;
+  /**
+   * Borrado definitivo explícito de un documento en la papelera (RN-03): retira sus revisiones,
+   * borra los blobs que ya nadie referencia y registra un control VersionPrune.
+   */
+  purgeDocument(documentId: Uuid): Promise<PurgeResult>;
 }
 
 /** Consultas locales que usa la interfaz. No forman parte del protocolo de sincronización. */
@@ -64,6 +95,7 @@ export interface VaultReader {
   getDocument(documentId: Uuid): Promise<DocumentRecord | undefined>;
   getRevision(revisionId: Uuid): Promise<Revision | undefined>;
   getBlob(hash: string): Promise<StoredBlob | undefined>;
+  listHistory(documentId: Uuid): Promise<HistoryEntry[]>;
   /** Preferencias privadas de esta instalación (no viajan en copias ni sincronización). */
   getDevicePreference(key: string): Promise<unknown>;
   setDevicePreference(key: string, value: unknown): Promise<void>;

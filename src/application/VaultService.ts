@@ -20,8 +20,12 @@ import { bytesToBase64 } from '../shared/base64.ts';
 import { sha256Hex, utf8Decode, utf8Encode } from '../shared/hash.ts';
 import type { CanvasAsset, SerializedCanvas } from '../ports/CanvasAdapter.ts';
 import type {
+  CommitInput,
   CommitResult,
+  HistoryEntry,
+  PurgeResult,
   StoredBlob,
+  VaultContent,
   VaultReader,
   VaultRepository,
 } from '../ports/VaultRepository.ts';
@@ -55,6 +59,28 @@ export interface EmergencyExport {
 
 const LAST_OPENED_KEY = 'lastOpenedDocumentId';
 
+/** Contenido legible de una revisión, para vistas previas del historial y de conflictos. */
+export type RevisionPreview =
+  | { kind: 'note'; revision: Revision; body: string }
+  | { kind: 'canvas'; revision: Revision; sceneJson: string | null };
+
+/** Decisión del propietario ante dos o más cabezas (diseño §8.1). */
+export type ConflictChoice =
+  /** Conservar el contenido de una cabeza; las demás quedan en el historial. */
+  | { kind: 'keep'; revisionId: Uuid }
+  /** Notas: texto combinado a mano. */
+  | { kind: 'merge'; body: string }
+  /** Conservar una cabeza aquí y copiar otra a un documento nuevo (UUID nuevo). */
+  | { kind: 'duplicate'; keepRevisionId: Uuid; copyRevisionId: Uuid; copyTitle: string };
+
+export interface ResolveOutcome {
+  result: CommitResult;
+  duplicate: DocumentRecord | null;
+}
+
+/** Notificación de cada commit, para avisar a otras pestañas y refrescar la interfaz. */
+export type CommitListener = (result: CommitResult) => void;
+
 export interface OpenedNote {
   document: DocumentRecord;
   session: EditSession;
@@ -87,8 +113,17 @@ export class VaultService {
   /** Cola de escritura por documento para que dos commits no partan de la misma cabeza. */
   private readonly writeQueues = new Map<Uuid, Promise<unknown>>();
 
+  private readonly listeners = new Set<CommitListener>();
+
   constructor(repo: VaultRepository & VaultReader) {
     this.repo = repo;
+  }
+
+  onCommit(listener: CommitListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   listDocuments(): Promise<DocumentRecord[]> {
@@ -333,6 +368,239 @@ export class VaultService {
     return session;
   }
 
+  /** Papelera (RN-03): revisión `delete` que conserva contenido e identidad. */
+  trashDocument(documentId: Uuid): Promise<CommitResult> {
+    return this.serialized(documentId, async () => {
+      const session = await this.sessionFor(documentId);
+      assertWritable(session);
+      const head = await this.currentHead(session);
+      const doc = await this.requireDocument(documentId);
+      return this.commitAndAdvance(session, {
+        documentId,
+        kind: doc.kind,
+        operation: 'delete',
+        knownHeads: session.knownHeads,
+        metadata: { ...head.metadata, deleted: true },
+        contentRefs: head.contentRefs,
+        blobs: [],
+      });
+    });
+  }
+
+  /** Sacar de la papelera: revisión `restore` con el mismo contenido. */
+  restoreFromTrash(documentId: Uuid): Promise<CommitResult> {
+    return this.serialized(documentId, async () => {
+      const session = await this.sessionFor(documentId);
+      const head = await this.currentHead(session);
+      const doc = await this.requireDocument(documentId);
+      return this.commitAndAdvance(session, {
+        documentId,
+        kind: doc.kind,
+        operation: 'restore',
+        knownHeads: session.knownHeads,
+        metadata: { ...head.metadata, deleted: false },
+        contentRefs: head.contentRefs,
+        blobs: [],
+      });
+    });
+  }
+
+  /** Borrado definitivo, solo desde la papelera y por acción explícita (RN-03, RN-13). */
+  async purgeDocument(documentId: Uuid): Promise<PurgeResult> {
+    await this.pendingWrites(documentId);
+    const result = await this.repo.purgeDocument(documentId);
+    this.sessions.delete(documentId);
+    this.writeQueues.delete(documentId);
+    return result;
+  }
+
+  listHistory(documentId: Uuid): Promise<HistoryEntry[]> {
+    return this.repo.listHistory(documentId);
+  }
+
+  async previewRevision(revisionId: Uuid): Promise<RevisionPreview> {
+    const revision = await this.repo.getRevision(revisionId);
+    if (!revision) throw new DomainError('not-found', 'Revisión no encontrada');
+    const text = revision.contentRefs.body ? await this.readText(revision.contentRefs.body) : null;
+    return revision.metadata.kind === 'note'
+      ? { kind: 'note', revision, body: parseNoteMarkdown(text ?? '').body }
+      : { kind: 'canvas', revision, sceneJson: text };
+  }
+
+  /**
+   * Restaurar una versión (diseño §7.2, FP-06): revisión nueva con el contenido antiguo y padre
+   * en la cabeza actual; la versión reemplazada sigue en el historial.
+   */
+  restoreRevision(documentId: Uuid, revisionId: Uuid): Promise<CommitResult> {
+    return this.serialized(documentId, async () => {
+      const session = await this.sessionFor(documentId);
+      const old = await this.repo.getRevision(revisionId);
+      if (old?.documentId !== documentId)
+        throw new DomainError('not-found', 'Revisión no encontrada');
+      const reason = checkRevision(old);
+      if (reason) throw new DomainError('unsupported-version', 'Versión en solo lectura');
+      const doc = await this.requireDocument(documentId);
+      return this.commitAndAdvance(session, {
+        documentId,
+        kind: doc.kind,
+        operation: 'restore',
+        knownHeads: session.knownHeads,
+        metadata: { ...old.metadata, deleted: false },
+        contentRefs: old.contentRefs,
+        blobs: [],
+      });
+    });
+  }
+
+  /** Cabezas divergentes de un documento, de la más antigua a la más reciente. */
+  async conflictHeads(documentId: Uuid): Promise<Revision[]> {
+    const heads = await this.repo.getHeads(documentId);
+    return heads.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  /**
+   * Resolver un conflicto (diseño §8.1): la revisión nueva tiene como padres todas las cabezas,
+   * así que ninguna rama desaparece del historial.
+   */
+  resolveConflict(documentId: Uuid, choice: ConflictChoice): Promise<ResolveOutcome> {
+    return this.serialized(documentId, async () => {
+      const doc = await this.requireDocument(documentId);
+      const heads = doc.headRevisionIds;
+      if (heads.length < 2) throw new DomainError('not-found', 'El documento no está en conflicto');
+      const session = await this.sessionFor(documentId);
+      session.knownHeads = [...heads];
+
+      const byId = async (id: Uuid): Promise<Revision> => {
+        if (!heads.includes(id))
+          throw new DomainError('not-found', 'No es una cabeza del conflicto');
+        const rev = await this.repo.getRevision(id);
+        if (!rev) throw new DomainError('not-found', 'Revisión no encontrada');
+        return rev;
+      };
+
+      let input: CommitInput;
+      let duplicate: DocumentRecord | null = null;
+      if (choice.kind === 'merge') {
+        if (doc.kind !== 'note') throw new DomainError('not-found', 'Solo se combinan notas');
+        const base = (await this.conflictHeads(documentId)).at(-1)!;
+        const markdown = await toBlob(
+          utf8Encode(
+            this.noteMarkdown(documentId, base.metadata.title, base.metadata.tags, choice.body),
+          ),
+          MIME.markdown,
+        );
+        input = {
+          documentId,
+          kind: 'note',
+          operation: 'resolve',
+          knownHeads: heads,
+          metadata: { ...base.metadata, deleted: false },
+          contentRefs: { body: markdown.hash, extensions: null, assets: [] },
+          blobs: [markdown],
+        };
+      } else {
+        const keepId = choice.kind === 'keep' ? choice.revisionId : choice.keepRevisionId;
+        const kept = await byId(keepId);
+        if (choice.kind === 'duplicate') {
+          duplicate = await this.duplicateRevision(
+            await byId(choice.copyRevisionId),
+            choice.copyTitle,
+          );
+        }
+        input = {
+          documentId,
+          kind: doc.kind,
+          operation: 'resolve',
+          knownHeads: heads,
+          metadata: kept.metadata,
+          contentRefs: kept.contentRefs,
+          blobs: [],
+        };
+      }
+      const result = await this.commitAndAdvance(session, input);
+      return { result, duplicate };
+    });
+  }
+
+  /** Copia una revisión a un documento nuevo con UUID nuevo (diseño §5: un duplicado recibe UUID nuevo). */
+  private async duplicateRevision(source: Revision, title: string): Promise<DocumentRecord> {
+    const documentId = newId();
+    const cleanTitle = validateTitle(title);
+    let contentRefs = source.contentRefs;
+    const blobs: StoredBlob[] = [];
+    if (source.metadata.kind === 'note') {
+      const body = parseNoteMarkdown(
+        source.contentRefs.body ? await this.readText(source.contentRefs.body) : '',
+      ).body;
+      const markdown = await toBlob(
+        utf8Encode(this.noteMarkdown(documentId, cleanTitle, source.metadata.tags, body)),
+        MIME.markdown,
+      );
+      contentRefs = { ...contentRefs, body: markdown.hash };
+      blobs.push(markdown);
+    } else if (source.contentRefs.extensions) {
+      const sidecar = parseCanvasExtensions(
+        JSON.parse(await this.readText(source.contentRefs.extensions)),
+      ).extensions;
+      if (sidecar) {
+        const ext = await toBlob(
+          utf8Encode(JSON.stringify({ ...sidecar, documentId })),
+          MIME.extensions,
+        );
+        contentRefs = { ...contentRefs, extensions: ext.hash };
+        blobs.push(ext);
+      }
+    }
+    const kind = source.metadata.kind === 'note' ? 'note' : 'canvas';
+    const result = await this.repo.commit({
+      documentId,
+      kind,
+      operation: 'save',
+      knownHeads: [],
+      metadata: { ...source.metadata, kind, title: cleanTitle, deleted: false },
+      contentRefs,
+      blobs,
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  /** Contenido completo y coherente, tras vaciar las escrituras pendientes (copia ZIP). */
+  async exportContent(): Promise<VaultContent> {
+    await this.whenIdle();
+    return this.repo.exportContent();
+  }
+
+  /**
+   * Borrador del trazo en curso (diseño §7.1): se guarda periódicamente mientras el lápiz o el
+   * ratón siguen apoyados, con un ciclo distinto al de las revisiones, para no perder una línea
+   * larga si la aplicación se cierra antes de levantar el puntero.
+   */
+  saveStrokeDraft(documentId: Uuid, element: unknown): Promise<void> {
+    return this.repo.setDevicePreference(`draft:${documentId}`, {
+      element,
+      savedAt: new Date().toISOString(),
+    });
+  }
+
+  clearStrokeDraft(documentId: Uuid): Promise<void> {
+    return this.repo.setDevicePreference(`draft:${documentId}`, null);
+  }
+
+  /** Devuelve y elimina el borrador pendiente del documento, si lo hay. */
+  async takeStrokeDraft(documentId: Uuid): Promise<{ element: unknown; savedAt: string } | null> {
+    const draft = (await this.repo.getDevicePreference(`draft:${documentId}`)) as
+      | {
+          element: unknown;
+          savedAt: string;
+        }
+      | null
+      | undefined;
+    if (!draft) return null;
+    await this.clearStrokeDraft(documentId);
+    return draft;
+  }
+
   /** Espera a que terminen todas las escrituras encoladas (p. ej. antes de actualizar la app). */
   async whenIdle(): Promise<void> {
     await Promise.all([...this.writeQueues.values()].map((p) => p.catch(() => undefined)));
@@ -400,6 +668,7 @@ export class VaultService {
     const result = await this.repo.commit(input);
     // Tras un conflicto la sesión sigue la rama propia: no se sobrescribe la ajena.
     session.knownHeads = [result.revision.id];
+    for (const listener of this.listeners) listener(result);
     return result;
   }
 

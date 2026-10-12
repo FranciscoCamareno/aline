@@ -8,7 +8,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 
 | Licencia | Paquetes |
 | --- | --- |
-| MIT | 278 |
+| MIT | 279 |
 | ISC | 38 |
 | Apache-2.0 | 11 |
 | BSD-3-Clause | 7 |
@@ -245,6 +245,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | extend | 3.0.2 | MIT |
 | fake-indexeddb | 6.2.5 | Apache-2.0 |
 | fastdom | 1.0.12 | MIT |
+| fflate | 0.8.3 | MIT |
 | fill-range | 7.1.1 | MIT |
 | fractional-indexing | 3.2.0 | CC0-1.0 |
 | fuzzy | 0.1.3 | MIT |

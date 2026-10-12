@@ -16,6 +16,7 @@ interface UiState {
   libraryOpen: boolean;
   setDocuments: (documents: DocumentRecord[]) => void;
   upsertDocument: (document: DocumentRecord) => void;
+  removeDocument: (id: string) => void;
   setActive: (id: string | null) => void;
   setSaveStatus: (status: UiSaveStatus, errorCode?: string | null) => void;
   toggleLibrary: () => void;
@@ -31,6 +32,11 @@ export const useUiStore = create<UiState>()((set) => ({
   upsertDocument: (document) =>
     set((state) => ({
       documents: [document, ...state.documents.filter((d) => d.id !== document.id)],
+    })),
+  removeDocument: (id) =>
+    set((state) => ({
+      documents: state.documents.filter((d) => d.id !== id),
+      activeId: state.activeId === id ? null : state.activeId,
     })),
   setActive: (activeId) => set({ activeId }),
   setSaveStatus: (saveStatus, errorCode = null) => set({ saveStatus, errorCode }),

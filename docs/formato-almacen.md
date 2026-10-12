@@ -6,7 +6,7 @@ Este documento especifica cómo se representa un almacén fuera de la aplicació
 
 Los esquemas JSON publicados están en [formato/schemas/v1](formato/schemas/v1/) y se generan desde `src/domain/format.ts` con `pnpm schemas`. Una prueba unitaria impide que el código y los esquemas publicados se desincronicen.
 
-> **Estado de implementación (12/10/2026).** Esta especificación está vigente. Hoy la aplicación guarda estos mismos bytes en IndexedDB. Todavía no escribe el árbol `vault/` en disco ni en Drive: eso llega con el serializador (plan 2.1), que usarán la copia ZIP, la carpeta y Drive.
+> **Estado de implementación (12/10/2026).** Esta especificación está vigente. El serializador y el lector están en `src/application/vaultFormat.ts`, y la copia ZIP ya los usa: la raíz del ZIP es este directorio, más `backup-manifest.json`. La carpeta local y Drive escribirán el mismo árbol en la fase 4.
 
 ## 1. Estructura
 

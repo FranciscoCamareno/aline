@@ -5,7 +5,9 @@
     "startupError": "No se pudo abrir el almacén local: {{message}}",
     "toggleLibrary": "Mostrar u ocultar biblioteca",
     "language": "Idioma",
-    "openStatus": "Estado y diagnóstico"
+    "openStatus": "Estado y diagnóstico",
+    "changedElsewhere": "Este documento cambió en otra pestaña.",
+    "reload": "Recargar"
   },
   "startup": {
     "title": "No se puede abrir el almacén de este navegador",
@@ -24,7 +26,13 @@
     "rename": "Renombrar",
     "kindCanvas": "Lienzo",
     "kindNote": "Nota",
-    "conflict": "Conflicto"
+    "conflict": "Conflicto",
+    "trash": "Enviar a la papelera",
+    "trashTitle": "Papelera ({{count}})",
+    "trashEmpty": "La papelera está vacía.",
+    "restore": "Restaurar",
+    "purge": "Eliminar definitivamente",
+    "purgeConfirm": "¿Eliminar definitivamente «{{title}}» y todas sus versiones? Esta acción no se puede deshacer. Si lo necesitas, haz antes una copia de seguridad."
   },
   "title": {
     "edit": "Editar título",
@@ -107,5 +115,59 @@
     "updateFailed": "No se actualizó: hay cambios que no se pudieron guardar.",
     "offlineReady": "La aplicación está lista para funcionar sin conexión.",
     "dismiss": "Cerrar"
+  },
+  "canvas": {
+    "draftRecovered": "Se recuperó un trazo que quedó a medias al cerrarse la aplicación."
+  },
+  "history": {
+    "title": "Historial de versiones",
+    "hint": "Cada versión guardada se conserva hasta que elimines el documento desde la papelera.",
+    "empty": "No hay versiones anteriores.",
+    "current": "actual",
+    "restore": "Restaurar esta versión",
+    "operation": {
+      "save": "Guardado",
+      "delete": "Enviado a la papelera",
+      "restore": "Restaurado",
+      "resolve": "Conflicto resuelto",
+      "external": "Cambio externo"
+    }
+  },
+  "conflict": {
+    "title": "Resolver conflicto",
+    "banner": "Este documento tiene versiones en conflicto. Ninguna se ha perdido.",
+    "resolve": "Resolver",
+    "explanation": "El mismo documento cambió en dos sitios a la vez. Elige qué conservar: las demás versiones seguirán en el historial.",
+    "none": "Ya no hay conflicto.",
+    "version": "Versión {{letter}}",
+    "device": "dispositivo",
+    "keep": "Conservar la {{version}}",
+    "both": "Conservar ambas",
+    "bothHint": "La {{a}} queda en este documento y la {{b}} se copia a un documento nuevo.",
+    "bothAction": "Conservar ambas",
+    "copyTitle": "{{title}} (copia del conflicto)",
+    "merge": "Combinar a mano",
+    "diff": "Diferencias entre las versiones",
+    "mergeEditor": "Texto combinado",
+    "mergeAction": "Guardar combinación"
+  },
+  "vaults": {
+    "title": "Almacenes de este navegador",
+    "current": "(abierto)",
+    "open": "Abrir",
+    "newPlaceholder": "Nombre del almacén nuevo",
+    "create": "Crear y abrir",
+    "backupTitle": "Copia de seguridad",
+    "backupHint": "Descarga un ZIP con todo el almacén en formato abierto: documentos, historial, papelera y un manifiesto con el SHA-256 de cada archivo.",
+    "backup": "Descargar copia completa (ZIP)",
+    "largeBackup": "La copia ocupa unos {{mb}} MB. Generarla puede usar mucha memoria, sobre todo en el iPad. ¿Continuar?",
+    "restoreHint": "Restaurar crea un almacén NUEVO con el contenido de la copia; el almacén actual no se toca.",
+    "restore": "Restaurar una copia (ZIP o JSON de emergencia)…",
+    "working": "Procesando…",
+    "restored": "Restaurado «{{name}}»: {{documents}} documentos, {{revisions}} versiones, {{blobs}} archivos.",
+    "identical": "Comprobado: el contenido restaurado coincide byte a byte con la copia.",
+    "notIdentical": "Atención: el contenido restaurado no coincide exactamente con la copia.",
+    "problems": "{{count}} avisos al leer la copia (ver diagnóstico).",
+    "openRestored": "Abrir el almacén restaurado"
   }
 }

@@ -1,4 +1,4 @@
-import { DomainError, notImplemented } from '../../domain/errors.ts';
+import { DomainError } from '../../domain/errors.ts';
 import { newId, type Uuid } from '../../domain/ids.ts';
 import {
   REVISION_SCHEMA_VERSION,
@@ -11,8 +11,11 @@ import { VAULT_FORMAT_VERSION, type DeviceState, type Vault } from '../../domain
 import type {
   CommitInput,
   CommitResult,
+  HistoryEntry,
+  PurgeResult,
   ResolveInput,
   StoredBlob,
+  VaultContent,
   VaultReader,
   VaultRepository,
   VaultSnapshot,
@@ -236,8 +239,166 @@ export class DexieVaultRepository implements VaultRepository, VaultReader {
     return result.revision;
   }
 
-  async resolve(_documentId: Uuid, _parents: Uuid[], _choice: ResolveInput): Promise<Revision> {
-    return notImplemented('resolución de conflictos (ResolveConflict)');
+  /**
+   * Resolver un conflicto conservando una de las cabezas (diseño §8.1): nueva revisión
+   * `resolve` cuyos padres son todas las cabezas divergentes. Ninguna rama se borra del
+   * historial. Una combinación manual se guarda con `commit` y `operation: 'resolve'`.
+   */
+  async resolve(documentId: Uuid, parents: Uuid[], choice: ResolveInput): Promise<Revision> {
+    const [doc, kept] = await Promise.all([
+      this.getDocument(documentId),
+      this.getRevision(choice.keepRevisionId),
+    ]);
+    if (!doc || kept?.documentId !== documentId || !parents.includes(kept.id)) {
+      throw new DomainError('not-found', 'Revisión a conservar no encontrada');
+    }
+    const result = await this.commit({
+      documentId,
+      kind: doc.kind,
+      operation: 'resolve',
+      knownHeads: parents,
+      metadata: kept.metadata,
+      contentRefs: kept.contentRefs,
+      blobs: [],
+    });
+    return result.revision;
+  }
+
+  async listHistory(documentId: Uuid): Promise<HistoryEntry[]> {
+    const rows = await this.db.historyIndex.where({ documentId }).sortBy('createdAt');
+    return rows.reverse();
+  }
+
+  /** Generación coherente del almacén completo (diseño §12.2, paso 1). */
+  async exportContent(): Promise<VaultContent> {
+    const { db } = this;
+    return db.transaction(
+      'r',
+      [db.deviceSettings, db.documents, db.revisions, db.blobs, db.controls],
+      async () => {
+        const blobs = new Map<string, StoredBlob>();
+        await db.blobs.each((b) => {
+          blobs.set(b.hash, b);
+        });
+        return {
+          vault: await this.getVault(),
+          documents: await db.documents.toArray(),
+          revisions: await db.revisions.toArray(),
+          blobs,
+          controls: await db.controls.toArray(),
+        };
+      },
+    );
+  }
+
+  /**
+   * Carga un contenido completo en una base vacía (restauración en un almacén nuevo, §12.2,
+   * paso 4). Crea un dispositivo nuevo: la identidad del dispositivo no viaja en las copias.
+   */
+  async importContent(content: VaultContent): Promise<void> {
+    const { db } = this;
+    try {
+      await db.transaction(
+        'rw',
+        [db.deviceSettings, db.documents, db.revisions, db.blobs, db.controls, db.historyIndex],
+        async () => {
+          if ((await db.deviceSettings.get(VAULT_KEY)) || (await db.documents.count()) > 0) {
+            throw new DomainError('storage-failure', 'La base de destino no está vacía');
+          }
+          await db.deviceSettings.put({ key: VAULT_KEY, value: content.vault });
+          await db.deviceSettings.put({
+            key: DEVICE_KEY,
+            value: { deviceId: newId(), localGeneration: 0, syncCursor: null, remoteFileMap: {} },
+          });
+          await db.blobs.bulkPut([...content.blobs.values()]);
+          await db.revisions.bulkPut(content.revisions);
+          await db.documents.bulkPut(content.documents);
+          await db.controls.bulkPut(content.controls);
+          await db.historyIndex.bulkPut(
+            content.revisions.map((r) => ({
+              revisionId: r.id,
+              documentId: r.documentId,
+              createdAt: r.createdAt,
+              operation: r.operation,
+              title: r.metadata.title,
+            })),
+          );
+        },
+      );
+    } catch (error) {
+      mapStorageError(error);
+    }
+  }
+
+  async purgeDocument(documentId: Uuid): Promise<PurgeResult> {
+    const { db } = this;
+    try {
+      return await db.transaction(
+        'rw',
+        [
+          db.documents,
+          db.revisions,
+          db.blobs,
+          db.historyIndex,
+          db.controls,
+          db.outbox,
+          db.deviceSettings,
+        ],
+        async () => {
+          const doc = await db.documents.get(documentId);
+          if (!doc) throw new DomainError('not-found', 'Documento no encontrado');
+          if (!doc.deleted) {
+            throw new DomainError(
+              'storage-failure',
+              'Solo se elimina definitivamente desde la papelera',
+            );
+          }
+          const revisions = await db.revisions.where({ documentId }).toArray();
+          const candidates = new Set(
+            revisions.flatMap((r) =>
+              [r.contentRefs.body, r.contentRefs.extensions, ...r.contentRefs.assets].filter(
+                (h): h is string => h !== null,
+              ),
+            ),
+          );
+          // No borrar blobs que otra revisión retenida sigue usando (diseño §7.2).
+          await db.revisions
+            .where('documentId')
+            .notEqual(documentId)
+            .each((r) => {
+              for (const h of [
+                r.contentRefs.body,
+                r.contentRefs.extensions,
+                ...r.contentRefs.assets,
+              ]) {
+                if (h) candidates.delete(h);
+              }
+            });
+          let freedBytes = 0;
+          for (const hash of candidates) {
+            const blob = await db.blobs.get(hash);
+            if (blob) freedBytes += blob.byteLength;
+          }
+          await db.blobs.bulkDelete([...candidates]);
+          const ids = revisions.map((r) => r.id);
+          await db.revisions.bulkDelete(ids);
+          await db.historyIndex.where({ documentId }).delete();
+          await db.documents.delete(documentId);
+          const device = await this.getDeviceState();
+          // Orden explícita para que otro equipo no resucite estas versiones al sincronizar.
+          await db.controls.add({
+            schemaVersion: 1,
+            id: newId(),
+            revisionIds: ids,
+            deviceId: device.deviceId,
+            createdAt: this.now().toISOString(),
+          });
+          return { revisions: ids.length, freedBytes };
+        },
+      );
+    } catch (error) {
+      return mapStorageError(error);
+    }
   }
 
   /** Instantánea en memoria. Pendiente: empaquetarla como ZIP con manifiesto (diseño §12.2). */

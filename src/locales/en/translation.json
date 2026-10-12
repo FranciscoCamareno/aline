@@ -5,7 +5,9 @@
     "startupError": "Could not open the local vault: {{message}}",
     "toggleLibrary": "Show or hide library",
     "language": "Language",
-    "openStatus": "Status and diagnostics"
+    "openStatus": "Status and diagnostics",
+    "changedElsewhere": "This document changed in another tab.",
+    "reload": "Reload"
   },
   "startup": {
     "title": "This browser's vault cannot be opened",
@@ -24,7 +26,13 @@
     "rename": "Rename",
     "kindCanvas": "Canvas",
     "kindNote": "Note",
-    "conflict": "Conflict"
+    "conflict": "Conflict",
+    "trash": "Move to trash",
+    "trashTitle": "Trash ({{count}})",
+    "trashEmpty": "The trash is empty.",
+    "restore": "Restore",
+    "purge": "Delete permanently",
+    "purgeConfirm": "Permanently delete “{{title}}” and all its versions? This cannot be undone. Make a backup first if you need one."
   },
   "title": {
     "edit": "Edit title",
@@ -107,5 +115,59 @@
     "updateFailed": "Not updated: some changes could not be saved.",
     "offlineReady": "The app is ready to work offline.",
     "dismiss": "Dismiss"
+  },
+  "canvas": {
+    "draftRecovered": "A stroke left unfinished when the app closed was recovered."
+  },
+  "history": {
+    "title": "Version history",
+    "hint": "Every saved version is kept until you delete the document from the trash.",
+    "empty": "There are no earlier versions.",
+    "current": "current",
+    "restore": "Restore this version",
+    "operation": {
+      "save": "Saved",
+      "delete": "Moved to trash",
+      "restore": "Restored",
+      "resolve": "Conflict resolved",
+      "external": "External change"
+    }
+  },
+  "conflict": {
+    "title": "Resolve conflict",
+    "banner": "This document has conflicting versions. None has been lost.",
+    "resolve": "Resolve",
+    "explanation": "The same document changed in two places at once. Choose what to keep: the other versions stay in the history.",
+    "none": "There is no conflict anymore.",
+    "version": "Version {{letter}}",
+    "device": "device",
+    "keep": "Keep {{version}}",
+    "both": "Keep both",
+    "bothHint": "{{a}} stays in this document and {{b}} is copied to a new document.",
+    "bothAction": "Keep both",
+    "copyTitle": "{{title}} (conflict copy)",
+    "merge": "Merge by hand",
+    "diff": "Differences between versions",
+    "mergeEditor": "Merged text",
+    "mergeAction": "Save merge"
+  },
+  "vaults": {
+    "title": "Vaults in this browser",
+    "current": "(open)",
+    "open": "Open",
+    "newPlaceholder": "New vault name",
+    "create": "Create and open",
+    "backupTitle": "Backup",
+    "backupHint": "Downloads a ZIP with the whole vault in the open format: documents, history, trash and a manifest with each file’s SHA-256.",
+    "backup": "Download full backup (ZIP)",
+    "largeBackup": "The backup is about {{mb}} MB. Creating it may use a lot of memory, especially on iPad. Continue?",
+    "restoreHint": "Restoring creates a NEW vault with the backup’s content; the current vault is untouched.",
+    "restore": "Restore a backup (ZIP or emergency JSON)…",
+    "working": "Working…",
+    "restored": "Restored “{{name}}”: {{documents}} documents, {{revisions}} versions, {{blobs}} files.",
+    "identical": "Verified: the restored content matches the backup byte for byte.",
+    "notIdentical": "Warning: the restored content does not exactly match the backup.",
+    "problems": "{{count}} warnings while reading the backup (see diagnostics).",
+    "openRestored": "Open the restored vault"
   }
 }

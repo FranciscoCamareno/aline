@@ -195,10 +195,11 @@ describe('almacén local', () => {
     expect(await db.revisions.count()).toBe(4);
   });
 
-  it('resolve está marcado como pendiente', async () => {
-    const { repo } = await openVault();
+  it('resolve rechaza una revisión que no es cabeza del conflicto', async () => {
+    const { repo, service } = await openVault();
+    const doc = await service.createDocument('note', 'N');
     await expect(
-      repo.resolve(crypto.randomUUID(), [], { keepRevisionId: crypto.randomUUID() }),
-    ).rejects.toMatchObject({ code: 'not-implemented' });
+      repo.resolve(doc.id, doc.headRevisionIds, { keepRevisionId: crypto.randomUUID() }),
+    ).rejects.toMatchObject({ code: 'not-found' });
   });
 });

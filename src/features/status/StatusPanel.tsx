@@ -4,6 +4,7 @@ import type { StorageReport } from '../../adapters/indexeddb/storage.ts';
 import { exportDiagnostics, runEmergencyExport } from '../../app/emergency.ts';
 import type { AppServices } from '../../app/services.ts';
 import type { DiagnosticRecord } from '../../ports/Diagnostics.ts';
+import { VaultsSection } from './VaultsSection.tsx';
 
 /** Umbral de aviso de cuota alta (diseño §7.1). */
 export const QUOTA_WARNING_RATIO = 0.8;
@@ -87,6 +88,8 @@ export function StatusPanel({ services, onClose, onError }: Props) {
           <dd>{__APP_VERSION__}</dd>
         </dl>
       </section>
+
+      <VaultsSection services={services} onError={onError} />
 
       <section>
         <h3>{t('statusPanel.storage')}</h3>
