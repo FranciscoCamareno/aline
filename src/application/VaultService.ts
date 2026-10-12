@@ -15,6 +15,7 @@ import {
 import { newId, type Uuid } from '../domain/ids.ts';
 import type { DocumentKind, DocumentRecord, Revision } from '../domain/revision.ts';
 import { emptyCanvasExtensions, type CanvasExtensions } from '../domain/sidecar.ts';
+import { wouldCreateCycle } from '../domain/folders.ts';
 import { dedupeTags } from '../domain/tags.ts';
 import { bytesToBase64 } from '../shared/base64.ts';
 import { sha256Hex, utf8Decode, utf8Encode } from '../shared/hash.ts';
@@ -130,7 +131,11 @@ export class VaultService {
     return this.repo.listDocuments();
   }
 
-  async createDocument(kind: DocumentKind, title: string): Promise<DocumentRecord> {
+  async createDocument(
+    kind: DocumentKind,
+    title: string,
+    folderId: Uuid | null = null,
+  ): Promise<DocumentRecord> {
     const cleanTitle = validateTitle(title);
     const documentId = newId();
     const blobs: StoredBlob[] = [];
@@ -157,10 +162,11 @@ export class VaultService {
       kind,
       operation: 'save',
       knownHeads: [],
-      metadata: { kind, title: cleanTitle, folderId: null, tags: [], deleted: false },
+      metadata: { kind, title: cleanTitle, folderId, tags: [], deleted: false },
       contentRefs: { body: body.hash, extensions: extensions?.hash ?? null, assets: [] },
       blobs,
     });
+    for (const listener of this.listeners) listener(result);
     return result.document;
   }
 
@@ -272,8 +278,13 @@ export class VaultService {
       bytes: a.bytes,
     }));
     const assetHashes = [...new Set(assets.map((a) => a.hash))].sort();
+    const sidecar = canvas.extensions
+      ? await toBlob(utf8Encode(JSON.stringify(canvas.extensions)), MIME.extensions)
+      : null;
+    const extensionsHash = sidecar?.hash ?? head.contentRefs.extensions;
     if (
       scene.hash === head.contentRefs.body &&
+      extensionsHash === head.contentRefs.extensions &&
       assetHashes.join() === [...head.contentRefs.assets].sort().join()
     ) {
       return this.unchanged(session, head);
@@ -285,13 +296,12 @@ export class VaultService {
       operation: 'save',
       knownHeads: session.knownHeads,
       metadata: { kind: 'canvas', title, tags, folderId, deleted: false },
-      // El sidecar se conserva sin cambios: sus funciones aún no están implementadas.
       contentRefs: {
         body: scene.hash,
-        extensions: head.contentRefs.extensions,
+        extensions: extensionsHash,
         assets: assetHashes,
       },
-      blobs: [scene, ...assets],
+      blobs: [scene, ...assets, ...(sidecar ? [sidecar] : [])],
     });
   }
 
@@ -301,16 +311,77 @@ export class VaultService {
    */
   renameDocument(documentId: Uuid, newTitle: string): Promise<CommitResult> {
     const title = validateTitle(newTitle);
+    return this.updateMetadata(documentId, { title });
+  }
+
+  /** SetTags: etiquetas normalizadas (NFC, sin duplicados sin distinguir mayúsculas, RN-08). */
+  setTags(documentId: Uuid, tags: readonly string[]): Promise<CommitResult> {
+    return this.updateMetadata(documentId, { tags: dedupeTags(tags) });
+  }
+
+  /**
+   * MoveDocument: cambia la carpeta de una nota, un lienzo o una carpeta. Una carpeta no puede
+   * moverse dentro de sí misma ni de sus descendientes. Nunca mueve en cascada.
+   */
+  async moveDocument(documentId: Uuid, folderId: Uuid | null): Promise<CommitResult> {
+    const documents = await this.repo.listDocuments();
+    if (folderId) {
+      const target = documents.find((d) => d.id === folderId);
+      if (target?.kind !== 'folder' || target.deleted) {
+        throw new DomainError('not-found', 'Carpeta de destino no encontrada');
+      }
+      if (wouldCreateCycle(documents, documentId, folderId)) {
+        throw new DomainError('invalid-title', 'Una carpeta no puede contenerse a sí misma');
+      }
+    }
+    return this.updateMetadata(documentId, { folderId });
+  }
+
+  /** CreateFolder: entidad revisionada, sin contenido (diseño §5). */
+  async createFolder(title: string, parentId: Uuid | null = null): Promise<DocumentRecord> {
+    const cleanTitle = validateTitle(title);
+    if (parentId) {
+      const parent = await this.repo.getDocument(parentId);
+      if (parent?.kind !== 'folder' || parent.deleted) {
+        throw new DomainError('not-found', 'Carpeta padre no encontrada');
+      }
+    }
+    const result = await this.repo.commit({
+      documentId: newId(),
+      kind: 'folder',
+      operation: 'save',
+      knownHeads: [],
+      metadata: { kind: 'folder', title: cleanTitle, folderId: parentId, tags: [], deleted: false },
+      contentRefs: { body: null, extensions: null, assets: [] },
+      blobs: [],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  private updateMetadata(
+    documentId: Uuid,
+    patch: { title?: string; tags?: string[]; folderId?: Uuid | null },
+  ): Promise<CommitResult> {
     return this.serialized(documentId, async () =>
-      this.renameNow(await this.sessionFor(documentId), title),
+      this.metadataNow(await this.sessionFor(documentId), patch),
     );
   }
 
-  private async renameNow(session: EditSession, title: string): Promise<CommitResult> {
+  /**
+   * Revisión de metadatos (diseño §5.1): conserva el UUID y el contenido; en notas vuelve a
+   * serializar el frontmatter para que coincida con los metadatos nuevos.
+   */
+  private async metadataNow(
+    session: EditSession,
+    patch: { title?: string; tags?: string[]; folderId?: Uuid | null },
+  ): Promise<CommitResult> {
     assertWritable(session);
     const head = await this.currentHead(session);
     const doc = await this.requireDocument(session.documentId);
-    const { tags, folderId } = head.metadata;
+    const title = patch.title ?? head.metadata.title;
+    const tags = patch.tags ?? head.metadata.tags;
+    const folderId = patch.folderId === undefined ? head.metadata.folderId : patch.folderId;
     let contentRefs = head.contentRefs;
     const blobs: StoredBlob[] = [];
 
@@ -334,7 +405,13 @@ export class VaultService {
       kind: doc.kind,
       operation: 'save',
       knownHeads: session.knownHeads,
-      metadata: { kind: doc.kind, title, tags: dedupeTags(tags), folderId, deleted: false },
+      metadata: {
+        kind: doc.kind,
+        title,
+        tags: dedupeTags(tags),
+        folderId,
+        deleted: head.metadata.deleted,
+      },
       contentRefs,
       blobs,
     });

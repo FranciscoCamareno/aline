@@ -1,6 +1,7 @@
 import { Dexie, type EntityTable } from 'dexie';
 import type { DocumentRecord, Revision } from '../../domain/revision.ts';
 import type { VersionPrune } from '../../domain/vault.ts';
+import type { SearchDocument, StoredLink } from '../../ports/KnowledgeStore.ts';
 import type { StoredBlob } from '../../ports/VaultRepository.ts';
 
 /** Operación pendiente de enviar a la carpeta o a Drive (diseño §4, cola persistente). */
@@ -50,18 +51,11 @@ export interface ExternalObservationEntry {
   hash: string;
   observedAt: string;
 }
-export interface LinkIndexEntry {
+/** Índices derivados (diseño §6): enlaces y documentos de búsqueda, reconstruibles. */
+export interface LinkIndexEntry extends StoredLink {
   id?: number;
-  sourceDocumentId: string;
-  sourceElementId: string | null;
-  targetDocumentId: string;
-  targetElementId: string | null;
-  kind: string;
 }
-export interface SearchDocumentEntry {
-  documentId: string;
-  text: string;
-}
+export type SearchDocumentEntry = SearchDocument;
 
 export const DB_NAME = 'mindnote-vault';
 
@@ -105,5 +99,8 @@ export class VaultDatabase extends Dexie {
       deviceSettings: 'key',
       diagnostics: '++id, at',
     });
+    // v2: índice de revisión en los documentos de búsqueda, para saber qué está al día sin leer
+    // sus textos. Solo afecta a una tabla derivada; no cambia el formato del almacén.
+    this.version(2).stores({ searchDocuments: 'documentId, revisionId' });
   }
 }

@@ -1,24 +1,36 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { EditorView } from 'codemirror';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../app/store.ts';
 import { useAutosave } from '../../app/useAutosave.ts';
+import { parseInternalLink } from '../../application/knowledge.ts';
+import { normalizeForSearch } from '../../application/searchIndex.ts';
 import type { OpenedNote, VaultService } from '../../application/VaultService.ts';
-import { MarkdownEditor } from './MarkdownEditor.tsx';
-import { INTERNAL_LINK_PREFIX, renderMarkdownPreview } from './markdown.ts';
+import type { DocumentRecord } from '../../domain/revision.ts';
+import { MarkdownEditor, type LinkTarget } from './MarkdownEditor.tsx';
+import { renderMarkdownPreview } from './markdown.ts';
 
 interface Props {
   documentId: string;
   service: VaultService;
+  /** FA-03a: crear la nota de destino desde el autocompletado [[. */
+  onCreateNote: (title: string) => Promise<DocumentRecord>;
 }
 
-export function NoteView({ documentId, service }: Props) {
+export function NoteView({ documentId, service, onCreateNote }: Props) {
   const { t } = useTranslation();
   const [opened, setOpened] = useState<OpenedNote | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [body, setBody] = useState('');
   const [showPreview, setShowPreview] = useState(true);
   const documents = useUiStore((s) => s.documents);
-  const setActive = useUiStore((s) => s.setActive);
+  const navigate = useUiStore((s) => s.navigate);
+  const focus = useUiStore((s) => s.focus);
+  const [view, setView] = useState<EditorView | null>(null);
+  const documentsRef = useRef(documents);
+  useEffect(() => {
+    documentsRef.current = documents;
+  }, [documents]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,13 +63,42 @@ export function NoteView({ documentId, service }: Props) {
     const href = anchor?.getAttribute('href');
     if (!href) return;
     event.preventDefault();
-    if (href.startsWith(INTERNAL_LINK_PREFIX)) {
-      const targetId = href.slice(INTERNAL_LINK_PREFIX.length).split(/[/#?]/)[0] ?? '';
-      if (documents.some((d) => d.id === targetId && !d.deleted)) setActive(targetId);
-      else anchor?.setAttribute('title', t('notes.brokenLink'));
+    const target = parseInternalLink(href);
+    if (target || href.startsWith('mindnote:')) {
+      if (target && documents.some((d) => d.id === target.documentId && !d.deleted)) {
+        navigate({ documentId: target.documentId, elementId: target.elementId });
+      } else {
+        anchor?.setAttribute('title', t('notes.brokenLink'));
+        anchor?.classList.add('broken-link');
+      }
       return;
     }
     if (/^https?:/i.test(href)) window.open(href, '_blank', 'noopener,noreferrer');
+  };
+
+  // Abrir la nota desde la búsqueda o un backlink: seleccionar y mostrar el texto buscado.
+  useEffect(() => {
+    if (!view || focus?.documentId !== documentId) return;
+    const target = useUiStore.getState().consumeFocus(documentId);
+    const wanted = target?.text?.trim();
+    if (!wanted) return;
+    const text = view.state.doc.toString();
+    const at = normalizeForSearch(text).indexOf(normalizeForSearch(wanted));
+    if (at < 0) return;
+    view.dispatch({
+      selection: { anchor: at, head: at + wanted.length },
+      effects: EditorView.scrollIntoView(at, { y: 'center' }),
+    });
+    view.focus();
+  }, [view, focus, documentId]);
+
+  const findTargets = (query: string): LinkTarget[] => {
+    const q = normalizeForSearch(query.trim());
+    return documentsRef.current
+      .filter((d) => !d.deleted && d.kind !== 'folder' && d.id !== documentId)
+      .filter((d) => !q || normalizeForSearch(d.title).includes(q))
+      .slice(0, 20)
+      .map((d) => ({ id: d.id, title: d.title, kind: d.kind === 'canvas' ? 'canvas' : 'note' }));
   };
 
   if (loadError)
@@ -90,6 +131,16 @@ export function NoteView({ documentId, service }: Props) {
           initialValue={opened.body}
           ariaLabel={t('notes.editor')}
           readOnly={opened.readOnly !== null}
+          findTargets={findTargets}
+          onCreateTarget={async (title) => {
+            const doc = await onCreateNote(title);
+            return { id: doc.id, title: doc.title, kind: 'note' };
+          }}
+          createLabel={(title) => t('links.createNote', { title })}
+          kindLabel={(kind) =>
+            kind === 'canvas' ? t('library.kindCanvas') : t('library.kindNote')
+          }
+          onReady={setView}
           onChange={(value) => {
             setBody(value);
             autosave.push(value);

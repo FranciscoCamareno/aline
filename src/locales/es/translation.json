@@ -32,7 +32,21 @@
     "trashEmpty": "La papelera está vacía.",
     "restore": "Restaurar",
     "purge": "Eliminar definitivamente",
-    "purgeConfirm": "¿Eliminar definitivamente «{{title}}» y todas sus versiones? Esta acción no se puede deshacer. Si lo necesitas, haz antes una copia de seguridad."
+    "purgeConfirm": "¿Eliminar definitivamente «{{title}}» y todas sus versiones? Esta acción no se puede deshacer. Si lo necesitas, haz antes una copia de seguridad.",
+    "kindFolder": "Carpeta",
+    "newFolder": "Nueva carpeta",
+    "folderName": "Nombre de la carpeta",
+    "createInside": "Se crea dentro de «{{folder}}». Pulsa la carpeta otra vez para crear en la raíz.",
+    "trashFolder": "Enviar la carpeta a la papelera (su contenido no se borra)",
+    "expand": "Expandir",
+    "collapse": "Contraer",
+    "folderEmpty": "Carpeta vacía",
+    "tags": "Filtrar por etiqueta",
+    "filteredBy": "Con la etiqueta #{{tag}}",
+    "recent": "Recientes",
+    "all": "Todo",
+    "recovery": "Recuperación",
+    "recoveryHint": "Documentos cuya carpeta está en la papelera o ya no existe. Muévelos a otra carpeta."
   },
   "title": {
     "edit": "Editar título",
@@ -117,7 +131,8 @@
     "dismiss": "Cerrar"
   },
   "canvas": {
-    "draftRecovered": "Se recuperó un trazo que quedó a medias al cerrarse la aplicación."
+    "draftRecovered": "Se recuperó un trazo que quedó a medias al cerrarse la aplicación.",
+    "dangling": "{{count}} conectores sueltos: seleccionar"
   },
   "history": {
     "title": "Historial de versiones",
@@ -169,5 +184,44 @@
     "notIdentical": "Atención: el contenido restaurado no coincide exactamente con la copia.",
     "problems": "{{count}} avisos al leer la copia (ver diagnóstico).",
     "openRestored": "Abrir el almacén restaurado"
+  },
+  "links": {
+    "pickerTitle": "Vincular elemento",
+    "current": "Enlace actual:",
+    "remove": "Quitar enlace",
+    "searchPlaceholder": "Buscar nota o lienzo por título",
+    "createNote": "Crear nota «{{title}}»",
+    "web": "Dirección web",
+    "webAction": "Enlazar web",
+    "linkElement": "Vincular",
+    "editLink": "Cambiar enlace",
+    "status": {
+      "missing": "destino inexistente",
+      "trashed": "destino en la papelera",
+      "unresolved": "sin destino",
+      "ambiguous": "título ambiguo"
+    }
+  },
+  "details": {
+    "title": "Detalles y enlaces",
+    "folder": "Carpeta",
+    "root": "(raíz)",
+    "tags": "Etiquetas",
+    "addTag": "Añadir etiqueta",
+    "removeTag": "Quitar la etiqueta {{tag}}",
+    "backlinks": "Backlinks ({{count}})",
+    "noBacklinks": "Ningún documento enlaza aquí.",
+    "outgoing": "Enlaces salientes ({{count}})",
+    "broken": "Enlaces rotos del almacén ({{count}})",
+    "noBroken": "No hay enlaces rotos."
+  },
+  "search": {
+    "title": "Buscar",
+    "placeholder": "Buscar en notas, títulos, etiquetas y lienzos",
+    "results": "Resultados",
+    "indexing": "Indexando… {{done}} de {{total}}",
+    "meta": "{{count}} resultados en {{ms}} ms",
+    "empty": "Sin resultados.",
+    "elements": "{{count}} elementos coinciden"
   }
 }

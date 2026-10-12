@@ -1,7 +1,7 @@
 import type { Uuid } from '../domain/ids.ts';
 import type {
   ContentRefs,
-  DocumentKind,
+  RevisionKind,
   DocumentRecord,
   Revision,
   RevisionMetadata,
@@ -19,7 +19,7 @@ export interface StoredBlob {
 
 export interface CommitInput {
   documentId: Uuid;
-  kind: DocumentKind;
+  kind: RevisionKind;
   operation: RevisionOperation;
   /** Cabezas conocidas al comenzar la edición; serán los parentIds de la nueva revisión. */
   knownHeads: Uuid[];

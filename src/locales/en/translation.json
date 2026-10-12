@@ -32,7 +32,21 @@
     "trashEmpty": "The trash is empty.",
     "restore": "Restore",
     "purge": "Delete permanently",
-    "purgeConfirm": "Permanently delete “{{title}}” and all its versions? This cannot be undone. Make a backup first if you need one."
+    "purgeConfirm": "Permanently delete “{{title}}” and all its versions? This cannot be undone. Make a backup first if you need one.",
+    "kindFolder": "Folder",
+    "newFolder": "New folder",
+    "folderName": "Folder name",
+    "createInside": "New items go inside “{{folder}}”. Click the folder again to create at the root.",
+    "trashFolder": "Move folder to trash (its content is not deleted)",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "folderEmpty": "Empty folder",
+    "tags": "Filter by tag",
+    "filteredBy": "Tagged #{{tag}}",
+    "recent": "Recent",
+    "all": "All",
+    "recovery": "Recovery",
+    "recoveryHint": "Documents whose folder is in the trash or no longer exists. Move them to another folder."
   },
   "title": {
     "edit": "Edit title",
@@ -117,7 +131,8 @@
     "dismiss": "Dismiss"
   },
   "canvas": {
-    "draftRecovered": "A stroke left unfinished when the app closed was recovered."
+    "draftRecovered": "A stroke left unfinished when the app closed was recovered.",
+    "dangling": "{{count}} loose connectors: select"
   },
   "history": {
     "title": "Version history",
@@ -169,5 +184,44 @@
     "notIdentical": "Warning: the restored content does not exactly match the backup.",
     "problems": "{{count}} warnings while reading the backup (see diagnostics).",
     "openRestored": "Open the restored vault"
+  },
+  "links": {
+    "pickerTitle": "Link element",
+    "current": "Current link:",
+    "remove": "Remove link",
+    "searchPlaceholder": "Find a note or canvas by title",
+    "createNote": "Create note “{{title}}”",
+    "web": "Web address",
+    "webAction": "Link web",
+    "linkElement": "Link",
+    "editLink": "Change link",
+    "status": {
+      "missing": "missing target",
+      "trashed": "target in trash",
+      "unresolved": "no target",
+      "ambiguous": "ambiguous title"
+    }
+  },
+  "details": {
+    "title": "Details and links",
+    "folder": "Folder",
+    "root": "(root)",
+    "tags": "Tags",
+    "addTag": "Add tag",
+    "removeTag": "Remove tag {{tag}}",
+    "backlinks": "Backlinks ({{count}})",
+    "noBacklinks": "No document links here.",
+    "outgoing": "Outgoing links ({{count}})",
+    "broken": "Broken links in vault ({{count}})",
+    "noBroken": "No broken links."
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search notes, titles, tags and canvases",
+    "results": "Results",
+    "indexing": "Indexing… {{done}} of {{total}}",
+    "meta": "{{count}} results in {{ms}} ms",
+    "empty": "No results.",
+    "elements": "{{count}} elements match"
   }
 }

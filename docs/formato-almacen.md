@@ -95,6 +95,14 @@ Para abrir la escena en Excalidraw hay que volver a incrustar cada archivo como 
 
 Es la autoridad para enlaces de elementos, ramas, notas incrustadas y conectores sueltos. Está indexado por el id de elemento del motor.
 
+La aplicación lo vuelve a derivar en cada guardado del lienzo:
+
+- `elementLinks` recoge los enlaces `mindnote://document/<UUID>[#elemento]` de los elementos vivos.
+- `danglingConnectorIds` recoge las flechas que perdieron un extremo porque su nodo se borró.
+- `mindMap` y `noteEmbeds` se conservan tal cual.
+
+Las carpetas son revisiones con `metadata.kind: "folder"` y sin contenido (`contentRefs.body: null`). Un documento las referencia con `metadata.folderId`.
+
 El `customData` del motor no es una fuente fiable: el motor lo copia al duplicar y al pegar (fase 0, prueba 0.3).
 
 ### 2.6 `heads/<deviceId>.json` — [esquema](formato/schemas/v1/heads.schema.json)

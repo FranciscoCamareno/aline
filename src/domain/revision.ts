@@ -44,7 +44,8 @@ export type ContentRefs = Revision['contentRefs'];
 /** Proyección del documento: título y cabezas vigentes. Dos cabezas indican conflicto. */
 export interface DocumentRecord {
   id: Uuid;
-  kind: DocumentKind;
+  /** Documento de contenido (nota o lienzo) o carpeta; las carpetas también son revisionadas (§5). */
+  kind: RevisionKind;
   title: string;
   folderId: Uuid | null;
   tags: string[];

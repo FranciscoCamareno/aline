@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { documentKindSchema, revisionSchema } from './revision.ts';
+import { revisionKindSchema, revisionSchema } from './revision.ts';
 import { canvasExtensionsSchema } from './sidecar.ts';
 import { vaultSchema, versionPruneSchema } from './vault.ts';
 
@@ -26,7 +26,7 @@ export const catalogSchema = z.object({
   documents: z.array(
     z.object({
       id: z.uuid(),
-      kind: documentKindSchema,
+      kind: revisionKindSchema,
       title: z.string(),
       folderId: z.uuid().nullable(),
       tags: z.array(z.string()),

@@ -3,7 +3,9 @@ import { DexieDiagnostics } from '../adapters/indexeddb/DexieDiagnostics.ts';
 import { DexieVaultRepository } from '../adapters/indexeddb/DexieVaultRepository.ts';
 import { VaultRegistry } from '../adapters/indexeddb/registry.ts';
 import { requestPersistentStorage, type StorageReport } from '../adapters/indexeddb/storage.ts';
+import { KnowledgeService } from '../application/KnowledgeService.ts';
 import { VaultService } from '../application/VaultService.ts';
+import { DexieKnowledgeStore } from '../adapters/indexeddb/DexieKnowledgeStore.ts';
 import { newId } from '../domain/ids.ts';
 import type { DeviceState, Vault } from '../domain/vault.ts';
 import { describeError, type Diagnostics } from '../ports/Diagnostics.ts';
@@ -20,6 +22,8 @@ export interface AppServices {
   registry: VaultRegistry | null;
   device: DeviceState;
   service: VaultService;
+  /** Enlaces, backlinks y documentos de búsqueda (índices derivados). */
+  knowledge: KnowledgeService;
   diagnostics: Diagnostics;
   /** Persistencia solicitada en segundo plano; consultar antes de mostrar avisos de cuota. */
   storage: Promise<StorageReport>;
@@ -80,6 +84,7 @@ export function bootstrap(
       setSha256Implementation(hashWorker?.sha256 ?? null);
 
       const service = new VaultService(repo);
+      const knowledge = new KnowledgeService(repo, new DexieKnowledgeStore(db));
       if ((await service.listDocuments()).length === 0) {
         await service.createDocument('canvas', firstCanvasTitle);
       }
@@ -107,6 +112,7 @@ export function bootstrap(
         registry,
         device,
         service,
+        knowledge,
         diagnostics,
         storage,
         temporary,

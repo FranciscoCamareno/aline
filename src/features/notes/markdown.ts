@@ -5,9 +5,6 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 
-/** Esquema interno provisional (diseño §5.1). El renderer intercepta estos enlaces. */
-export const INTERNAL_LINK_PREFIX = 'mindnote://document/';
-
 interface HastNode {
   type: string;
   tagName?: string;

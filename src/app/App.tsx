@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useShallow } from 'zustand/react/shallow';
 import { DomainError } from '../domain/errors.ts';
 import type { ConflictChoice } from '../application/VaultService.ts';
 import { hasConflict, type DocumentKind } from '../domain/revision.ts';
 import { ConflictPanel } from '../features/history/ConflictPanel.tsx';
+import { DetailsPanel } from '../features/knowledge/DetailsPanel.tsx';
+import { SearchPalette } from '../features/knowledge/SearchPalette.tsx';
+import { KnowledgeRuntime } from './knowledgeRuntime.ts';
 import { HistoryPanel } from '../features/history/HistoryPanel.tsx';
 import { CanvasView } from '../features/canvas/CanvasView.tsx';
 import { LibrarySidebar } from '../features/library/LibrarySidebar.tsx';
@@ -36,7 +40,7 @@ async function loadApp(firstCanvasTitle: string, temporary: boolean) {
   const app = await bootstrap(firstCanvasTitle, { temporary });
   const docs = await app.service.listDocuments();
   const lastId = await app.service.lastOpenedDocumentId();
-  const visible = docs.filter((d) => !d.deleted);
+  const visible = docs.filter((d) => !d.deleted && d.kind !== 'folder');
   return {
     app,
     docs,
@@ -50,13 +54,23 @@ export function App() {
   const [services, setServices] = useState<AppServices | null>(null);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'status' | 'history' | 'conflict' | null>(null);
+  const [panel, setPanel] = useState<'status' | 'history' | 'conflict' | 'details' | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  /** Índices de enlaces y búsqueda del almacén abierto. */
+  const [runtime, setRuntime] = useState<KnowledgeRuntime | null>(null);
   /** Contador por documento: al cambiarlo, la vista se monta de nuevo con el contenido guardado. */
   const [reloads, setReloads] = useState<Record<string, number>>({});
   /** Documento abierto que otra pestaña acaba de modificar. */
   const [changedElsewhere, setChangedElsewhere] = useState<string | null>(null);
   const [quotaHigh, setQuotaHigh] = useState(false);
-  const { documents, activeId, saveStatus, libraryOpen } = useUiStore();
+  const { documents, activeId, saveStatus, libraryOpen } = useUiStore(
+    useShallow((s) => ({
+      documents: s.documents,
+      activeId: s.activeId,
+      saveStatus: s.saveStatus,
+      libraryOpen: s.libraryOpen,
+    })),
+  );
   const { setDocuments, upsertDocument, removeDocument, setActive, setSaveStatus, toggleLibrary } =
     useUiStore.getState();
   const statusOpen = panel === 'status';
@@ -84,6 +98,9 @@ export function App() {
           setDocuments(docs);
           setActive(initial);
           setServices(app);
+          const knowledge = new KnowledgeRuntime(app);
+          knowledge.start();
+          setRuntime(knowledge);
           void app.storage.then((report) => {
             const ratio = quotaRatio(report);
             if (ratio !== null && ratio >= QUOTA_WARNING_RATIO) {
@@ -105,6 +122,24 @@ export function App() {
     start(false);
   }, [start]);
 
+  useEffect(() => () => runtime?.stop(), [runtime]);
+  const runSearch = useCallback(
+    (query: string) => runtime?.search(query) ?? Promise.resolve({ hits: [], ms: 0 }),
+    [runtime],
+  );
+
+  // Búsqueda: Ctrl+Mayús+F (Cmd+Mayús+F en Mac), además del botón 🔍.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   useEffect(() => {
     if (services && activeId)
       void services.service.rememberLastOpened(activeId).catch(() => undefined);
@@ -120,6 +155,7 @@ export function App() {
     );
     channel.onmessage = (event: MessageEvent<{ documentId: string }>) => {
       void services.service.listDocuments().then(setDocuments);
+      runtime?.schedule(event.data.documentId);
       if (event.data.documentId === useUiStore.getState().activeId) {
         setChangedElsewhere(event.data.documentId);
       }
@@ -128,7 +164,7 @@ export function App() {
       unsubscribe();
       channel.close();
     };
-  }, [services, setDocuments]);
+  }, [services, runtime, setDocuments]);
 
   /** Operaciones que reescriben la cabeza: antes se vacían los guardados pendientes del editor. */
   const runOnDocument = useCallback(
@@ -175,6 +211,7 @@ export function App() {
       try {
         const result = await services!.service.purgeDocument(documentId);
         removeDocument(documentId);
+        runtime?.schedule(documentId);
         logDiagnostic(
           'info',
           'document-purged',
@@ -184,7 +221,7 @@ export function App() {
         reportError(error);
       }
     },
-    [services, removeDocument, reportError],
+    [services, runtime, removeDocument, reportError],
   );
 
   const restoreRevision = useCallback(
@@ -208,11 +245,11 @@ export function App() {
   );
 
   const createDocument = useCallback(
-    async (kind: DocumentKind) => {
+    async (kind: DocumentKind, folderId: string | null = null) => {
       if (!services) return;
       try {
         const title = kind === 'canvas' ? t('library.untitledCanvas') : t('library.untitledNote');
-        const doc = await services.service.createDocument(kind, title);
+        const doc = await services.service.createDocument(kind, title, folderId);
         upsertDocument(doc);
         setActive(doc.id);
         setSaveStatus('saved-local');
@@ -221,6 +258,49 @@ export function App() {
       }
     },
     [services, t, upsertDocument, setActive, setSaveStatus, reportError],
+  );
+
+  const createFolder = useCallback(
+    async (title: string, parentId: string | null) => {
+      try {
+        upsertDocument(await services!.service.createFolder(title, parentId));
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, upsertDocument, reportError],
+  );
+
+  /** FA-03a: crear la nota de destino al enlazar, sin abandonar el documento actual. */
+  const createNoteForLink = useCallback(
+    async (title: string) => {
+      const doc = await services!.service.createDocument('note', title);
+      upsertDocument(doc);
+      return doc;
+    },
+    [services, upsertDocument],
+  );
+
+  const moveDocument = useCallback(
+    async (documentId: string, folderId: string | null) => {
+      try {
+        upsertDocument((await services!.service.moveDocument(documentId, folderId)).document);
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, upsertDocument, reportError],
+  );
+
+  const setTags = useCallback(
+    async (documentId: string, tags: string[]) => {
+      try {
+        upsertDocument((await services!.service.setTags(documentId, tags)).document);
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, upsertDocument, reportError],
   );
 
   const renameDocument = useCallback(
@@ -301,6 +381,29 @@ export function App() {
         >
           ⓘ
         </button>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={t('search.title')}
+          title={`${t('search.title')} (Ctrl+Mayús+F)`}
+          data-testid="open-search"
+          onClick={() => setSearchOpen(true)}
+        >
+          🔍
+        </button>
+        {active && (
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={t('details.title')}
+            title={t('details.title')}
+            aria-expanded={panel === 'details'}
+            data-testid="open-details"
+            onClick={() => setPanel((p) => (p === 'details' ? null : 'details'))}
+          >
+            🔗
+          </button>
+        )}
         {active && (
           <button
             type="button"
@@ -359,6 +462,7 @@ export function App() {
       {libraryOpen && (
         <LibrarySidebar
           onCreate={createDocument}
+          onCreateFolder={createFolder}
           onRename={renameDocument}
           onTrash={trashDocument}
           onRestoreFromTrash={restoreFromTrash}
@@ -401,6 +505,7 @@ export function App() {
             documentId={active.id}
             service={services.service}
             theme={theme}
+            onCreateNote={createNoteForLink}
           />
         )}
         {active?.kind === 'note' && (
@@ -408,6 +513,7 @@ export function App() {
             key={`${active.id}:${reloads[active.id] ?? 0}`}
             documentId={active.id}
             service={services.service}
+            onCreateNote={createNoteForLink}
           />
         )}
       </main>
@@ -422,6 +528,19 @@ export function App() {
           onRestore={(revisionId) => restoreRevision(active.id, revisionId)}
           onClose={() => setPanel(null)}
         />
+      )}
+      {panel === 'details' && active && (
+        <DetailsPanel
+          key={active.id}
+          document={active}
+          knowledge={services.knowledge}
+          onMove={(folderId) => moveDocument(active.id, folderId)}
+          onSetTags={(tags) => setTags(active.id, tags)}
+          onClose={() => setPanel(null)}
+        />
+      )}
+      {searchOpen && runtime && (
+        <SearchPalette search={runSearch} onClose={() => setSearchOpen(false)} />
       )}
       {panel === 'conflict' && active && (
         <ConflictPanel

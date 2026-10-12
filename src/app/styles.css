@@ -645,3 +645,133 @@ button.danger {
   margin-top: 8px;
   border-radius: 8px;
 }
+
+/* Fase 3: carpetas, etiquetas, enlaces y búsqueda. */
+.section-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 12px 4px 4px;
+}
+.small {
+  font-size: 0.8rem;
+}
+.library-list.nested {
+  margin: 0;
+}
+.folder-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 8px;
+}
+.folder-row.selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: 1px dashed var(--accent);
+}
+.folder-toggle {
+  min-width: 32px;
+}
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+.chip.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.chip-remove {
+  min-height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.canvas-tools {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(0 0 0 / 0.3);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 16px 16px;
+}
+.dialog {
+  width: min(560px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.25);
+}
+.dialog h2 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+.picker-list,
+.search-results,
+.link-list-panel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.picker-list li button,
+.link-list-panel li button {
+  width: 100%;
+  min-height: var(--touch);
+}
+.link-list-panel li.broken,
+.markdown-preview a.broken-link {
+  color: var(--danger);
+}
+.search-hit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: var(--touch);
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  border-radius: 8px;
+}
+.search-hit.selected,
+.search-hit:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.library-list li.folder-node {
+  display: block;
+  padding-left: 0;
+}

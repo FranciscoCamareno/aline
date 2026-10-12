@@ -1,41 +1,41 @@
 {
-  "fecha": "2026-10-12T18:36:56.489Z",
+  "fecha": "2026-10-12T19:27:41.576Z",
   "0.1_rendimiento": {
     "cpu_x1": {
       "elements": 1000,
-      "mountMedianMs": 50,
-      "mountsMs": [76, 50, 48, 61, 45],
+      "mountMedianMs": 59,
+      "mountsMs": [71, 67, 55, 49, 59],
       "pipeline": {
-        "bytes": 623482,
-        "serializeMs": 6,
-        "deserializeMs": 7,
-        "reopenTotalMs": 71,
+        "bytes": 623503,
+        "serializeMs": 9,
+        "deserializeMs": 10,
+        "reopenTotalMs": 65,
         "elementsAfterReopen": 1000
       },
       "drag": {
         "pointermoveEvents": 61,
         "eventsOver16ms": 2,
-        "maxEventMs": 48,
-        "frameP95Ms": 16.800000000000182,
+        "maxEventMs": 56,
+        "frameP95Ms": 16.799999999999955,
         "moved": true
       }
     },
     "cpu_x4": {
       "elements": 1000,
-      "mountMedianMs": 461,
-      "mountsMs": [408, 461, 391, 896, 604],
+      "mountMedianMs": 234,
+      "mountsMs": [225, 234, 232, 290, 283],
       "pipeline": {
-        "bytes": 623499,
-        "serializeMs": 40,
-        "deserializeMs": 16,
-        "reopenTotalMs": 674,
+        "bytes": 623538,
+        "serializeMs": 25,
+        "deserializeMs": 18,
+        "reopenTotalMs": 251,
         "elementsAfterReopen": 1000
       },
       "drag": {
         "pointermoveEvents": 122,
         "eventsOver16ms": 4,
-        "maxEventMs": 248,
-        "frameP95Ms": 100,
+        "maxEventMs": 120,
+        "frameP95Ms": 33.19999999999982,
         "moved": true
       }
     }
@@ -95,12 +95,12 @@
   "0.6_proyeccion": {
     "elementosIniciales": 11,
     "ocultos": 9,
-    "visiblesTrasColapsar": ["R", "ypHBwknfMKqQWJn8uxeVQ"],
+    "visiblesTrasColapsar": ["R", "TdV6P7GtkY996PP_3U1SS"],
     "0.7_exportacion": {
       "svgContieneRAIZ": true,
       "svgContieneOcultos": false,
       "svgAncho": "160",
-      "pngBytes": 4622
+      "pngBytes": 4289
     },
     "deshacerConColapso": {
       "enEscena": [
@@ -113,7 +113,7 @@
           "del": true
         },
         {
-          "id": "ypHBwknfMKqQWJn8uxeVQ",
+          "id": "TdV6P7GtkY996PP_3U1SS",
           "del": false
         }
       ],
@@ -136,16 +136,16 @@
     "deshacerTrasExpandir": {
       "visibles": 10,
       "ids": [
-        "8emh-nj0Gkq-eq6vS-T15",
         "C1",
         "G1",
+        "NnEWein6yHoM8s5AU8Tn3",
         "R",
+        "S9tE-lmn6QpGaZRCaSPE2",
+        "TdV6P7GtkY996PP_3U1SS",
         "aC1G1",
         "aRC1",
         "aRC2",
-        "iJDDmVPxyXvDdODZS4cUe",
-        "mu8tbj0D0_AQNrLTGuItZ",
-        "ypHBwknfMKqQWJn8uxeVQ"
+        "f6ndRYiF5dUnjruY1Igcc"
       ]
     }
   },

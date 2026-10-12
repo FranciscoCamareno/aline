@@ -1,3 +1,5 @@
+import type { CanvasExtensions } from '../domain/sidecar.ts';
+
 /**
  * Puerto del motor de lienzo (diseño §9). La aplicación trata la escena como bytes opacos en
  * formato .excalidraw; solo el adaptador conoce los tipos del motor.
@@ -12,6 +14,8 @@ export interface SerializedCanvas {
   /** Escena en esquema .excalidraw, con los archivos sustituidos por referencias a assets. */
   sceneJson: string;
   assets: CanvasAsset[];
+  /** Sidecar derivado de la escena; si se omite, se conserva el de la cabeza. */
+  extensions?: CanvasExtensions;
 }
 
 export interface CanvasAdapter<Scene> {

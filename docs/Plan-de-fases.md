@@ -1,6 +1,6 @@
 # Plan de fases: del núcleo local a la versión beta
 
-Versión 1.3 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
+Versión 1.4 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
 
 Este plan parte de lo que ya está construido y llega hasta una **beta utilizable** y después a la **versión 1.0**. Conserva la numeración de fases del diseño técnico (§17) para no crear dos mapas distintos. No incluye fechas: el diseño exige no darlas sin conocer la dedicación disponible (D-09). Los tamaños S, M y L indican complejidad relativa, no tiempo.
 
@@ -123,7 +123,35 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **Se avanza cuando** pasan CA-10, CA-14 (entre pestañas), CA-15, CA-16, CA-23 y CA-31, y ningún fallo inyectado produce una pérdida silenciosa.
 
-### Fase 3 — Núcleo de ideas
+### Fase 3 — Núcleo de ideas (completada el 12/10/2026) → hito alfa local
+
+**Estado:** completada.
+
+- Las tareas 3.1 a 3.8 están implementadas y probadas.
+- 3.9 queda en su forma básica: paneles laterales para detalles, historial y conflictos, superpuestos en pantallas estrechas.
+- Los criterios de salida pasan en Chromium y en Microsoft Edge (29 recorridos en cada uno):
+  - CA-01 (2,9 s), CA-02, CA-03, CA-06, CA-07, CA-08, CA-09, CA-21 y CA-24;
+  - CA-T01 y CA-T02;
+  - CA-11 (recorrido sin conexión) y CA-20 (formato que se conserva);
+  - CA-17, con las copias legibles de la copia ZIP, en pruebas unitarias;
+  - CA-22, con 100 deshacer en la fase 0.
+- La búsqueda con 2 000 notas y 500 lienzos sintéticos responde en 3–12 ms en el worker del navegador (RNF-10).
+
+**Decisiones de la fase:**
+
+- **Atajo de búsqueda:** Ctrl+Mayús+F. Ctrl+K ya lo usa Excalidraw para editar enlaces.
+- **Resolución de `[[Título]]`:** se hace al consultar con los títulos vigentes, así que renombrar nunca deja el índice desfasado.
+- **Carpetas:** son documentos de tipo `folder` en el catálogo, como prevé el diseño (§5).
+- **Índice de búsqueda:** `searchDocuments` pasa a la versión 2 de la base, con un índice por revisión. Es una tabla derivada; el formato no cambia.
+- **Rendimiento:** con 2 500 documentos el lienzo tardaba 8–10 s en aparecer. Ahora el worker de búsqueda lee directamente de IndexedDB y el indexado empieza cuando la interfaz está libre: tarda 2,8 s.
+
+**Pendiente de la fase:**
+
+- Indexar todas las cabezas de un documento en conflicto con una marca visible (hoy se indexa la más reciente).
+- Virtualizar la biblioteca para volúmenes grandes.
+- Mostrar como enlaces los `[[Título]]` escritos a mano en la vista previa.
+- Repetir CA-01 y la búsqueda en el iPad.
+
 
 | # | Tarea | Requisitos y CA | Tamaño |
 | --- | --- | --- | --- |

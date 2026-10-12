@@ -8,7 +8,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 
 | Licencia | Paquetes |
 | --- | --- |
-| MIT | 279 |
+| MIT | 280 |
 | ISC | 38 |
 | Apache-2.0 | 11 |
 | BSD-3-Clause | 7 |
@@ -325,6 +325,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | micromark-util-subtokenize | 2.1.0 | MIT |
 | micromark-util-symbol | 2.0.1 | MIT |
 | micromark-util-types | 2.0.3 | MIT |
+| minisearch | 7.2.0 | MIT |
 | ms | 2.1.3 | MIT |
 | multimath | 2.0.0 | MIT |
 | nanoid | 3.3.3, 4.0.2 | MIT |

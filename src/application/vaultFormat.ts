@@ -117,7 +117,7 @@ export function vaultToFiles(
     files.set(`revisions/${rev.id}.json`, json(rev));
     const { body, extensions, assets } = rev.contentRefs;
     const kind = rev.metadata.kind === 'note' ? 'note' : 'canvas';
-    if (body) {
+    if (body && rev.metadata.kind !== 'folder') {
       const blob = content.blobs.get(body);
       if (blob) {
         files.set(objectPath(body, kind), blob.bytes);
@@ -196,7 +196,7 @@ export function deriveDocuments(revisions: Revision[]): DocumentRecord[] {
     const sorted = [...revs].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const heads = sorted.filter((r) => !referenced.has(r.id));
     const latest = heads.at(-1) ?? sorted.at(-1)!;
-    const kind = latest.metadata.kind === 'note' ? 'note' : 'canvas';
+    const kind = latest.metadata.kind;
     documents.push({
       id,
       kind,

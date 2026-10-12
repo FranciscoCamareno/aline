@@ -19,15 +19,17 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
     "spike:fase0": "pnpm assets && vite build -c vite.spike.config.ts && vite preview -c vite.spike.config.ts",
     "test:fase0": "playwright test -c playwright.fase0.config.ts",
     "licenses": "node scripts/licenses.ts",
     "licenses:check": "node scripts/licenses.ts --check",
-    "schemas": "node scripts/export-schemas.ts"
+    "schemas": "node scripts/export-schemas.ts",
+    "test:e2e:all": "playwright test"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "6.20.3",
     "@codemirror/lang-markdown": "6.5.2",
     "@codemirror/state": "6.7.6",
     "@excalidraw/excalidraw": "0.18.1",
@@ -36,6 +38,7 @@
     "fake-indexeddb": "6.2.5",
     "fflate": "0.8.3",
     "i18next": "26.4.3",
+    "minisearch": "7.2.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-i18next": "17.0.16",

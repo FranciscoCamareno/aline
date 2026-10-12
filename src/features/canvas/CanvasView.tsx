@@ -1,23 +1,43 @@
-import { Excalidraw, MainMenu, restoreElements } from '@excalidraw/excalidraw';
+import {
+  CaptureUpdateAction,
+  Excalidraw,
+  MainMenu,
+  newElementWith,
+  restoreElements,
+} from '@excalidraw/excalidraw';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import '@excalidraw/excalidraw/index.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { excalidrawCanvasAdapter, type EngineScene } from '../../adapters/excalidraw/sceneCodec.ts';
+import {
+  currentBindings,
+  deriveExtensions,
+  type ArrowBindings,
+} from '../../adapters/excalidraw/sidecar.ts';
 import { excalidrawLangCode } from '../../app/i18n.ts';
 import { logDiagnostic } from '../../app/runtime.ts';
+import { useUiStore } from '../../app/store.ts';
 import { useAutosave } from '../../app/useAutosave.ts';
+import { internalLink, parseInternalLink } from '../../application/knowledge.ts';
 import type { EditSession, VaultService } from '../../application/VaultService.ts';
+import type { DocumentRecord } from '../../domain/revision.ts';
+import type { CanvasExtensions } from '../../domain/sidecar.ts';
+import { LinkPicker } from '../knowledge/LinkPicker.tsx';
 
 interface Props {
   documentId: string;
   service: VaultService;
   theme: 'light' | 'dark';
+  /** FA-03a: crear la nota de destino al vincular. */
+  onCreateNote: (title: string) => Promise<DocumentRecord>;
 }
 
 interface Loaded {
   session: EditSession;
   scene: EngineScene;
+  extensions: CanvasExtensions;
   /** Se recuperó un trazo que quedó a medias al cerrarse la aplicación. */
   recoveredDraft: boolean;
 }
@@ -36,11 +56,21 @@ function isElementLike(value: unknown): value is ExcalidrawElement {
  * El motor activa `penMode` al detectar el lápiz (fase 0). Pendiente: interfaz propia del modo
  * «Solo lápiz» y pila de deshacer coordinada con comandos propios.
  */
-export function CanvasView({ documentId, service, theme }: Props) {
+export function CanvasView({ documentId, service, theme, onCreateNote }: Props) {
   const { t, i18n } = useTranslation();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const signatureRef = useRef<string | null>(null);
+  const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
+  /** Sidecar vigente y extremos anclados del último guardado (para detectar conectores sueltos). */
+  const extensionsRef = useRef<CanvasExtensions | null>(null);
+  const bindingsRef = useRef<ArrowBindings>(new Map());
+  const [dangling, setDangling] = useState<string[]>([]);
+  const [selection, setSelection] = useState<ExcalidrawElement | null>(null);
+  const selectionKey = useRef('');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const navigate = useUiStore((s) => s.navigate);
+  const focus = useUiStore((s) => s.focus);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +98,10 @@ export function CanvasView({ documentId, service, theme }: Props) {
       signatureRef.current = recoveredDraft
         ? null
         : excalidrawCanvasAdapter.contentSignature(scene);
-      setLoaded({ session: opened.session, scene, recoveredDraft });
+      extensionsRef.current = opened.extensions;
+      bindingsRef.current = currentBindings(scene.elements);
+      setDangling(opened.extensions.danglingConnectorIds);
+      setLoaded({ session: opened.session, scene, extensions: opened.extensions, recoveredDraft });
     })().catch((error: unknown) => {
       if (!cancelled) setLoadError(error instanceof Error ? error.message : String(error));
     });
@@ -79,13 +112,48 @@ export function CanvasView({ documentId, service, theme }: Props) {
 
   const session = loaded?.session;
   const autosave = useAutosave<EngineScene>((scene) => {
-    if (!session) return Promise.reject(new Error('Lienzo no cargado'));
-    return service.saveCanvas(session, excalidrawCanvasAdapter.serialize(scene));
+    if (!session || !extensionsRef.current) return Promise.reject(new Error('Lienzo no cargado'));
+    // El sidecar se deriva de la escena en cada guardado: enlaces y conectores sueltos (§9).
+    const extensions = deriveExtensions(extensionsRef.current, scene.elements, bindingsRef.current);
+    extensionsRef.current = extensions;
+    bindingsRef.current = currentBindings(scene.elements);
+    setDangling(extensions.danglingConnectorIds);
+    return service.saveCanvas(
+      session,
+      excalidrawCanvasAdapter.serialize(scene).then((canvas) => ({ ...canvas, extensions })),
+    );
   });
+
+  const pendingFocus = useRef<string | null>(null);
+  const applyPendingFocus = useCallback(() => {
+    const elementId = pendingFocus.current;
+    if (!api || !elementId) return;
+    const element = api.getSceneElements().find((e) => e.id === elementId);
+    if (!element) return;
+    pendingFocus.current = null;
+    // Fuera del ciclo de onChange del motor.
+    setTimeout(() => {
+      api.scrollToContent(element, { animate: false });
+      api.updateScene({
+        appState: { selectedElementIds: { [element.id]: true } },
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    }, 0);
+  }, [api]);
 
   const lastDraftAt = useRef(0);
   const onChange = useCallback<NonNullable<Parameters<typeof Excalidraw>[0]['onChange']>>(
     (elements, appState, files) => {
+      if (pendingFocus.current) applyPendingFocus();
+      // Selección actual, para ofrecer «Vincular» cuando hay un solo elemento.
+      const ids = Object.keys(appState.selectedElementIds).filter(
+        (id) => appState.selectedElementIds[id],
+      );
+      const key = ids.join(',');
+      if (key !== selectionKey.current) {
+        selectionKey.current = key;
+        setSelection(ids.length === 1 ? (elements.find((e) => e.id === ids[0]) ?? null) : null);
+      }
       if (session?.readOnly) return;
       // Trazo en curso: borrador periódico en lugar de revisiones (diseño §7.1).
       if (appState.newElement) {
@@ -104,7 +172,7 @@ export function CanvasView({ documentId, service, theme }: Props) {
       signatureRef.current = signature;
       autosave.push(scene);
     },
-    [autosave, session, service, documentId],
+    [autosave, session, service, documentId, applyPendingFocus],
   );
 
   // Guardar también al terminar un trazo o una manipulación. El motor emite el último onChange
@@ -122,6 +190,37 @@ export function CanvasView({ documentId, service, theme }: Props) {
         .catch(() => undefined);
     }, 50);
   }, [autosave, service, documentId]);
+
+  // Abrir un lienzo desde un enlace, un backlink o la búsqueda: centrar y resaltar el elemento.
+  // El motor entrega su API antes de cargar la escena, así que el destino queda pendiente hasta
+  // que el elemento exista (se reintenta en cada onChange).
+  useEffect(() => {
+    if (focus?.documentId !== documentId) return;
+    const target = useUiStore.getState().consumeFocus(documentId);
+    if (target?.elementId) pendingFocus.current = target.elementId;
+    applyPendingFocus();
+  }, [focus, documentId, applyPendingFocus]);
+
+  /** Escribe el enlace en el elemento; el guardado deriva el sidecar (autoridad) a partir de él. */
+  const setElementLink = (link: string | null) => {
+    if (!api || !selection) return;
+    const id = selection.id;
+    api.updateScene({
+      elements: api
+        .getSceneElementsIncludingDeleted()
+        .map((e) => (e.id === id ? newElementWith(e, { link }) : e)),
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+    setPickerOpen(false);
+  };
+
+  const selectDangling = () => {
+    if (!api || !dangling.length) return;
+    api.updateScene({
+      appState: { selectedElementIds: Object.fromEntries(dangling.map((id) => [id, true])) },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+  };
 
   if (loadError)
     return (
@@ -143,7 +242,44 @@ export function CanvasView({ documentId, service, theme }: Props) {
           {t(`readOnly.${loaded.session.readOnly}`)}
         </p>
       )}
+      <div className="canvas-tools">
+        {selection && !loaded.session.readOnly && (
+          <button type="button" data-testid="link-element" onClick={() => setPickerOpen(true)}>
+            🔗 {selection.link ? t('links.editLink') : t('links.linkElement')}
+          </button>
+        )}
+        {dangling.length > 0 && (
+          <button
+            type="button"
+            className="danger"
+            data-testid="dangling-connectors"
+            onClick={selectDangling}
+          >
+            {t('canvas.dangling', { count: dangling.length })}
+          </button>
+        )}
+      </div>
+      {pickerOpen && selection && (
+        <LinkPicker
+          sourceId={documentId}
+          currentLink={selection.link ?? null}
+          onPick={(doc) => setElementLink(internalLink(doc.id))}
+          onCreateNote={(title) => {
+            void onCreateNote(title).then((doc) => setElementLink(internalLink(doc.id)));
+          }}
+          onWeb={(url) => setElementLink(url)}
+          onRemove={() => setElementLink(null)}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
       <Excalidraw
+        excalidrawAPI={setApi}
+        onLinkOpen={(element, event) => {
+          const target = element.link ? parseInternalLink(element.link) : null;
+          if (!target) return; // Enlace web: lo abre el motor en otra pestaña.
+          event.preventDefault();
+          navigate({ documentId: target.documentId, elementId: target.elementId });
+        }}
         initialData={loaded.scene}
         viewModeEnabled={loaded.session.readOnly !== null}
         onChange={onChange}

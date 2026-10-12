@@ -36,7 +36,8 @@
             "type": "string",
             "enum": [
               "note",
-              "canvas"
+              "canvas",
+              "folder"
             ]
           },
           "title": {

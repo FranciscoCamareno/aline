@@ -102,6 +102,20 @@ Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
 - **Aviso entre pestañas:** si otra pestaña cambia el documento abierto, se ofrece recargarlo.
 - **Borrador del trazo en curso:** mientras el lápiz o el ratón siguen apoyados no se crean
   revisiones; se guarda un borrador cada segundo y se recupera si la aplicación se cerró a mitad.
+- **Carpetas y etiquetas:** árbol de carpetas (sin ciclos y sin borrado en cascada; lo que apunta
+  a una carpeta retirada aparece en «Recuperación»), «Recientes» y filtro por etiqueta. Las
+  etiquetas no distinguen mayúsculas y viajan en el frontmatter.
+- **Enlaces:** vincular un elemento del lienzo a una nota, a otro lienzo o a una web (botón
+  «Vincular» con un elemento seleccionado; se puede crear la nota en el momento). En notas, `[[`
+  sugiere destinos por título e inserta un enlace por UUID, o crea la nota. Renombrar no rompe
+  enlaces. Los `[[Título]]` importados se resuelven solo si el título es único.
+- **Backlinks y enlaces rotos** en «Detalles y enlaces» (botón 🔗), junto con carpeta y etiquetas.
+  Desde un backlink o un resultado se abre el documento y se centra el elemento o el texto.
+- **Conectores sueltos (RN-07):** al borrar un nodo, su flecha se conserva y se señala; un botón
+  la selecciona.
+- **Búsqueda** de texto completo (botón 🔍 o Ctrl+Mayús+F) en títulos, etiquetas, notas y texto
+  de los lienzos, sin distinguir mayúsculas ni acentos, por prefijo y con tolerancia a errores.
+  El índice MiniSearch vive en un worker y se reconstruye desde el contenido.
 - **Integración continua** en `.github/workflows/ci.yml` (formato, licencias, verify y E2E).
 - Borrador de cabeceras de seguridad para Cloudflare Pages en `public/_headers`. La CSP va en
   modo informe (`Report-Only`) y **no es la definitiva**.
@@ -119,12 +133,13 @@ src/
   features/library/    biblioteca y títulos renombrables
   features/history/    historial, vista previa de versiones y resolución de conflictos
   features/status/     estado del almacén, exportación de emergencia y diagnóstico
+  features/knowledge/  vincular elementos, detalles y backlinks, paleta de búsqueda
   adapters/excalidraw/ serialización de escenas y assets
   adapters/indexeddb/  esquema Dexie, transacciones, registro de almacenes, persistencia y cuota
   adapters/zip/        ZIP con fflate, rutas seguras y límites de descompresión
   adapters/filesystem/ (pendiente) carpeta Windows
   adapters/drive/      (pendiente) OAuth y Drive API
-  workers/             hash SHA-256 y ZIP; (pendiente) búsqueda
+  workers/             hash SHA-256, ZIP y búsqueda (MiniSearch)
   locales/es, locales/en
 tests/unit, tests/e2e, tests/fase0
 spikes/fase0          banco de viabilidad del motor (fuera del producto)
@@ -137,23 +152,24 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 
 Última ejecución: 12/10/2026, Windows 11, Node 24.21.
 
-- `pnpm verify`: typecheck, lint, 60 pruebas unitarias y compilación, todo correcto.
-- `pnpm test:e2e`: 19 recorridos en Chromium sin fallos en dos ejecuciones seguidas. Además de
-  los de las fases anteriores:
-  - papelera: enviar, restaurar y eliminar definitivamente (CA-15);
-  - historial: vista previa de una versión anterior, restauración y recarga (CA-23);
-  - conflicto real entre dos pestañas, aviso, diferencias y combinación manual (CA-14);
-  - copia ZIP, restauración en un almacén nuevo con comprobación byte a byte y apertura (CA-16);
-  - trazo a medias recuperado tras cerrar la pestaña sin levantar el puntero;
-  - cierre sin eventos de salida: lo escrito más de 5 s antes se conserva (CA-10 en Chromium);
-  - la app compilada distribuye su licencia MIT y los avisos de terceros.
-- `pnpm test:fase0`: 8 pruebas de viabilidad del motor (ver
-  [docs/fase-0-viabilidad.md](docs/fase-0-viabilidad.md)).
-- Pruebas unitarias de la fase 2: ida y vuelta del formato abierto, revisiones con objetos
-  alterados o ausentes, versiones posteriores conservadas, controles de poda, copia y restauración
-  byte a byte, rutas inseguras y bombas de descompresión, papelera y borrado definitivo,
-  historial, las tres formas de resolver un conflicto, un fallo inyectado en cada etapa del
-  guardado (sin escrituras parciales) y cuota agotada.
+- `pnpm verify`: typecheck, lint, 72 pruebas unitarias y compilación, todo correcto.
+- `pnpm test:e2e:all`: 29 recorridos en **Chromium** y los mismos 29 en **Microsoft Edge**, sin
+  fallos. Los de la fase 3:
+  - primera captura de texto en el lienzo: 2,9 s desde que se abre (CA-01, meta < 10 s);
+  - formas, duplicar, mover y borrar al reabrir (CA-T01); desplazar y zoom sin versiones (CA-T02);
+  - conector anclado con etiqueta que sigue al nodo y queda suelto al borrarlo (CA-02, CA-03, RN-07);
+  - imagen pegada que se conserva (CA-24);
+  - vincular un elemento a una nota, backlink, renombrar sin romper el enlace (CA-06, CA-07);
+  - `[[` con sugerencias y creación de la nota; enlaces rotos al enviar el destino a la papelera (CA-08);
+  - carpetas, etiquetas y carpeta de recuperación (CA-21);
+  - búsqueda dentro de una forma que abre el lienzo con el elemento seleccionado (CA-09);
+  - 2 000 notas y 500 lienzos sintéticos: consultas de 3 a 12 ms en el worker, índice listo en
+    unos 3,2 s y lienzo visible en unos 2,8 s tras recargar (RNF-10).
+- `pnpm test:fase0`: 8 pruebas de viabilidad del motor.
+- Pruebas unitarias de la fase 3: carpetas sin ciclos y sin cascada, etiquetas, extracción de
+  enlaces sobre el AST (sin tocar el código), sidecar y conectores sueltos, backlinks, renombrado,
+  enlaces rotos y ambiguos, búsqueda sin acentos y con errores, y referencia de 2 000 + 500
+  documentos en Node (indexar 211 ms, consultas ≤ 7 ms).
 
 **No verificado** (no se ha ejecutado):
 
@@ -174,21 +190,22 @@ Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes d
 error `not-implemented` en vez de simular un éxito.
 El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
 
-| Área                                                                                    | Estado                                                                                                                                        | Dónde                                                            |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Google Drive (OAuth GIS, Drive API v3, `appProperties`, subidas)                        | Contrato definido; sin implementar. Faltan el proyecto de Google Cloud y un origen HTTPS                                                      | `ports/RemoteStore.ts`, `ports/RemoteAuth.ts`, `adapters/drive/` |
-| Sincronización (ciclo, cursor, staging, reintentos, Web Locks)                          | Contrato `SyncEngine`; la cola `outbox` ya se llena pero nadie la consume. Las restauraciones no generan salida pendiente                     | `ports/RemoteStore.ts`                                           |
-| Carpeta local en Windows (File System Access)                                           | Contrato definido; sin implementar                                                                                                            | `ports/LocalFolderStore.ts`, `adapters/filesystem/`              |
-| Poda selectiva de versiones y espacio que ocupan (RF-46)                                | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio             | `features/history/`                                              |
-| Enlaces `[[`, backlinks, enlaces rotos (RF-20 a RF-24)                                  | Solo se abren enlaces `mindnote://` en la vista previa                                                                                        | `features/notes/`                                                |
-| Carpetas y etiquetas en la UI, búsqueda MiniSearch en worker                            | Pendientes; las etiquetas existen en el modelo                                                                                                | `workers/README.md`                                              |
-| Exportación PNG/SVG/PDF propia, `.excalidraw` autocontenido, Markdown                   | Pendiente (fase 5). La copia ZIP completa ya está hecha. Solo están disponibles las exportaciones del menú de Excalidraw                      | —                                                                |
-| Sidecar: enlaces de elementos, ramas colapsables, notas incrustadas, conectores sueltos | El sidecar se crea y se conserva; no tiene funciones                                                                                          | `domain/sidecar.ts`                                              |
-| Pila de deshacer coordinada para comandos propios                                       | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                         | —                                                                |
-| Interfaz del modo «Solo lápiz»                                                          | El motor activa `penMode` al detectar el lápiz y el Apple Pencil funciona en el iPad (fase 0); el borrador del trazo en curso ya está hecho   | `features/canvas/CanvasView.tsx`                                 |
-| Frontmatter YAML completo                                                               | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                           | `domain/frontmatter.ts`                                          |
-| Desactivar la biblioteca externa de Excalidraw                                          | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                      | —                                                                |
-| Escritura del formato abierto en una carpeta o en Drive                                 | El serializador y el lector existen (`application/vaultFormat.ts`) y los usa la copia ZIP; faltan los adaptadores de carpeta y Drive (fase 4) | `application/vaultFormat.ts`                                     |
+| Área                                                                  | Estado                                                                                                                                        | Dónde                                                            |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Google Drive (OAuth GIS, Drive API v3, `appProperties`, subidas)      | Contrato definido; sin implementar. Faltan el proyecto de Google Cloud y un origen HTTPS                                                      | `ports/RemoteStore.ts`, `ports/RemoteAuth.ts`, `adapters/drive/` |
+| Sincronización (ciclo, cursor, staging, reintentos, Web Locks)        | Contrato `SyncEngine`; la cola `outbox` ya se llena pero nadie la consume. Las restauraciones no generan salida pendiente                     | `ports/RemoteStore.ts`                                           |
+| Carpeta local en Windows (File System Access)                         | Contrato definido; sin implementar                                                                                                            | `ports/LocalFolderStore.ts`, `adapters/filesystem/`              |
+| Poda selectiva de versiones y espacio que ocupan (RF-46)              | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio             | `features/history/`                                              |
+| Enlaces `[[Título]]` escritos a mano en la vista previa               | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID      | `features/notes/`                                                |
+| Biblioteca con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                      | `features/library/`                                              |
+| Exportación PNG/SVG/PDF propia, `.excalidraw` autocontenido, Markdown | Pendiente (fase 5). La copia ZIP completa ya está hecha. Solo están disponibles las exportaciones del menú de Excalidraw                      | —                                                                |
+| Sidecar: ramas colapsables y notas incrustadas                        | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes             | `domain/sidecar.ts`                                              |
+| Pila de deshacer coordinada para comandos propios                     | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                         | —                                                                |
+| Interfaz del modo «Solo lápiz»                                        | El motor activa `penMode` al detectar el lápiz y el Apple Pencil funciona en el iPad (fase 0); el borrador del trazo en curso ya está hecho   | `features/canvas/CanvasView.tsx`                                 |
+| Búsqueda en documentos en conflicto                                   | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                          | `application/KnowledgeService.ts`                                |
+| Frontmatter YAML completo                                             | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                           | `domain/frontmatter.ts`                                          |
+| Desactivar la biblioteca externa de Excalidraw                        | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                      | —                                                                |
+| Escritura del formato abierto en una carpeta o en Drive               | El serializador y el lector existen (`application/vaultFormat.ts`) y los usa la copia ZIP; faltan los adaptadores de carpeta y Drive (fase 4) | `application/vaultFormat.ts`                                     |
 
 ## Decisiones de implementación
 
