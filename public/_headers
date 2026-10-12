@@ -1,11 +1,17 @@
-# Cabeceras para Cloudflare Pages (diseño §13, §14.2). BORRADOR: no es la CSP final.
-# Validar primero en modo informe; al configurar Drive, añadir solo los endpoints exactos de
-# Google tras probar sus scripts y ventanas. 'unsafe-inline' en style-src lo requiere el motor
-# de lienzo y CodeMirror (estilos en línea); revisar en la fase de endurecimiento.
+# Cabeceras para Cloudflare (diseño §13, §14.2; plan 4.8). CSP aún en modo informe
+# (Report-Only): pasarla a obligatoria tras comprobar en el despliegue que la conexión con Drive
+# no genera violaciones en la consola.
+# Únicos orígenes externos, todos de Google y solo usados tras aceptar el aviso RN-12:
+# - accounts.google.com/gsi/: librería de inicio de sesión (script, estilo, iframe y consultas).
+# - www.googleapis.com: Drive API v3 y subidas.
+# - oauth2.googleapis.com: revocación del permiso al desconectar.
+# 'unsafe-inline' en style-src lo requieren el motor de lienzo y CodeMirror (estilos en línea).
+# Referrer-Policy strict-origin-when-cross-origin: a otros orígenes solo se envía el origen
+# (nunca rutas). Google Identity Services comprueba el origen y no funciona con no-referrer.
 /*
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; worker-src 'self' blob:; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'self'; form-action 'self'
   X-Content-Type-Options: nosniff
-  Referrer-Policy: no-referrer
+  Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 /sw.js

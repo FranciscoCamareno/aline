@@ -1,6 +1,6 @@
 # Plan de fases: del núcleo local a la versión beta
 
-Versión 1.5 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
+Versión 1.6 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
 
 Este plan parte de lo que ya está construido y llega hasta una **beta utilizable** y después a la **versión 1.0**. Conserva la numeración de fases del diseño técnico (§17) para no crear dos mapas distintos. No incluye fechas: el diseño exige no darlas sin conocer la dedicación disponible (D-09). Los tamaños S, M y L indican complejidad relativa, no tiempo.
 
@@ -169,12 +169,14 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **→ Hito alfa local.**
 
-### Fase 4 — Almacenamiento externo y sincronización (en curso: parte local completada el 13/10/2026)
+### Fase 4 — Almacenamiento externo y sincronización (implementada el 13/10/2026; falta la prueba con Google real)
 
 **Estado:**
 
 - **Hechas y probadas:** 4.1, 4.2, 4.3, 4.6 y 4.7 contra la carpeta local, en Chromium y Edge y con las pruebas del protocolo.
-- **Pendientes porque necesitan Google Cloud:** 4.4, 4.5 y 4.8.
+- **Hechas y probadas contra una simulación de Google:** 4.4 y 4.5. Hay pruebas unitarias del protocolo y recorridos en Chromium y Edge con GIS falso y la Drive API simulada.
+- **4.8:** CSP con los endpoints exactos de Google, todavía en modo informe.
+- **Pendiente del propietario:** probar con Google real y, si no hay violaciones de CSP, pasarla a obligatoria (pasos más abajo).
 - **Alojamiento:** listo en https://aline.projeck.workers.dev. Es un Cloudflare Worker con assets estáticos (`wrangler.jsonc`) y aplica `public/_headers`.
 
 **Decisiones de esta parte:**
@@ -188,6 +190,27 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 - **Corrección durante las pruebas:** un equipo que borraba definitivamente un documento volvía a descargar sus versiones de la carpeta. Ahora las órdenes de retirada locales se publican al empezar el ciclo y nunca se descargan versiones retiradas.
 - **Recarga automática.** Si el documento abierto cambia en otro sitio y no hay cambios sin guardar, se recarga solo; si los hay, aparece el aviso.
 - **Sin lienzo inicial en almacenes de carpeta.** Un almacén abierto desde una carpeta no recibe el lienzo de bienvenida: su contenido llega de la carpeta.
+
+**Decisiones de Drive (4.4, 4.5, 4.8):**
+
+- **Búsqueda por propiedades.** Cada archivo lleva `appProperties` (`mindnote` = tipo, `vaultId`, `revisionId`/`hash`/`controlId`/`documentId`, `operationId`) y se busca por ellas, no por ruta. Si dos equipos crean a la vez una carpeta `revisions`, solo se duplica el contenedor.
+- **Idempotencia.** Antes de crear un objeto, una revisión o un control se comprueba si ya existe con esas propiedades. Una respuesta perdida no duplica nada. Solo los índices (`heads/`, `catalog.json`) se actualizan en su sitio.
+- **Cursor.** El cursor es el `startPageToken`, tomado antes de listar. En los ciclos siguientes, el feed de cambios dice si algo de este almacén cambió, sin contar los índices. Si no cambió nada, no se relista. Aun así se relista todo cada 10 minutos para reintentar las revisiones que quedaron a medias. Un cursor inválido provoca una reconciliación completa.
+- **Dos pasos para la ventana de Google.** Aceptar el aviso RN-12 carga GIS. «Continuar con Google» abre la ventana desde su propio clic, para que Safari no la bloquee.
+- **Token solo en memoria.** Al recargar, el estado es «Necesita autorización» y se renueva con un clic. La revocación se hace al desconectar. Desconectar o cambiar de cuenta no borra nada local; si la otra cuenta no ve la carpeta, el estado es «no disponible».
+- **CSP.** Orígenes `accounts.google.com/gsi/`, `www.googleapis.com` y `oauth2.googleapis.com`. `Referrer-Policy` pasa de `no-referrer` a `strict-origin-when-cross-origin`, porque GIS comprueba el origen; a otros sitios solo se envía el origen, nunca rutas.
+- **ID de cliente en `.env` (versionado).** Es público por diseño. El secreto del cliente no se usa en ninguna parte.
+
+**Prueba con Google real (propietario):**
+
+1. Publicar una compilación nueva (el despliegue de Cloudflare debe compilar con el `.env` del repositorio).
+2. En https://aline.projeck.workers.dev → Estado y diagnóstico → «Conectar Google Drive…». Comprobar el aviso y aceptar, y después «Continuar con Google». Elegir la cuenta de prueba y conceder el acceso.
+3. Comprobar en drive.google.com:
+   - existe la carpeta «Aline - Mi almacén» con `vault.json`, `revisions/`, `objects/` y `readable/`;
+   - la barra superior muestra «☁️ Sincronizado · hh:mm».
+4. Comprobar desde otro navegador o equipo: crear un almacén nuevo, conectar Drive y elegir «Abrir ese almacén aquí». Las notas deben aparecer. Editar en ambos lados y sincronizar.
+5. Comprobar la CSP: abrir la consola (F12) durante todo el recorrido. Si no aparece ningún aviso «[Report Only] Refused to…», se puede cambiar `Content-Security-Policy-Report-Only` por `Content-Security-Policy` en `public/_headers`.
+6. Avisarme de cualquier error. El diagnóstico (Estado y diagnóstico) registra los fallos de sincronización sin contenido de notas ni tokens.
 
 **Observación del alojamiento:** Cloudflare añade las cabeceras `Report-To` y `NEL` (registro de errores de red). Con ellas, el navegador puede enviar a Cloudflare informes de fallos de conexión. Es un dato técnico del proveedor, no contenido, pero conviene revisarlo frente a RNF-05 y, si se quiere, desactivarlo en la configuración de Cloudflare.
 

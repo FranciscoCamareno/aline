@@ -3,23 +3,49 @@ import { SyncEngine, VaultMismatchError } from '../application/SyncEngine.ts';
 import type { Vault } from '../domain/vault.ts';
 import { describeError } from '../ports/Diagnostics.ts';
 import { RemoteError } from '../ports/RemoteStore.ts';
-import { folderRemote, readFolderVault } from './composition/remotes.ts';
+import {
+  driveConnection,
+  folderRemote,
+  readFolderVault,
+  type DriveConnection,
+  type DriveVaultChoice,
+} from './composition/remotes.ts';
 import { logDiagnostic } from './runtime.ts';
 import type { AppServices } from './services.ts';
 
-/** Destino conectado al almacén en este dispositivo (plan 4.1). Drive llegará con 4.4–4.6. */
+export type { DriveVaultChoice } from './composition/remotes.ts';
+
+/**
+ * Destino conectado al almacén en este dispositivo (plan 4.1). Solo uno por almacén: carpeta
+ * local o Google Drive, nunca ambos (diseño §8.4).
+ */
 interface FolderBinding {
   kind: 'folder';
   handle: FileSystemDirectoryHandle;
   name: string;
   connectedAt: string;
 }
+interface DriveBinding {
+  kind: 'drive';
+  folderId: string;
+  name: string;
+  connectedAt: string;
+}
+type Binding = FolderBinding | DriveBinding;
 
 export type RemotePhase =
-  'idle' | 'syncing' | 'ok' | 'pending' | 'needs-permission' | 'mismatch' | 'unavailable' | 'error';
+  | 'idle'
+  | 'syncing'
+  | 'ok'
+  | 'pending'
+  | 'needs-permission'
+  | 'needs-auth'
+  | 'mismatch'
+  | 'unavailable'
+  | 'error';
 
 export interface RemoteStatus {
-  kind: 'folder';
+  kind: 'folder' | 'drive';
   name: string;
   phase: RemotePhase;
   pending: number;
@@ -28,7 +54,6 @@ export interface RemoteStatus {
 }
 
 const BINDING_KEY = 'binding';
-const TARGET = 'folder';
 const INTERVAL_MS = 60_000;
 const AFTER_CHANGE_MS = 3_000;
 
@@ -39,6 +64,11 @@ type PermissionHandle = FileSystemDirectoryHandle & {
 
 export function folderPickerSupported(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+}
+
+/** El ID de cliente OAuth es público y se incrusta al compilar (diseño §13). */
+export function driveConfigured(): boolean {
+  return Boolean(import.meta.env['VITE_GOOGLE_CLIENT_ID']);
 }
 
 async function pickFolder(): Promise<FileSystemDirectoryHandle> {
@@ -63,15 +93,18 @@ function webLock(name: string) {
 }
 
 /**
- * Sincronización con una carpeta local (plan 4.2): el almacén sigue en IndexedDB y la carpeta
- * recibe el formato abierto. Sincroniza al abrir, al recuperar el foco, tras los cambios y cada
- * minuto mientras la aplicación está visible; nunca con la aplicación cerrada (§1.2).
+ * Sincronización con una carpeta local (plan 4.2) o con Google Drive (plan 4.5): el almacén
+ * sigue en IndexedDB y el destino recibe el formato abierto. Sincroniza al abrir, al recuperar
+ * el foco, tras los cambios y cada minuto mientras la aplicación está visible; nunca con la
+ * aplicación cerrada (§1.2).
  */
 export class SyncRuntime {
   private readonly services: AppServices;
   private readonly onStatus: (status: RemoteStatus | null) => void;
   private readonly onRemoteChanges: (documentIds: string[]) => void;
-  private binding: FolderBinding | null = null;
+  private binding: Binding | null = null;
+  /** Conexión con Google (token solo en memoria): se crea al conectar, nunca al arrancar. */
+  private drive: DriveConnection | null = null;
   private status: RemoteStatus | null = null;
   private running: Promise<void> | null = null;
   private again = false;
@@ -95,13 +128,15 @@ export class SyncRuntime {
   async start(): Promise<void> {
     if (this.services.temporary) return;
     this.binding =
-      ((await this.services.repo.getDevicePreference(BINDING_KEY)) as FolderBinding | null) ?? null;
+      ((await this.services.repo.getDevicePreference(BINDING_KEY)) as Binding | null) ?? null;
     this.unsubscribe = this.services.service.onCommit(() => this.scheduleSoon());
     document.addEventListener('visibilitychange', this.onVisible);
     this.interval = setInterval(() => {
       if (document.visibilityState === 'visible') void this.sync();
     }, INTERVAL_MS);
     if (!this.binding) return this.setStatus(null);
+    // Drive: el token no sobrevive a una recarga y autorizar exige un gesto del usuario.
+    if (this.binding.kind === 'drive') return this.setStatus(this.make('needs-auth', null));
     if (await this.hasPermission(false)) await this.sync();
     else this.setStatus(this.make('needs-permission', null));
   }
@@ -124,7 +159,12 @@ export class SyncRuntime {
     const remoteVault = await readFolderVault(handle);
     if (remoteVault && remoteVault.id !== this.services.vault.id)
       return { mismatch: remoteVault, handle };
-    await this.bind(handle);
+    await this.bind({
+      kind: 'folder',
+      handle,
+      name: handle.name,
+      connectedAt: new Date().toISOString(),
+    });
     return { connected: true };
   }
 
@@ -133,42 +173,83 @@ export class SyncRuntime {
     handle: FileSystemDirectoryHandle,
     remoteVault: Vault,
   ): Promise<string> {
-    const registry = this.services.registry;
-    if (!registry) throw new Error('El almacén temporal no admite carpetas');
-    const entry = await registry.register(`${remoteVault.name} (${handle.name})`, 'created');
-    const { VaultDatabase } = await import('../adapters/indexeddb/db.ts');
-    const { DexieVaultRepository } = await import('../adapters/indexeddb/DexieVaultRepository.ts');
-    const db = new VaultDatabase(entry.dbName);
-    try {
-      // Misma identidad de almacén, dispositivo nuevo; el contenido llega al sincronizar.
-      const repo = new DexieVaultRepository(db);
-      await repo.importContent({
-        vault: remoteVault,
-        documents: [],
-        revisions: [],
-        blobs: new Map(),
-        controls: [],
-      });
-      await repo.setDevicePreference(BINDING_KEY, {
-        kind: 'folder',
-        handle,
-        name: handle.name,
-        connectedAt: new Date().toISOString(),
-      } satisfies FolderBinding);
-      await registry.touch(entry.dbName, remoteVault.id);
-    } finally {
-      db.close();
-    }
-    return entry.dbName;
+    return this.openLinkedVault(remoteVault, `${remoteVault.name} (${handle.name})`, {
+      kind: 'folder',
+      handle,
+      name: handle.name,
+      connectedAt: new Date().toISOString(),
+    });
   }
 
-  /** Pide de nuevo el permiso (requiere un gesto del usuario, p. ej. pulsar «Reconectar»). */
+  /**
+   * Primer paso tras aceptar el aviso RN-12: carga los módulos de Drive y GIS, sin ventanas.
+   * Antes de este punto no se hace ninguna petición a Google (RNF-05).
+   */
+  async prepareDrive(): Promise<void> {
+    this.drive ??= await driveConnection();
+    await this.drive.auth.prepare();
+  }
+
+  /** Si GIS ya está cargado (p. ej. tras «Reconectar» en esta sesión). */
+  get driveReady(): boolean {
+    return this.drive !== null;
+  }
+
+  /**
+   * Conecta Google Drive después de aceptar el aviso RN-12 (CA-27). Debe llamarse desde un
+   * gesto del usuario: carga GIS y abre la ventana de Google. Si Drive tiene este almacén, se
+   * enlaza; si no tiene ninguno, se crea; si solo tiene otros, se devuelven para que el
+   * propietario elija (nunca se mezclan).
+   */
+  async connectDrive(options: {
+    acknowledgedUnencryptedContent: true;
+  }): Promise<{ connected: true } | { choices: DriveVaultChoice[] }> {
+    const drive = await this.authorizeDrive(options);
+    const vaults = await drive.listVaults();
+    const same = vaults.find((v) => v.vault.id === this.services.vault.id);
+    if (same) {
+      await this.bind(driveBinding(same));
+      return { connected: true };
+    }
+    if (vaults.length) return { choices: vaults };
+    return this.createDriveVault();
+  }
+
+  /** Crea en Drive la carpeta de ESTE almacén aunque la cuenta tenga otros. */
+  async createDriveVault(): Promise<{ connected: true }> {
+    if (!this.drive?.auth.getAccessToken()) throw new RemoteError('auth', 'Necesita autorización');
+    const created = await this.drive.createVault(this.services.vault);
+    await this.bind(driveBinding(created));
+    return { connected: true };
+  }
+
+  /** Abre en este navegador un almacén de Drive como almacén aparte enlazado a él. */
+  async openVaultFromDrive(choice: DriveVaultChoice): Promise<string> {
+    return this.openLinkedVault(
+      choice.vault,
+      `${choice.vault.name} (Google Drive)`,
+      driveBinding(choice),
+    );
+  }
+
+  /**
+   * Pide de nuevo el permiso o la autorización; requiere un gesto del usuario (p. ej. pulsar
+   * «Reconectar»). Para Drive, el aviso RN-12 ya se aceptó al conectar este almacén.
+   */
   async reconnect(): Promise<void> {
+    if (this.binding?.kind === 'drive') {
+      await this.authorizeDrive({ acknowledgedUnencryptedContent: true });
+      return this.sync();
+    }
     if (await this.hasPermission(true)) await this.sync();
   }
 
-  /** Desconectar no borra nada: ni el almacén local ni la carpeta (§8.4). */
+  /** Desconectar no borra nada: ni el almacén local ni la carpeta o Drive (§8.4). */
   async disconnect(): Promise<void> {
+    if (this.binding?.kind === 'drive') {
+      await this.drive?.auth.disconnect().catch(() => undefined);
+      this.drive = null;
+    }
     this.binding = null;
     await this.services.repo.setDevicePreference(BINDING_KEY, null);
     this.setStatus(null);
@@ -192,12 +273,16 @@ export class SyncRuntime {
 
   private async runOnce(): Promise<void> {
     const binding = this.binding!;
-    if (!(await this.hasPermission(false))) {
+    if (binding.kind === 'folder' && !(await this.hasPermission(false))) {
       this.setStatus(this.make('needs-permission', null));
       return;
     }
+    if (binding.kind === 'drive' && !this.drive?.auth.getAccessToken()) {
+      this.setStatus(this.make('needs-auth', null));
+      return;
+    }
     this.setStatus(this.make('syncing', null));
-    const engine = this.engine(binding.handle);
+    const engine = this.engine(binding);
     try {
       const result = await engine.runCycle();
       const pending = await engine.pendingCount();
@@ -217,7 +302,7 @@ export class SyncRuntime {
         logDiagnostic(
           'info',
           'sync-cycle',
-          `recibidas=${result.pulledRevisions} enviadas=${result.pushedRevisions} externas=${result.externalEdits} conflictos=${result.conflicts.length}`,
+          `${binding.kind} recibidas=${result.pulledRevisions} enviadas=${result.pushedRevisions} externas=${result.externalEdits} conflictos=${result.conflicts.length}`,
         );
       }
       if (result.changedDocuments.length) this.onRemoteChanges(result.changedDocuments);
@@ -225,8 +310,12 @@ export class SyncRuntime {
       logDiagnostic('error', 'sync-failed', describeError(error));
       if (error instanceof VaultMismatchError) {
         this.setStatus(this.make('mismatch', error.message));
+      } else if (error instanceof RemoteError && error.kind === 'auth') {
+        this.setStatus(this.make('needs-auth', error.message));
       } else if (error instanceof RemoteError && error.kind === 'permission') {
-        this.setStatus(this.make('needs-permission', error.message));
+        this.setStatus(
+          this.make(binding.kind === 'drive' ? 'error' : 'needs-permission', error.message),
+        );
       } else if (error instanceof RemoteError && error.kind === 'not-found') {
         this.setStatus(this.make('unavailable', error.message));
       } else {
@@ -235,11 +324,15 @@ export class SyncRuntime {
     }
   }
 
-  private engine(handle: FileSystemDirectoryHandle): SyncEngine {
+  private engine(binding: Binding): SyncEngine {
     const { repo, service, vault, dbName } = this.services;
     return new SyncEngine({
-      target: TARGET,
-      remote: folderRemote(handle),
+      // Marcas de publicación y cursores separados por destino.
+      target: binding.kind,
+      remote:
+        binding.kind === 'folder'
+          ? folderRemote(binding.handle)
+          : this.drive!.remote(binding.folderId),
       local: new DexieSyncStore(repo.db),
       reader: repo,
       importExternal: (documentId, parent, bytes) =>
@@ -248,15 +341,47 @@ export class SyncRuntime {
     });
   }
 
-  private async bind(handle: FileSystemDirectoryHandle): Promise<void> {
-    this.binding = {
-      kind: 'folder',
-      handle,
-      name: handle.name,
-      connectedAt: new Date().toISOString(),
-    };
-    await this.services.repo.setDevicePreference(BINDING_KEY, this.binding);
+  private async openLinkedVault(
+    remoteVault: Vault,
+    label: string,
+    binding: Binding,
+  ): Promise<string> {
+    const registry = this.services.registry;
+    if (!registry) throw new Error('El almacén temporal no admite destinos externos');
+    const entry = await registry.register(label, 'created');
+    const { VaultDatabase } = await import('../adapters/indexeddb/db.ts');
+    const { DexieVaultRepository } = await import('../adapters/indexeddb/DexieVaultRepository.ts');
+    const db = new VaultDatabase(entry.dbName);
+    try {
+      // Misma identidad de almacén, dispositivo nuevo; el contenido llega al sincronizar.
+      const repo = new DexieVaultRepository(db);
+      await repo.importContent({
+        vault: remoteVault,
+        documents: [],
+        revisions: [],
+        blobs: new Map(),
+        controls: [],
+      });
+      await repo.setDevicePreference(BINDING_KEY, binding);
+      await registry.touch(entry.dbName, remoteVault.id);
+    } finally {
+      db.close();
+    }
+    return entry.dbName;
+  }
+
+  private async bind(binding: Binding): Promise<void> {
+    this.binding = binding;
+    await this.services.repo.setDevicePreference(BINDING_KEY, binding);
     await this.sync();
+  }
+
+  private async authorizeDrive(options: {
+    acknowledgedUnencryptedContent: true;
+  }): Promise<DriveConnection> {
+    this.drive ??= await driveConnection();
+    await this.drive.auth.connect(options);
+    return this.drive;
   }
 
   private scheduleSoon(): void {
@@ -267,8 +392,8 @@ export class SyncRuntime {
 
   /** Los permisos de una carpeta se revalidan al reiniciar (§7.1); pedirlos exige un gesto. */
   private async hasPermission(request: boolean): Promise<boolean> {
-    const handle = this.binding?.handle as PermissionHandle | undefined;
-    if (!handle) return false;
+    if (this.binding?.kind !== 'folder') return false;
+    const handle = this.binding.handle as PermissionHandle;
     const query = await handle.queryPermission?.({ mode: 'readwrite' });
     if (query === undefined || query === 'granted') return true;
     if (!request || !handle.requestPermission) return false;
@@ -277,7 +402,7 @@ export class SyncRuntime {
 
   private make(phase: RemotePhase, message: string | null): RemoteStatus {
     return {
-      kind: 'folder',
+      kind: this.binding?.kind ?? 'folder',
       name: this.binding?.name ?? '',
       phase,
       pending: this.status?.pending ?? 0,
@@ -290,4 +415,13 @@ export class SyncRuntime {
     this.status = status;
     this.onStatus(status);
   }
+}
+
+function driveBinding(choice: DriveVaultChoice): DriveBinding {
+  return {
+    kind: 'drive',
+    folderId: choice.folderId,
+    name: choice.folderName,
+    connectedAt: new Date().toISOString(),
+  };
 }

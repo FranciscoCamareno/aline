@@ -238,7 +238,8 @@
       "needs-permission": "necesita permiso para usar la carpeta",
       "mismatch": "la carpeta contiene otro almacén",
       "unavailable": "la carpeta no está disponible",
-      "error": "error al escribir en la carpeta"
+      "error": "error al escribir en la carpeta",
+      "needs-auth": "necesita autorización"
     },
     "chip": {
       "idle": "Carpeta",
@@ -249,7 +250,8 @@
       "needs-permission": "Permiso de carpeta",
       "mismatch": "Otro almacén",
       "unavailable": "Carpeta no disponible",
-      "error": "Error de carpeta"
+      "error": "Error de carpeta",
+      "needs-auth": "Autorizar Drive"
     },
     "syncNow": "Sincronizar ahora",
     "reconnect": "Reconectar carpeta",
@@ -259,7 +261,42 @@
     "folderHint": "La carpeta recibe el formato abierto: notas en Markdown legibles con cualquier editor, versiones y copias. Puedes editar las copias de «readable/»: se importan como versiones nuevas. No uses a la vez la carpeta de Google Drive para escritorio y la conexión directa a Drive.",
     "mismatch": "La carpeta «{{folder}}» contiene otro almacén («{{vault}}»). No se mezclan: puedes abrirlo en este navegador como un almacén aparte.",
     "openFolderVault": "Abrir ese almacén aquí",
-    "driveNotConfigured": "Google Drive: pendiente. Falta el proyecto de Google Cloud con la API de Drive y un cliente OAuth (VITE_GOOGLE_CLIENT_ID).",
-    "driveNotImplemented": "Google Drive: el cliente OAuth está configurado, pero la conexión aún no está implementada (fase 4.4)."
+    "driveNotConfigured": "Google Drive: esta compilación no tiene ID de cliente OAuth (VITE_GOOGLE_CLIENT_ID).",
+    "drive": "Este navegador + Google Drive («{{name}}»)",
+    "driveLastSync": "Última sincronización con Drive: {{time}}",
+    "drivePhase": {
+      "idle": "conectado",
+      "syncing": "sincronizando…",
+      "ok": "sincronizado",
+      "pending_one": "{{count}} versión pendiente de subir a Drive",
+      "pending_other": "{{count}} versiones pendientes de subir a Drive",
+      "needs-permission": "Drive no permite escribir",
+      "needs-auth": "necesita autorización de Google",
+      "mismatch": "la carpeta de Drive contiene otro almacén",
+      "unavailable": "la carpeta de Drive no está disponible (¿otra cuenta o en la papelera?)",
+      "error": "error al sincronizar con Drive"
+    },
+    "driveChip": {
+      "idle": "Drive",
+      "syncing": "Sincronizando…",
+      "ok": "Sincronizado · {{time}}",
+      "pending_one": "{{count}} pendiente",
+      "pending_other": "{{count}} pendientes",
+      "needs-permission": "Permiso de Drive",
+      "needs-auth": "Necesita autorización",
+      "mismatch": "Otro almacén",
+      "unavailable": "Drive no disponible",
+      "error": "Error de Drive"
+    },
+    "connectDrive": "Conectar Google Drive…",
+    "driveWarningTitle": "Antes de conectar Google Drive",
+    "driveWarning": "El contenido se guardará en tu Google Drive sin cifrado de extremo a extremo: Google y quien tenga acceso a tu cuenta podrán leerlo. La aplicación solo pide acceso a los archivos que ella misma crea (permiso drive.file). Al continuar se cargará la librería de inicio de sesión de Google; hasta ahora no se ha hecho ninguna petición a Google.",
+    "driveAccept": "Entiendo, continuar",
+    "driveLoading": "Cargando el inicio de sesión de Google…",
+    "driveReady": "Google abrirá una ventana para elegir la cuenta y conceder el acceso.",
+    "driveContinue": "Continuar con Google",
+    "driveReconnect": "Autorizar de nuevo",
+    "driveOthers": "Esta cuenta de Drive tiene otros almacenes, pero no este. No se mezclan: puedes abrir uno de ellos en este navegador como almacén aparte o crear una carpeta nueva para este.",
+    "driveCreate": "Crear una carpeta en Drive para este almacén"
   }
 }

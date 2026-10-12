@@ -6,7 +6,7 @@ Este documento especifica cómo se representa un almacén fuera de la aplicació
 
 Los esquemas JSON publicados están en [formato/schemas/v1](formato/schemas/v1/) y se generan desde `src/domain/format.ts` con `pnpm schemas`. Una prueba unitaria impide que el código y los esquemas publicados se desincronicen.
 
-> **Estado de implementación (12/10/2026).** Esta especificación está vigente. El serializador y el lector están en `src/application/vaultFormat.ts`, y la copia ZIP ya los usa: la raíz del ZIP es este directorio, más `backup-manifest.json`. La carpeta local y Drive escribirán el mismo árbol en la fase 4.
+> **Estado de implementación (12/10/2026).** Esta especificación está vigente. El serializador y el lector están en `src/application/vaultFormat.ts`, y la copia ZIP ya los usa: la raíz del ZIP es este directorio, más `backup-manifest.json`. La carpeta local y Google Drive escriben el mismo árbol (fase 4); en Drive, véase §6.
 
 ## 1. Estructura
 
@@ -152,3 +152,22 @@ Las tablas operativas de IndexedDB no se exportan ni deciden nada sobre el conte
 - estado del dispositivo y diagnóstico.
 
 Tampoco se incluyen nunca tokens ni permisos del navegador.
+
+## 6. Representación en Google Drive
+
+En Drive el árbol es el mismo, dentro de una carpeta de «Mi unidad» llamada `Aline - <nombre del almacén>`. Drive admite nombres repetidos, así que la aplicación no localiza los archivos por su ruta. Los localiza por sus `appProperties` (propiedades privadas de la aplicación):
+
+| Archivo | `mindnote` | Otras propiedades |
+| --- | --- | --- |
+| Carpeta raíz | `vault` | `vaultId` |
+| `vault.json` | `vault-json` | `vaultId` |
+| Subcarpetas (`revisions`, `readable/<doc>`…) | `dir` | `vaultId`, `path` |
+| `revisions/<id>.json` | `revision` | `vaultId`, `revisionId`, `documentId`, `operationId` |
+| `objects/…` y `assets/…` | `object` | `vaultId`, `hash`, `operationId` |
+| `controls/<id>.json` | `control` | `vaultId`, `controlId` |
+| `readable/<doc>/<rev>.md` | `readable` | `vaultId`, `documentId`, `revisionId` |
+| `heads/…`, `catalog.json`, `README.md` | `index` | `vaultId`, `path` |
+
+- Un mismo objeto o revisión puede aparecer duplicado si dos equipos lo suben a la vez. Las copias son idénticas, porque el nombre es el hash o el id, y cualquiera vale.
+- Los archivos descargados de Drive (o con Google Drive para ordenador) forman un almacén legible según §3, igual que una carpeta local.
+- La aplicación solo tiene el permiso `drive.file`: ve los archivos que creó ella. Un archivo añadido a mano en la carpeta no se lee.

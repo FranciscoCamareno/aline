@@ -238,7 +238,8 @@
       "needs-permission": "needs permission to use the folder",
       "mismatch": "the folder contains another vault",
       "unavailable": "the folder is not available",
-      "error": "error writing to the folder"
+      "error": "error writing to the folder",
+      "needs-auth": "needs authorization"
     },
     "chip": {
       "idle": "Folder",
@@ -249,7 +250,8 @@
       "needs-permission": "Folder permission",
       "mismatch": "Another vault",
       "unavailable": "Folder unavailable",
-      "error": "Folder error"
+      "error": "Folder error",
+      "needs-auth": "Authorize Drive"
     },
     "syncNow": "Sync now",
     "reconnect": "Reconnect folder",
@@ -259,7 +261,42 @@
     "folderHint": "The folder receives the open format: Markdown notes readable with any editor, versions and copies. You can edit the copies in “readable/”: they are imported as new versions. Do not use the Google Drive desktop folder and the direct Drive connection at the same time.",
     "mismatch": "The folder “{{folder}}” contains another vault (“{{vault}}”). They are not mixed: you can open it in this browser as a separate vault.",
     "openFolderVault": "Open that vault here",
-    "driveNotConfigured": "Google Drive: pending. The Google Cloud project with the Drive API and an OAuth client (VITE_GOOGLE_CLIENT_ID) is missing.",
-    "driveNotImplemented": "Google Drive: the OAuth client is configured, but the connection is not implemented yet (phase 4.4)."
+    "driveNotConfigured": "Google Drive: this build has no OAuth client ID (VITE_GOOGLE_CLIENT_ID).",
+    "drive": "This browser + Google Drive (“{{name}}”)",
+    "driveLastSync": "Last sync with Drive: {{time}}",
+    "drivePhase": {
+      "idle": "connected",
+      "syncing": "syncing…",
+      "ok": "synced",
+      "pending_one": "{{count}} version pending upload to Drive",
+      "pending_other": "{{count}} versions pending upload to Drive",
+      "needs-permission": "Drive does not allow writing",
+      "needs-auth": "needs Google authorization",
+      "mismatch": "the Drive folder contains another vault",
+      "unavailable": "the Drive folder is not available (another account or in the trash?)",
+      "error": "error syncing with Drive"
+    },
+    "driveChip": {
+      "idle": "Drive",
+      "syncing": "Syncing…",
+      "ok": "Synced · {{time}}",
+      "pending_one": "{{count}} pending",
+      "pending_other": "{{count}} pending",
+      "needs-permission": "Drive permission",
+      "needs-auth": "Needs authorization",
+      "mismatch": "Another vault",
+      "unavailable": "Drive unavailable",
+      "error": "Drive error"
+    },
+    "connectDrive": "Connect Google Drive…",
+    "driveWarningTitle": "Before connecting Google Drive",
+    "driveWarning": "Content will be stored in your Google Drive without end-to-end encryption: Google and anyone with access to your account can read it. The app only asks for access to the files it creates itself (drive.file permission). Continuing loads Google’s sign-in library; no request has been made to Google so far.",
+    "driveAccept": "I understand, continue",
+    "driveLoading": "Loading Google sign-in…",
+    "driveReady": "Google will open a window to choose the account and grant access.",
+    "driveContinue": "Continue with Google",
+    "driveReconnect": "Authorize again",
+    "driveOthers": "This Drive account has other vaults, but not this one. They are not mixed: you can open one of them in this browser as a separate vault or create a new folder for this one.",
+    "driveCreate": "Create a Drive folder for this vault"
   }
 }

@@ -3,7 +3,8 @@
 Sistema personal de mapas mentales y notas conectadas. Esta es la **primera entrega**: el núcleo
 local descrito en [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md). Es una PWA
 con React, TypeScript estricto y Vite, con lienzo Excalidraw, notas Markdown y guardado
-automático en IndexedDB (Dexie). No necesita cuenta, servidor ni conexión a Google Drive.
+automático en IndexedDB (Dexie). No necesita cuenta ni servidor; Google Drive y la carpeta
+local son opcionales.
 
 > `mindnote` es un nombre provisional, igual que el esquema `mindnote://` del diseño.
 
@@ -132,6 +133,19 @@ Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
   nota, ambas quedan en conflicto.
 - Si el documento abierto cambia en otro sitio y no tiene cambios sin guardar, se recarga solo;
   si los tiene, se avisa y no se pisa nada.
+- **Google Drive** (Estado y diagnóstico → «Dónde se guarda» → «Conectar Google Drive…»):
+  - primero aparece el aviso RN-12 (contenido sin cifrar en Drive). Hasta aceptarlo no se hace
+    ninguna petición a Google; al aceptarlo se carga la librería de Google y «Continuar con
+    Google» abre su ventana;
+  - permiso `drive.file` (solo los archivos que crea la aplicación). El token vive en memoria:
+    al recargar aparece «Necesita autorización» y se renueva con un clic, sin tocar lo local;
+  - crea la carpeta «Aline - <almacén>» con el mismo formato abierto que la carpeta local. Cada
+    archivo lleva `appProperties` (almacén, revisión, hash…) y se busca por ellas, nunca por ruta;
+  - si la cuenta ya tiene este almacén, se enlaza; si tiene otros, se ofrece abrir uno aquí como
+    almacén aparte o crear una carpeta para este; nunca se mezclan;
+  - la barra superior muestra «☁️ Sincronizado · hh:mm» solo tras un ciclo completo sin nada
+    pendiente;
+  - un almacén usa un solo destino externo: la carpeta o Drive.
 - **Integración continua** en `.github/workflows/ci.yml` (formato, licencias, verify y E2E).
 - Borrador de cabeceras de seguridad para Cloudflare Pages en `public/_headers`. La CSP va en
   modo informe (`Report-Only`) y **no es la definitiva**.
@@ -153,8 +167,8 @@ src/
   adapters/excalidraw/ serialización de escenas y assets
   adapters/indexeddb/  esquema Dexie, transacciones, registro de almacenes, persistencia y cuota
   adapters/zip/        ZIP con fflate, rutas seguras y límites de descompresión
-  adapters/filesystem/ (pendiente) carpeta Windows
-  adapters/drive/      (pendiente) OAuth y Drive API
+  adapters/filesystem/ carpeta local (File System Access)
+  adapters/drive/      Google Identity Services (token) y Drive API v3
   workers/             hash SHA-256, ZIP y búsqueda (MiniSearch)
   locales/es, locales/en
 tests/unit, tests/e2e, tests/fase0
@@ -168,25 +182,38 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 
 Última ejecución: 13/10/2026, Windows 11, Node 24.21.
 
-- `pnpm verify`: typecheck, lint, 80 pruebas unitarias y compilación, todo correcto.
-- `pnpm test:e2e:all`: 31 recorridos en **Chromium** y los mismos 31 en **Microsoft Edge**, sin
-  fallos; los de la fase 4 se repitieron 4 veces en paralelo sin fallos:
-  - conectar una carpeta, revisar su contenido, sincronizar al recargar, abrir el almacén de la
-    carpeta desde otro almacén («segundo equipo»), editar allí y ver el cambio en el primero
-    (RF-36, CA-33);
-  - editar una copia legible fuera de la aplicación y verla importada como «Cambio externo» (CA-28).
-- Pruebas del protocolo (`tests/unit/sync.test.ts`, carpeta en memoria con la API de File
-  System Access):
+- `pnpm verify`: typecheck, lint, 90 pruebas unitarias y compilación, todo correcto.
+- `pnpm test:e2e:all`: 33 recorridos en **Chromium** y los mismos 33 en **Microsoft Edge**, sin
+  fallos. Los de Drive se repitieron 4 veces sin fallos. La fase 4 incluye:
+  - conectar una carpeta, sincronizar, abrir su almacén desde otro almacén («segundo equipo») y
+    ver los cambios en ambos sentidos (RF-36, CA-33);
+  - editar una copia legible fuera de la aplicación y verla importada como «Cambio externo»
+    (CA-28);
+  - Drive, aviso RN-12: aparece antes de nada, cancelarlo no hace ninguna petición a Google y
+    aceptarlo solo pide la librería de inicio de sesión (CA-27);
+  - Drive, recorrido completo **contra una simulación de Google**: conectar, crear la carpeta,
+    «Sincronizado · hh:mm», «Necesita autorización» al recargar, abrir el almacén desde otro
+    almacén y ver la nota.
+- Pruebas del protocolo, con el mismo motor contra dos destinos:
+  - carpeta en memoria con la API de File System Access (`tests/unit/sync.test.ts`);
+  - simulación de Drive API v3 (`tests/unit/fakeDrive.ts`: `files.list` con `q` y paginación,
+    subidas multipart/reanudables/media y feed de cambios), en `tests/unit/drive.test.ts`.
+- Casos que cubren esas pruebas:
   - tres dispositivos que convergen;
   - ediciones concurrentes sin red que se conservan y se resuelven en todos (CA-14);
   - respuesta perdida sin duplicados;
   - objetos ausentes o alterados que no se activan hasta completarse;
-  - carpeta de otro almacén que no se mezcla;
+  - destino de otro almacén que no se mezcla;
   - borrado definitivo que no resucita;
-  - ediciones externas, incluida la que entra en conflicto con la aplicación;
-  - reintentos con espera y `Retry-After`.
+  - ediciones externas;
+  - reintentos con espera y `Retry-After`;
+  - solo con Drive: clasificación de errores (401, 403 por límite, cuota o permiso, 404, 429,
+    5xx, sin red), cursor inválido que reconcilia todo, ciclos sin cambios que solo consultan el
+    feed, y subida reanudable por encima de 5 MB.
 - Fases anteriores: los recorridos de las fases 1 a 3 (Chromium y Edge), la búsqueda con 2 000
-  notas y 500 lienzos, y las 8 pruebas de viabilidad de la fase 0.
+  notas y 500 lienzos, y las 8 pruebas de viabilidad de la fase 0. En esta ejecución, con
+  Chromium y Edge a la vez, el lienzo con 2 500 documentos tardó 10,6 s en Chromium y 2,2 s en
+  Edge. Es una medición con la máquina cargada, no un resultado de rendimiento.
 
 **No verificado** (no se ha ejecutado):
 
@@ -204,7 +231,18 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
   el sistema de archivos privado del navegador (OPFS), que tiene la misma API pero no pasa por
   el diálogo ni por los permisos de una carpeta del usuario.
 - Dos ordenadores reales sincronizando con una misma carpeta (p. ej. en una unidad de red).
-- Google Drive: no implementado.
+- **Google Drive real.** Nada de lo siguiente se ha probado:
+  - la ventana de Google ni el consentimiento;
+  - el token real ni su caducidad a la hora;
+  - la Drive API real (consultas `appProperties`, feed de cambios, subidas reanudables);
+  - las cuotas;
+  - la CSP con Google;
+  - el cambio de cuenta.
+
+  Las pruebas usan una simulación hecha a partir de la documentación de la API. La comprobación
+  real la tiene que hacer el propietario con su cuenta (pasos en `docs/Plan-de-fases.md`, fase 4).
+
+- Drive en Safari/iPad: ventanas emergentes de Google y almacenamiento.
 
 ## Funciones pendientes
 
@@ -212,19 +250,20 @@ Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes d
 error `not-implemented` en vez de simular un éxito.
 El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
 
-| Área                                                                  | Estado                                                                                                                                                                                                                         | Dónde                             |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
-| Google Drive (OAuth GIS, Drive API v3, `appProperties`, subidas)      | Pendiente de que exista el proyecto de Google Cloud (pasos en `docs/Plan-de-fases.md`, fase 4). El motor de sincronización ya está hecho y probado con la carpeta; falta el adaptador `DriveRemoteStore` con el mismo contrato | `adapters/drive/`                 |
-| Poda selectiva de versiones y espacio que ocupan (RF-46)              | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                                                              | `features/history/`               |
-| Enlaces `[[Título]]` escritos a mano en la vista previa               | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID                                                                                       | `features/notes/`                 |
-| Biblioteca con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                                                       | `features/library/`               |
-| Exportación PNG/SVG/PDF propia, `.excalidraw` autocontenido, Markdown | Pendiente (fase 5). La copia ZIP completa ya está hecha. Solo están disponibles las exportaciones del menú de Excalidraw                                                                                                       | —                                 |
-| Sidecar: ramas colapsables y notas incrustadas                        | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                                                              | `domain/sidecar.ts`               |
-| Pila de deshacer coordinada para comandos propios                     | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                                                          | —                                 |
-| Interfaz del modo «Solo lápiz»                                        | El motor activa `penMode` al detectar el lápiz y el Apple Pencil funciona en el iPad (fase 0); el borrador del trazo en curso ya está hecho                                                                                    | `features/canvas/CanvasView.tsx`  |
-| Búsqueda en documentos en conflicto                                   | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                           | `application/KnowledgeService.ts` |
-| Frontmatter YAML completo                                             | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                            | `domain/frontmatter.ts`           |
-| Desactivar la biblioteca externa de Excalidraw                        | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                                                                                                       | —                                 |
+| Área                                                                  | Estado                                                                                                                                      | Dónde                                |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Google Drive: comprobación con la cuenta real                         | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                  | `adapters/drive/`, `public/_headers` |
+| Google Picker (abrir archivos ajenos a la aplicación)                 | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                 | —                                    |
+| Poda selectiva de versiones y espacio que ocupan (RF-46)              | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio           | `features/history/`                  |
+| Enlaces `[[Título]]` escritos a mano en la vista previa               | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID    | `features/notes/`                    |
+| Biblioteca con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                    | `features/library/`                  |
+| Exportación PNG/SVG/PDF propia, `.excalidraw` autocontenido, Markdown | Pendiente (fase 5). La copia ZIP completa ya está hecha. Solo están disponibles las exportaciones del menú de Excalidraw                    | —                                    |
+| Sidecar: ramas colapsables y notas incrustadas                        | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes           | `domain/sidecar.ts`                  |
+| Pila de deshacer coordinada para comandos propios                     | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                       | —                                    |
+| Interfaz del modo «Solo lápiz»                                        | El motor activa `penMode` al detectar el lápiz y el Apple Pencil funciona en el iPad (fase 0); el borrador del trazo en curso ya está hecho | `features/canvas/CanvasView.tsx`     |
+| Búsqueda en documentos en conflicto                                   | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                        | `application/KnowledgeService.ts`    |
+| Frontmatter YAML completo                                             | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                         | `domain/frontmatter.ts`              |
+| Desactivar la biblioteca externa de Excalidraw                        | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                    | —                                    |
 
 ## Decisiones de implementación
 
