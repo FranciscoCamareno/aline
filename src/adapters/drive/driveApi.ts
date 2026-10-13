@@ -205,6 +205,28 @@ export class DriveClient {
     return (await res.json()) as DriveFile;
   }
 
+  async getFile(fileId: string): Promise<DriveFile> {
+    const res = await this.request(
+      'GET',
+      `${DRIVE_API}/files/${encodeURIComponent(fileId)}?fields=${FILE_FIELDS}`,
+    );
+    return (await res.json()) as DriveFile;
+  }
+
+  /**
+   * Cambia metadatos (propiedades, papelera). Las appProperties enviadas se fusionan con las
+   * existentes; nunca se usa para el contenido.
+   */
+  async updateMetadata(
+    fileId: string,
+    metadata: { appProperties?: Record<string, string>; trashed?: boolean },
+  ): Promise<void> {
+    await this.request('PATCH', `${DRIVE_API}/files/${encodeURIComponent(fileId)}`, {
+      body: JSON.stringify(metadata),
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   /** Sustituye el contenido de un archivo (solo índices aceleradores; nunca objetos ni revisiones). */
   async updateMedia(fileId: string, bytes: Uint8Array, mimeType: string): Promise<void> {
     await this.request(

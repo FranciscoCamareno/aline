@@ -798,3 +798,54 @@ button.danger {
   color: var(--danger);
   font-weight: 600;
 }
+
+/* Elección de modo de Drive y cifrado (diseño §13.1). */
+.drive-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drive-mode-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.drive-mode-option > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drive-password {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drive-password label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recovery-code {
+  font-family: ui-monospace, monospace;
+  font-size: 1.1em;
+  letter-spacing: 0.05em;
+  user-select: all;
+  word-break: break-all;
+}
+
+.drive-settings {
+  margin-top: 8px;
+}
+
+.drive-settings > summary {
+  cursor: pointer;
+}

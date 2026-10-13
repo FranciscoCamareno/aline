@@ -5,11 +5,11 @@
 export interface RemoteAuth {
   /**
    * Carga la librería del proveedor sin abrir ventanas. Solo se llama después de que el
-   * propietario elige conectar Drive y acepta el aviso RN-12.
+   * propietario elige conectar Drive, elige si cifra y acepta el aviso de ese modo.
    */
   prepare(): Promise<void>;
   /** Abre la ventana de autorización; debe llamarse desde un gesto del usuario. */
-  connect(options: { acknowledgedUnencryptedContent: true }): Promise<void>;
+  connect(): Promise<void>;
   getAccessToken(): string | null;
   disconnect(): Promise<void>;
 }

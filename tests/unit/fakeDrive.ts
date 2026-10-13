@@ -74,6 +74,23 @@ export class FakeDrive {
       if (!file || file.trashed) return error(404, 'notFound', 'File not found');
       return new Response(file.bytes.slice() as Uint8Array<ArrayBuffer>, { status: 200 });
     }
+    // Metadatos: como en Drive, un archivo en la papelera se devuelve con trashed = true.
+    if (method === 'GET' && fileMatch) {
+      const file = this.files.get(decodeURIComponent(fileMatch[1]!));
+      if (!file) return error(404, 'notFound', 'File not found');
+      return json(this.meta(file));
+    }
+    if (method === 'PATCH' && fileMatch) {
+      const file = this.files.get(decodeURIComponent(fileMatch[1]!));
+      if (!file) return error(404, 'notFound', 'File not found');
+      const patch = JSON.parse(text(body)) as Partial<DriveFile>;
+      if (patch.appProperties) {
+        file.appProperties = { ...file.appProperties, ...patch.appProperties };
+      }
+      if (patch.trashed !== undefined) file.trashed = patch.trashed;
+      this.changeLog.push(file.id);
+      return json(this.meta(file));
+    }
     if (method === 'POST' && path === '/drive/v3/files') {
       const meta = JSON.parse(text(body)) as Omit<DriveFile, 'id'>;
       return json(this.meta(this.create(meta, new Uint8Array())));

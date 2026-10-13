@@ -50,7 +50,7 @@ La primera versión cubre lienzo, notas, enlaces, búsqueda y almacenamiento loc
 - Colaboración de cualquier tipo, incluidos la simultánea en tiempo real y el compartir en solo lectura (DP-05).
 - Aplicación de móvil con funciones completas; el móvil solo cubriría notas escritas a mano (DP-10).
 - Sistema de plugins o tienda de extensiones.
-- Cuentas, planes de pago, múltiples organizaciones y cifrado del contenido (DP-07).
+- Cuentas, planes de pago y múltiples organizaciones. El cifrado es opcional y solo para la copia en Google Drive (DP-07, revisada el 13/10/2026).
 - Funciones de inteligencia artificial generativa y reconocimiento de texto en imágenes.
 
 **Convenciones**
@@ -74,7 +74,7 @@ Hay un actor humano que decide todo (el propietario); colaboradores y receptores
 
 ## 5. Historias de usuario
 
-Dieciocho de las veintiuna historias son "Debe" o "Debería"; HU-16 queda como "Podría", HU-13 pasa a "No ahora" porque no habrá colaboración y HU-20 se descartó al decidir no cifrar.
+Dieciocho de las veintiuna historias son "Debe" o "Debería"; HU-16 queda como "Podría", HU-13 pasa a "No ahora" porque no habrá colaboración y HU-20 vuelve como "Debería", limitada a la copia en Drive y a elección del propietario (DP-07 revisada).
 
 | ID | Historia | Prioridad |
 | --- | --- | --- |
@@ -97,12 +97,12 @@ Dieciocho de las veintiuna historias son "Debe" o "Debería"; HU-16 queda como "
 | HU-17 | Como propietario, quiero importar y exportar archivos .excalidraw, e importar notas Markdown, para no perder lo que ya tengo | Debería |
 | HU-18 | Como propietario, quiero una copia de seguridad completa, para no perder mi trabajo si falla un disco | Debe |
 | HU-19 | Como propietario, quiero escribir a mano con un lápiz en un iPad, para tomar notas manuscritas sin teclado | Debería |
-| HU-20 | Descartada: el propietario decidió no cifrar el contenido (DP-07) | Descartada |
+| HU-20 | Como propietario, quiero elegir si cifro la copia de mi almacén en Google Drive, para que Google no pueda leerla si así lo decido (DP-07 revisada) | Debería |
 | HU-21 | Como propietario, quiero elegir si mis datos se guardan en una carpeta local o en Google Drive, para trabajar con o sin la nube | Debe |
 
 ## 6. Requerimientos funcionales
 
-Son 49 requerimientos en 12 módulos, dos de ellos descartados (RF-43 y RF-44); de los 47 vigentes, 22 son "Debe" y definen el mínimo de la primera versión. Cada uno cita la historia que lo origina. Con Excalidraw como motor (DP-11), RF-01 a RF-13 pasan de construirse a integrarse y verificarse.
+Son 49 requerimientos en 12 módulos. RF-43 y RF-44, descartados al principio, volvieron como "Debería" al revisar DP-07; 22 son "Debe" y definen el mínimo de la primera versión. Cada uno cita la historia que lo origina. Con Excalidraw como motor (DP-11), RF-01 a RF-13 pasan de construirse a integrarse y verificarse.
 
 ### Lienzo
 
@@ -200,8 +200,8 @@ Son 49 requerimientos en 12 módulos, dos de ellos descartados (RF-43 y RF-44); 
 | --- | --- | --- | --- |
 | RF-41 | Permitir elegir dónde se guarda el almacén: carpeta local o Google Drive | Debe | HU-21 |
 | RF-42 | Sincronizar el almacén con Google Drive, seguir funcionando sin conexión y sincronizar al volver | Debe | HU-11, HU-21 |
-| RF-43 | Descartado: el contenido se guarda sin cifrar (DP-07, DP-12) | Descartado | HU-20 |
-| RF-44 | Descartado: sin cifrado no hay clave que pedir (DP-07) | Descartado | HU-20 |
+| RF-43 | Al conectar Google Drive, el Sistema permite elegir entre guardar el contenido sin cifrar o cifrado de extremo a extremo, y permite cambiar esa elección después desde la configuración sin perder versiones (DP-07 revisada, DP-12) | Debería | HU-20 |
+| RF-44 | Si el almacén está cifrado en Drive, el Sistema pide la contraseña o el código de recuperación una vez en cada equipo, y permite cambiar la contraseña y generar un código nuevo | Debería | HU-20 |
 | RF-45 | Exportar un lienzo a .excalidraw avisando qué elementos propios no tienen equivalente y se pierden | Debería | HU-17 |
 | RF-46 | Mostrar el espacio que ocupan las versiones y permitir eliminar versiones concretas o antiguas | Debería | HU-12 |
 
@@ -224,7 +224,7 @@ Lo que más condiciona el diseño es la confianza en los datos: no perder trabaj
 | RNF-03 | Disponibilidad | Todas las funciones núcleo operan sin conexión a internet | Las funciones RF-01 a RF-30 sin red |
 | RNF-04 | Integridad | Un cierre abrupto no corrompe archivos ni pierde trabajo reciente | Pérdida máxima de 5 s; escritura atómica de archivos |
 | RNF-05 | Privacidad | Los datos salen del equipo solo hacia el Google Drive que el propietario configure; no hay telemetría | Cero conexiones salientes no configuradas |
-| RNF-06 | Seguridad | El Sistema no cifra el contenido; la protección depende de la cuenta de Google y del bloqueo del equipo, y el Sistema lo advierte al conectar Drive (DP-07) | Aviso visible al conectar Drive |
+| RNF-06 | Seguridad | El contenido local y la carpeta local no se cifran; la copia en Drive se cifra solo si el propietario lo elige. Sin cifrar, la protección depende de la cuenta de Google y del bloqueo del equipo, y el Sistema lo advierte al conectar Drive (DP-07 revisada) | Elección y avisos visibles al conectar Drive |
 | RNF-07 | Portabilidad | Funciona como página web instalable en el PC y en el iPad, con empaquetado de escritorio opcional (DP-02); los datos se leen sin el Sistema | Windows 11 con Chrome y Edge; iPadOS con Safari |
 | RNF-08 | Usabilidad | La primera acción útil no requiere tutorial; hay contraste suficiente, uso por teclado y zoom de interfaz | Primera acción en menos de 10 s |
 | RNF-09 | Mantenibilidad | El formato de datos está documentado y cada archivo lleva la versión de su esquema, para migrar sin pérdida | Documento del formato al día |
@@ -233,7 +233,7 @@ Lo que más condiciona el diseño es la confianza en los datos: no perder trabaj
 | RNF-12 | Licencias | Toda dependencia tiene una licencia compatible con el uso previsto | Revisión previa a incorporar cada dependencia |
 | RNF-13 | Diagnóstico | Los errores se registran localmente y el propietario los puede consultar, sin envío externo | Registro local legible |
 | RNF-14 | Entrada | Funciona con ratón y teclado en escritorio y con lápiz en el iPad, como uso secundario; el móvil solo para notas escritas a mano | Apple Pencil (USB-C), sin sensibilidad a presión (DP-10) |
-| RNF-15 | Recuperación | Descartado: sin cifrado no hay clave que respaldar (DP-07) | No aplica |
+| RNF-15 | Recuperación | Con Drive cifrado, el Sistema entrega un código de recuperación y exige confirmar que se guardó antes de usarlo; sin contraseña ni código, la copia de Drive no se puede recuperar y el Sistema lo advierte | Código mostrado una vez y confirmado |
 | RNF-16 | Sincronización | La sincronización con Google Drive tolera cortes de red y no deja archivos a medias | Reanuda sin pérdida tras un corte |
 | RNF-17 | Escalabilidad | El historial de versiones sin límite no vuelve lenta la apertura de un lienzo | Menos de 2 s con 100 versiones guardadas |
 
@@ -254,7 +254,7 @@ Las reglas protegen una promesa: el contenido del propietario nunca se pierde ni
 | RN-09 | Solo el propietario cambia la configuración del almacén y lo que se comparte |
 | RN-10 | Los backlinks se calculan a partir de los enlaces existentes y no se editan a mano |
 | RN-11 | Las notas se guardan como Markdown de texto plano y se pueden leer y editar fuera del Sistema |
-| RN-12 | Antes de conectar Google Drive, el Sistema advierte que el contenido queda sin cifrar en la nube y pide confirmación |
+| RN-12 | Antes de conectar Google Drive, el Sistema pide elegir entre sin cifrar y cifrado, explica las consecuencias de cada opción (sin cifrar: Google puede leer el contenido; cifrado: una contraseña perdida no se recupera) y no contacta con Google hasta esa elección |
 | RN-13 | Las versiones antiguas solo se eliminan por acción explícita del propietario |
 
 ## 9. Flujos principales y alternativos
@@ -352,7 +352,7 @@ Tras las decisiones del propietario, los riesgos más serios son tres plataforma
 | R-09 | Fuga de datos por un enlace compartido o una carpeta en la nube mal configurados | Media | Alto | RNF-05, RNF-06, RN-09 |
 | R-10 | Un colaborador espera edición simultánea que no existe | Media | Bajo | Declarar el límite desde el inicio (DP-05) |
 | R-11 | La búsqueda no encuentra texto escrito dentro de formas del lienzo | Media | Medio | RF-26 y CA-09 como criterio de aceptación |
-| R-12 | El contenido queda en texto plano: lo puede leer quien acceda a la cuenta de Google o al equipo | Media | Medio | Aviso al conectar Drive (RN-12, RNF-06); el propietario decide qué guarda en la nube |
+| R-12 | El contenido queda en texto plano: lo puede leer quien acceda a la cuenta de Google o al equipo | Media | Medio | Cifrado opcional de la copia en Drive y aviso al conectar (RN-12, RNF-06); el propietario decide |
 | R-13 | Safari del iPad borra el almacenamiento de una web que no está instalada tras 7 días sin uso, y se pierde lo que no se sincronizó | Baja | Medio | Instalarla en la pantalla de inicio, sincronizar con Drive a menudo y mostrar qué falta por sincronizar (RNF-16) |
 | R-14 | Dependencia de Google: acceder a Drive exige credenciales de desarrollador y su API puede cambiar | Media | Alto | Aislar Drive detrás de una capa propia y mantener siempre la opción local (RF-41) |
 | R-15 | Escritorio, web y tableta a la vez dispersan el esfuerzo de una sola persona | Media | Alto | Una sola base web para el PC y el iPad (DP-02); el empaquetado de escritorio se hace después |
@@ -396,7 +396,7 @@ El cifrado se descartó y las notas serán Markdown de texto plano; la plataform
 | S-04 | Hasta 500 lienzos, 2 000 notas y 1 000 elementos por lienzo | RNF-01, RNF-02, RNF-10 |
 | S-05 | El propietario puede instalar y actualizar software en sus equipos | DP-02 |
 | S-06 | Interfaz y documentación en español e ingles | RNF-11 |
-| S-07 | Las notas pueden contener información sensible y el propietario acepta guardarlas sin cifrar en Google Drive | RNF-05, RNF-06 |
+| S-07 | Las notas pueden contener información sensible; el propietario decide si las guarda cifradas o sin cifrar en Google Drive | RNF-05, RNF-06 |
 | S-08 | El iPad (A16) es la tableta de uso, con un Apple Pencil (USB-C), confirmado por el propietario | RF-47 a RF-49, DP-10 |
 | S-09 | El PC de escritorio es el equipo principal, con Windows 11 y los navegadores Chrome y Edge, ambos basados en Chromium | RF-30, RF-41, RNF-07 |
 
@@ -410,12 +410,12 @@ El cifrado se descartó y las notas serán Markdown de texto plano; la plataform
 | DP-04 | Sincronización entre equipos | Google Drive, como hace draw.io, y también guardado local a elección | Decidida, con puntos abiertos | Credenciales de Google; si el código se comparte, cada persona necesita las suyas. En el iPad el guardado local es el almacenamiento del navegador, no una carpeta, y Safari puede borrarlo si la web no está instalada (R-13) |
 | DP-05 | Colaboración | Ninguna por ahora; la simultánea se estudia más adelante | Decidida | HU-13, RF-38 y los actores A2 y A3 salen de la primera versión; la edición simultánea futura condiciona el formato (R-17) |
 | DP-06 | Relación con .excalidraw | Importar y exportar | Decidida | Con Excalidraw como motor, .excalidraw pasa a ser el formato nativo del lienzo; lo que Excalidraw no tiene (enlaces a notas, ramas colapsadas) hay que guardarlo aparte y comprobar que no se descarte (RF-45) |
-| DP-07 | Cifrado | Sin cifrado: notas en Markdown de texto plano (antes: siempre cifrado) | Decidida | Quien acceda a la cuenta de Google o al equipo lee todo; el Sistema lo advierte al conectar Drive (RN-12, RNF-06) |
+| DP-07 | Cifrado | Revisada el 13/10/2026: notas en Markdown de texto plano en el equipo y en la carpeta local; la copia en Google Drive, sin cifrar o cifrada de extremo a extremo a elección del propietario, que puede cambiarla después (antes: sin cifrado; y antes: siempre cifrado) | Decidida | Sin cifrar, quien acceda a la cuenta de Google lee todo; cifrado, una contraseña y un código perdidos hacen irrecuperable la copia de Drive y las notas no se leen desde Drive (RN-12, RNF-06, RNF-15) |
 | DP-08 | Política de versiones | Se conservan hasta que el usuario las elimine | Decidida | Crece sin límite en disco y en la cuota de Drive; exige ver el espacio y borrar (RF-46, RNF-17) |
 | DP-09 | Publicación | Se piensa compartir el código; vender queda pendiente hasta construirlo | Decidida en parte | La licencia: una permisiva o dual no cierra la opción de vender; una copyleft la condiciona |
 | DP-10 | Tableta, lápiz y móvil | PC de escritorio como uso principal; iPad (A16) con Apple Pencil (USB-C) como uso secundario; móvil solo para notas escritas a mano | Decidida | Modelo confirmado: Apple Pencil (USB-C). No mide presión, así que el grosor del trazo es el elegido o una variación simulada; ninguna función depende de la presión real |
 | DP-11 | Motor del lienzo | Excalidraw (paquete @excalidraw/excalidraw, MIT) como motor del lienzo | Decidida | Prueba corta ejecutada en el PC el 12 de octubre de 2026 ([informe](fase-0-viabilidad.md)): el enlace de elementos a notas y los 1 000 elementos pasan; falta el trazo con el Apple Pencil (USB-C) y el rendimiento en el iPad. Si fallaran, la alternativa es React Flow con perfect-freehand |
-| DP-12 | Cifrado: alcance y clave | No aplica | Cerrada | Sin objeto desde que se descartó el cifrado (DP-07) |
+| DP-12 | Cifrado: alcance y clave | Solo la copia en Drive; una clave por almacén, protegida con una contraseña y con un código de recuperación | Cerrada | El equipo y la carpeta local quedan sin cifrar; el nombre del almacén y el tamaño de los archivos siguen visibles en Drive |
 | DP-13 | Escritura a mano | Guardar solo los trazos; no hace falta buscar el texto escrito a mano | Decidida | Sin puntos abiertos; el reconocimiento de escritura queda fuera del alcance |
 
 ## 13. Criterios de aceptación
@@ -450,7 +450,7 @@ Treinta y tres criterios cubren casi todos los requerimientos "Debe"; RF-01, RF-
 | CA-24 | Dada una imagen en el portapapeles, cuando se pega en el lienzo, entonces aparece y sigue ahí al reabrir | RF-10 |
 | CA-25 | Dada una tableta con lápiz, cuando se apoya la palma y se escribe una palabra, entonces solo queda el trazo del lápiz | RF-47 |
 | CA-26 | Dada una palabra escrita a mano, cuando se cierra y se reabre el lienzo, entonces el trazo se conserva igual | RF-48 |
-| CA-27 | Dado un almacén local, cuando se conecta por primera vez a Google Drive, entonces el Sistema avisa de que el contenido queda sin cifrar y pide confirmación | RN-12, RNF-06 |
+| CA-27 | Dado un almacén local, cuando se conecta por primera vez a Google Drive, entonces el Sistema pide elegir entre sin cifrar y cifrado, con el aviso de cada opción, y no contacta con Google antes de la elección | RN-12, RNF-06 |
 | CA-28 | Dado un archivo Markdown editado fuera del Sistema, cuando se vuelve a abrir en el Sistema, entonces muestra el cambio sin errores | RF-30, RN-05 |
 | CA-29 | Dado un almacén en Google Drive, cuando se pierde la conexión durante la edición y luego vuelve, entonces los cambios se sincronizan sin duplicar ni perder nada | RF-42, RNF-16 |
 | CA-30 | Dado un lienzo, cuando se exporta a .excalidraw y se abre en Excalidraw, entonces aparecen las formas, los textos y las flechas, y el Sistema listó lo que no tiene equivalente | RF-45 |
@@ -483,7 +483,7 @@ Cada historia llega a al menos un requerimiento; las dos que no tienen criterio 
 | HU-17 | RF-34, RF-35, RF-45 |  | CA-18, CA-30 |
 | HU-18 | RF-30, RF-32 | RNF-04, RNF-09 | CA-10, CA-15, CA-16 |
 | HU-19 | RF-47, RF-48, RF-49 | RNF-14 | CA-25, CA-26 |
-| HU-20 | Descartada (DP-07) | — | — |
+| HU-20 | RF-43, RF-44 | RNF-06, RNF-15 | CA-27 |
 | HU-21 | RF-41, RF-42 | RNF-05, RNF-06, RNF-16 | CA-27, CA-29, CA-33 |
 
 ## 15. Anexo A: alternativas de código abierto para el motor del lienzo

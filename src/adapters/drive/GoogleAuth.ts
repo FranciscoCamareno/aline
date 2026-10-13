@@ -79,7 +79,7 @@ export class GoogleAuth implements RemoteAuth {
    * Debe llamarse desde un gesto del usuario (abre la ventana de Google). Conviene haber
    * llamado antes a `prepare`: así la ventana se abre sin esperas y el navegador no la bloquea.
    */
-  async connect(_options: { acknowledgedUnencryptedContent: true }): Promise<void> {
+  async connect(): Promise<void> {
     this.oauth ??= await loadGis();
     const oauth = this.oauth;
     const response = await new Promise<TokenResponse>((resolve, reject) => {

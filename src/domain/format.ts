@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { revisionKindSchema, revisionSchema } from './revision.ts';
+import { encryptionFileSchema } from './encryption.ts';
 import { canvasExtensionsSchema } from './sidecar.ts';
 import { vaultSchema, versionPruneSchema } from './vault.ts';
 
@@ -60,6 +61,7 @@ export const FORMAT_SCHEMAS = {
   catalog: catalogSchema,
   'version-prune': versionPruneSchema,
   'backup-manifest': backupManifestSchema,
+  encryption: encryptionFileSchema,
 } as const;
 
 /** JSON Schema (draft 2020-12) de cada archivo del formato. */

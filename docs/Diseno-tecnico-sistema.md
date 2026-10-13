@@ -1,6 +1,8 @@
 # Diseño técnico del sistema personal de mapas mentales y notas conectadas
 
-Versión 1.0 | 11 de octubre de 2026 | Base: documento de requerimientos de 34 páginas
+Versión 1.1 | 13 de octubre de 2026 | Base: documento de requerimientos de 34 páginas
+
+> **Cambio de arquitectura registrado (13/10/2026): cifrado opcional en Google Drive.** A petición del propietario se revisa DP-07. El almacén sigue sin cifrar en el equipo y en la carpeta local. La copia en Google Drive puede ir sin cifrar (como hasta ahora, con el aviso RN-12) o cifrada de extremo a extremo; el propietario lo elige al conectar Drive y puede cambiarlo después. Afecta a §1.1, §2, §6 (formato en Drive), §13 (nueva §13.1) y §16 (RF-43, RF-44, RNF-15). El modelo de revisiones y el protocolo de sincronización no cambian: el cifrado es una capa del adaptador de Drive.
 
 Este diseño convierte los requisitos en decisiones de implementación. Es una especificación para comenzar a construir; no certifica que las pruebas de hardware, rendimiento o integración ya hayan pasado. Se distinguen los requisitos heredados, las decisiones técnicas propuestas y las verificaciones pendientes.
 
@@ -22,7 +24,7 @@ La arquitectura es un monolito modular en el cliente. Tiene menos piezas que ope
 | Sincronización | Google Drive opcional; operación local disponible | DP-04 |
 | Colaboración | Fuera de la primera versión, incluso solo lectura | DP-05 |
 | Lienzo | Excalidraw; intercambio en .excalidraw | DP-06, DP-11 |
-| Cifrado | Contenido sin cifrar; aviso antes de conectar Drive | DP-07 |
+| Cifrado | Equipo y carpeta local sin cifrar; copia en Drive sin cifrar o cifrada de extremo a extremo, a elección del propietario y modificable (§13.1) | DP-07 (revisada el 13/10/2026), DP-12 |
 | Versiones | Sin eliminación automática por edad | DP-08 |
 | Lápiz | Apple Pencil USB-C, confirmado en esta conversación | DP-10 |
 | Escritura manual | Trazos; sin OCR ni búsqueda de escritura manuscrita | DP-13 |
@@ -46,7 +48,7 @@ El documento contiene 22 RF de prioridad Debe. Constituyen la primera entrega fu
 
 La versión personal prevista incluye una segunda entrega con los Debería: estilo y alineación, mano alzada, imágenes, marcos, hijos y ramas, incrustación de notas, enlaces rotos, galería, historial navegable, importaciones, atajos y lápiz. El historial estructural se implementa desde el comienzo porque protege la sincronización; su interfaz completa puede llegar después.
 
-Los Podría se mantienen opcionales: cuadrícula y ajuste, distribución automática, convertir texto en nota, grafo y plantillas. Las funciones gratuitas del motor pueden habilitarse si no añaden complejidad. RF-38 queda fuera; RF-43 y RF-44 están descartados. No se incorporan cuentas propias, plugins, IA, OCR ni aplicación móvil completa.
+Los Podría se mantienen opcionales: cuadrícula y ajuste, distribución automática, convertir texto en nota, grafo y plantillas. Las funciones gratuitas del motor pueden habilitarse si no añaden complejidad. RF-38 queda fuera. RF-43 y RF-44 vuelven con la revisión de DP-07 (§13.1). No se incorporan cuentas propias, plugins, IA, OCR ni aplicación móvil completa.
 
 ## 3. Lenguajes, bibliotecas y herramientas
 
@@ -395,7 +397,7 @@ fflate permite ZIP en el cliente [S12]. Propuesta inicial: aviso a partir de 250
 
 ## 13. Seguridad y privacidad
 
-El contenido permanece sin cifrado, conforme a DP-07. HTTPS protege transporte, pero no cifra los archivos guardados en disco o Drive. Conectar Drive muestra el aviso RN-12 y exige confirmación del propietario dentro del producto.
+El contenido permanece sin cifrar en el equipo y en la carpeta local (DP-07 revisada). HTTPS protege el transporte, pero no cifra los archivos guardados. Para Google Drive, el propietario elige al conectar entre sin cifrar (aviso RN-12) y cifrado de extremo a extremo (§13.1); nada se envía a Google antes de esa elección.
 
 Usar OAuth con scope drive.file. Es un permiso por archivo, no acceso general a todo Drive [S4]. Crear archivos con el mismo cliente OAuth usado en todos los equipos. Elegir una carpeta mediante Picker no debe asumirse como permiso recursivo de todo archivo ajeno: comprobar cada archivo y pedir selección explícita/importación cuando no sea accesible.
 
@@ -408,6 +410,39 @@ Saneamiento de Markdown y SVG importado, bloqueo de javascript y esquemas peligr
 Fuentes, iconos, paquetes del motor y recursos PWA se sirven desde el mismo origen. Desactivar bibliotecas externas y funciones del componente que abran servicios no usados. El código GIS se carga solo después de elegir conectar Drive. No se incorporan analítica, reportes remotos de errores ni telemetría.
 
 Configurar CSP y cabeceras mediante el alojamiento [S16]. Allowlist mínima por tipo de recurso: origen propio y, cuando se configure Drive, endpoints exactos de autenticación y API Google. Validar con CSP en modo reporte local durante integración y después bloquear. No escribir una CSP supuestamente final antes de probar los scripts y ventanas de Google.
+
+### 13.1 Cifrado opcional de la copia en Drive
+
+**Elección.** Al pulsar «Conectar Google Drive» se muestran las dos opciones, sin ninguna marcada:
+
+- **Sin cifrar.** Aviso RN-12: Google y quien acceda a la cuenta pueden leer el contenido. A cambio, se puede leer y editar desde Drive y no hay contraseña que perder.
+- **Cifrado.** Aviso: una contraseña y un código de recuperación perdidos hacen irrecuperable la copia de Drive; las notas no se leen ni editan desde Drive; el nombre del almacén, la cantidad, el tamaño y las fechas de los archivos siguen visibles. Se pide una contraseña de 10 caracteres como mínimo, y después se muestra un código de recuperación que hay que confirmar como guardado antes de continuar.
+
+**Claves.**
+
+- Cada almacén tiene una clave aleatoria de 256 bits. Se guarda envuelta en `encryption.json` (raíz de la carpeta de Drive, sin cifrar) con dos ranuras: una con la contraseña y otra con el código de recuperación.
+- Ranuras: PBKDF2-SHA256 con 600 000 iteraciones y sal aleatoria, y la clave envuelta con AES-256-GCM. Los datos autenticados atan cada ranura a su almacén.
+- De la clave se derivan, con HKDF-SHA256, una clave AES-256-GCM para el contenido y otra HMAC-SHA256 para nombrar objetos.
+- Cambiar la contraseña o el código solo reenvuelve la clave; no hay que volver a subir nada.
+- En cada equipo, la clave derivada se guarda como `CryptoKey` no extraíble en IndexedDB, junto al almacén local, que ya está sin cifrar. Se pide una vez por equipo. Desconectar Drive la borra.
+- Se usa solo Web Crypto: sin dependencias nuevas ni servidor.
+
+**Qué se cifra.**
+
+- Revisiones, objetos (notas, escenas, sidecars y adjuntos, con su tipo MIME dentro), controles e índices. Formato: `MNE1` + IV de 12 bytes + AES-256-GCM, con los datos autenticados `vaultId|ámbito|id`, para que un archivo movido o alterado no se acepte.
+- Los objetos se nombran con HMAC(hash), no con su hash, para no revelar contenidos repetidos.
+- Las revisiones no llevan `documentId` en `appProperties`.
+- No hay copias legibles (`readable/`), así que no hay ediciones externas desde Drive.
+- `vault.json` queda sin cifrar, porque la identidad del almacén hace falta para no mezclar almacenes (§8.4).
+- La carpeta raíz lleva `appProperties.encrypted = true`. El adaptador nunca escribe sin cifrar en una carpeta cifrada, ni al revés.
+
+**Cambio de modo.** Desde «Cifrado y contraseña»:
+
+1. Se crea una carpeta nueva del mismo almacén en el otro modo y se sube todo, con marcas de publicación propias del destino `drive:<carpeta>`. Las versiones, el historial y los conflictos se conservan.
+2. Cuando la carpeta nueva está completa, la antigua se marca `supersededBy` y se ofrece moverla a la papelera de Drive.
+3. Los demás equipos detectan la marca (o la carpeta en la papelera), se trasladan solos a la carpeta nueva y, si está cifrada, piden la contraseña. Lo que hubieran subido solo a la carpeta antigua no se pierde: está en su almacén local y se publica en la nueva.
+
+Pasar de sin cifrar a cifrado no borra lo que Google ya pudo leer. La papelera y el historial de Drive conservan la carpeta antigua durante un tiempo, y el aviso lo dice.
 
 Los diagnósticos son locales y rotados por tamaño, sin contenido de notas ni tokens. Exportarlos requiere acción del propietario. Esta rotación no afecta al historial de documentos, que no tiene borrado automático. El alojamiento puede procesar metadatos técnicos de solicitudes; distinguir eso de la promesa de no enviar contenido ni telemetría del producto.
 
@@ -525,7 +560,7 @@ Una orden de carpeta que afecta varios documentos se expresa como revisiones ind
 | RNF-05, 06, 13 | Red restringida, consentimiento y logs locales | CA-19, CA-27 y revisión de logs |
 | RNF-07, 08, 14 | PWA PC/iPad, teclado y lápiz | Matriz de navegadores y pruebas accesibles |
 | RNF-09, 11, 12 | Esquemas, traducciones e inventario de licencias | Migración, revisión es/en y licencias |
-| RNF-15 | Descartado al eliminar cifrado | No aplica |
+| RNF-15 | Código de recuperación mostrado una vez y confirmado (§13.1) | Prueba e2e de creación y desbloqueo con el código |
 
 CA-T01: crear cada forma RF-07, mover, rotar, redimensionar, duplicar y borrar; reabrir conserva el resultado. CA-T02: desplazamiento y zoom no limitan el lienzo ni generan versiones de contenido. CA-T03: [[ ofrece sugerencias, resuelve un UUID y conserva el enlace al renombrar. Complementan los criterios indirectos señalados por el documento.
 
@@ -585,6 +620,7 @@ No dar una fecha de entrega sin conocer dedicación y experiencia. La fase 0 y l
 | Empaquetado de escritorio | Diferido | No bloquea Windows web ni iPad |
 | Licencia del código propio | MIT propuesta | Decidir antes de publicar; bibliotecas se revisan aparte |
 | Colaboración simultánea futura | Fuera de v1 | Requiere nuevo protocolo; Drive actual no es base de coedición |
+| Cifrado de la copia en Drive | Opcional desde el 13/10/2026 (§13.1) | Sin contraseña ni código, la copia de Drive es irrecuperable; el equipo y la carpeta siguen legibles |
 
 Riesgos principales: esfuerzo de sincronización robusta, integración de funciones propias con Excalidraw y durabilidad del navegador en iPad. Se mitigan con pruebas tempranas, protocolo no destructivo y copias independientes. Conservar historia ilimitada significa crecimiento ilimitado de bytes y operaciones; la UI debe mostrarlo y no esconderlo tras una política de limpieza automática.
 

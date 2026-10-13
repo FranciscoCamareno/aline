@@ -239,7 +239,8 @@
       "mismatch": "la carpeta contiene otro almacén",
       "unavailable": "la carpeta no está disponible",
       "error": "error al escribir en la carpeta",
-      "needs-auth": "necesita autorización"
+      "needs-auth": "necesita autorización",
+      "needs-key": "necesita contraseña"
     },
     "chip": {
       "idle": "Carpeta",
@@ -251,7 +252,8 @@
       "mismatch": "Otro almacén",
       "unavailable": "Carpeta no disponible",
       "error": "Error de carpeta",
-      "needs-auth": "Autorizar Drive"
+      "needs-auth": "Autorizar Drive",
+      "needs-key": "Contraseña"
     },
     "syncNow": "Sincronizar ahora",
     "reconnect": "Reconectar carpeta",
@@ -274,7 +276,8 @@
       "needs-auth": "necesita autorización de Google",
       "mismatch": "la carpeta de Drive contiene otro almacén",
       "unavailable": "la carpeta de Drive no está disponible (¿otra cuenta o en la papelera?)",
-      "error": "error al sincronizar con Drive"
+      "error": "error al sincronizar con Drive",
+      "needs-key": "necesita la contraseña del almacén cifrado"
     },
     "driveChip": {
       "idle": "Drive",
@@ -286,17 +289,56 @@
       "needs-auth": "Necesita autorización",
       "mismatch": "Otro almacén",
       "unavailable": "Drive no disponible",
-      "error": "Error de Drive"
+      "error": "Error de Drive",
+      "needs-key": "Necesita contraseña"
     },
     "connectDrive": "Conectar Google Drive…",
-    "driveWarningTitle": "Antes de conectar Google Drive",
-    "driveWarning": "El contenido se guardará en tu Google Drive sin cifrado de extremo a extremo: Google y quien tenga acceso a tu cuenta podrán leerlo. La aplicación solo pide acceso a los archivos que ella misma crea (permiso drive.file). Al continuar se cargará la librería de inicio de sesión de Google; hasta ahora no se ha hecho ninguna petición a Google.",
-    "driveAccept": "Entiendo, continuar",
+    "driveWarningTitle": "Antes de conectar Google Drive: ¿quieres cifrar el contenido?",
+    "driveWarning": "El contenido se guarda en tu Google Drive tal cual: Google y quien tenga acceso a tu cuenta pueden leerlo. A cambio, las notas se pueden abrir y editar desde Drive, y no hay contraseña que perder.",
+    "driveAccept": "Continuar",
     "driveLoading": "Cargando el inicio de sesión de Google…",
     "driveReady": "Google abrirá una ventana para elegir la cuenta y conceder el acceso.",
     "driveContinue": "Continuar con Google",
     "driveReconnect": "Autorizar de nuevo",
     "driveOthers": "Esta cuenta de Drive tiene otros almacenes, pero no este. No se mezclan: puedes abrir uno de ellos en este navegador como almacén aparte o crear una carpeta nueva para este.",
-    "driveCreate": "Crear una carpeta en Drive para este almacén"
+    "driveCreate": "Crear una carpeta en Drive para este almacén",
+    "driveNoRequestsYet": "La aplicación solo pide acceso a los archivos que ella misma crea (permiso drive.file). Hasta que pulses «Continuar» no se ha hecho ninguna petición a Google.",
+    "enc": {
+      "plainTitle": "Sin cifrar",
+      "encryptedTitle": "Cifrado de extremo a extremo",
+      "encryptedWarning": "El contenido se cifra en este equipo antes de subirlo: Google no puede leerlo. Cada equipo necesitará la contraseña una vez. Si olvidas la contraseña y pierdes el código de recuperación, la copia de Drive no se puede recuperar (nadie puede restablecerla). Las notas no se pueden leer ni editar desde Drive, y siguen visibles el nombre del almacén y la cantidad y el tamaño de los archivos.",
+      "password": "Contraseña (mínimo {{min}} caracteres)",
+      "confirm": "Repite la contraseña",
+      "mismatch": "Las contraseñas no coinciden.",
+      "recoveryTitle": "Código de recuperación",
+      "recoveryText": "Si olvidas la contraseña, este código es la única forma de abrir el almacén cifrado. Guárdalo fuera de este equipo (impreso o en un gestor de contraseñas). No se volverá a mostrar.",
+      "recoveryFile": "Código de recuperación del almacén cifrado de Aline en Google Drive. Guárdalo en un lugar seguro: sirve en lugar de la contraseña.",
+      "download": "Descargar el código",
+      "copy": "Copiar",
+      "recoverySaved": "He guardado el código de recuperación en un lugar seguro",
+      "modeEncrypted": "🔒 Cifrado de extremo a extremo",
+      "modePlain": "Sin cifrar (Google puede leer el contenido)",
+      "encryptedShort": "cifrado",
+      "unlockText": "Este almacén está cifrado en Drive. Escribe su contraseña (o el código de recuperación) para usarlo en este equipo; solo se pide una vez.",
+      "unlockLabel": "Contraseña o código de recuperación",
+      "unlock": "Desbloquear",
+      "wrong": "La contraseña o el código no son correctos.",
+      "settings": "Cifrado y contraseña",
+      "changePassword": "Cambiar la contraseña…",
+      "newRecovery": "Generar un código de recuperación nuevo…",
+      "current": "Contraseña actual (o código de recuperación)",
+      "passwordChanged": "Contraseña cambiada. Los equipos que ya usan este almacén siguen funcionando sin pedirla.",
+      "recoveryReplaced": "Código de recuperación sustituido; el anterior ya no sirve.",
+      "toEncrypted": "Cifrar el almacén en Drive…",
+      "toPlain": "Quitar el cifrado…",
+      "switchTitle": "Cambiar el modo del almacén en Drive",
+      "switchToEncrypted": "Se creará una carpeta cifrada nueva y se subirá todo el almacén (puede tardar). La carpeta actual, sin cifrar, no se toca hasta que la nueva esté completa; después podrás moverla a la papelera. Ten en cuenta que Google ya pudo leer lo que estuvo sin cifrar, y que Drive conserva la papelera durante un tiempo.",
+      "switchToPlain": "Se creará una carpeta sin cifrar nueva y se subirá todo el almacén. A partir de entonces Google podrá leer el contenido. La carpeta cifrada no se toca hasta que la nueva esté completa.",
+      "previousFolder": "El cambio de modo terminó: los demás equipos pasarán a la carpeta nueva al sincronizar. La carpeta anterior ya no se usa.",
+      "trashPrevious": "Mover la carpeta anterior a la papelera de Drive",
+      "keepPrevious": "Conservarla",
+      "existing-plain": "Este almacén ya estaba en Drive sin cifrar, así que se usa esa carpeta. Puedes cifrarlo en «Cifrado y contraseña».",
+      "existing-encrypted": "Este almacén ya estaba cifrado en Drive, así que se usa esa carpeta; escribe su contraseña para desbloquearlo."
+    }
   }
 }

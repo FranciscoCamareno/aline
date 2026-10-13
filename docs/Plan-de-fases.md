@@ -1,6 +1,6 @@
 # Plan de fases: del núcleo local a la versión beta
 
-Versión 1.6 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
+Versión 1.7 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
 
 Este plan parte de lo que ya está construido y llega hasta una **beta utilizable** y después a la **versión 1.0**. Conserva la numeración de fases del diseño técnico (§17) para no crear dos mapas distintos. No incluye fechas: el diseño exige no darlas sin conocer la dedicación disponible (D-09). Los tamaños S, M y L indican complejidad relativa, no tiempo.
 
@@ -201,16 +201,34 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 - **CSP.** Orígenes `accounts.google.com/gsi/`, `www.googleapis.com` y `oauth2.googleapis.com`. `Referrer-Policy` pasa de `no-referrer` a `strict-origin-when-cross-origin`, porque GIS comprueba el origen; a otros sitios solo se envía el origen, nunca rutas.
 - **ID de cliente en `.env` (versionado).** Es público por diseño. El secreto del cliente no se usa en ninguna parte.
 
+**Cifrado opcional en Drive (cambio de arquitectura del 13/10/2026; DP-07 revisada, diseño §13.1, formato §7):**
+
+- **Implementado:**
+  - elección del modo al conectar (sin cifrar con el aviso RN-12, o cifrado con contraseña y código de recuperación);
+  - desbloqueo en cada equipo;
+  - cambio de contraseña y de código;
+  - cambio de modo desde «Cifrado y contraseña», con carpeta nueva, traslado automático de los demás equipos y papelera opcional para la anterior.
+- **Probado:** pruebas unitarias del protocolo cifrado y un recorrido e2e completo contra la simulación de Google, en Chromium y Edge.
+- **Pendiente:**
+  - prueba con Google real;
+  - medir PBKDF2 en el iPad;
+  - comprobar que Safari conserva la clave no extraíble.
+
 **Prueba con Google real (propietario):**
 
 1. Publicar una compilación nueva (el despliegue de Cloudflare debe compilar con el `.env` del repositorio).
-2. En https://aline.projeck.workers.dev → Estado y diagnóstico → «Conectar Google Drive…». Comprobar el aviso y aceptar, y después «Continuar con Google». Elegir la cuenta de prueba y conceder el acceso.
+2. En https://aline.projeck.workers.dev → Estado y diagnóstico → «Conectar Google Drive…». Elegir un modo (probar los dos, uno en cada almacén de prueba), aceptar y pulsar «Continuar con Google». Elegir la cuenta de prueba y conceder el acceso.
 3. Comprobar en drive.google.com:
    - existe la carpeta «Aline - Mi almacén» con `vault.json`, `revisions/`, `objects/` y `readable/`;
    - la barra superior muestra «☁️ Sincronizado · hh:mm».
-4. Comprobar desde otro navegador o equipo: crear un almacén nuevo, conectar Drive y elegir «Abrir ese almacén aquí». Las notas deben aparecer. Editar en ambos lados y sincronizar.
-5. Comprobar la CSP: abrir la consola (F12) durante todo el recorrido. Si no aparece ningún aviso «[Report Only] Refused to…», se puede cambiar `Content-Security-Policy-Report-Only` por `Content-Security-Policy` en `public/_headers`.
-6. Avisarme de cualquier error. El diagnóstico (Estado y diagnóstico) registra los fallos de sincronización sin contenido de notas ni tokens.
+4. Comprobar desde otro navegador o equipo: crear un almacén nuevo, conectar Drive y elegir «Abrir ese almacén aquí». Si está cifrado, escribir la contraseña. Las notas deben aparecer. Editar en ambos lados y sincronizar.
+5. Cifrado:
+   - abrir en drive.google.com un archivo `.bin` y comprobar que no se lee;
+   - probar el código de recuperación en lugar de la contraseña;
+   - cambiar de modo en «Cifrado y contraseña» y comprobar que el otro equipo se traslada solo;
+   - probar en el iPad cuánto tarda en desbloquear.
+6. Comprobar la CSP: abrir la consola (F12) durante todo el recorrido. Si no aparece ningún aviso «[Report Only] Refused to…», se puede cambiar `Content-Security-Policy-Report-Only` por `Content-Security-Policy` en `public/_headers`.
+7. Avisarme de cualquier error. El diagnóstico (Estado y diagnóstico) registra los fallos de sincronización sin contenido de notas ni tokens.
 
 **Observación del alojamiento:** Cloudflare añade las cabeceras `Report-To` y `NEL` (registro de errores de red). Con ellas, el navegador puede enviar a Cloudflare informes de fallos de conexión. Es un dato técnico del proveedor, no contenido, pero conviene revisarlo frente a RNF-05 y, si se quiere, desactivarlo en la configuración de Cloudflare.
 
@@ -243,8 +261,9 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 | 4.6 | **`SyncEngine`**: Web Locks y concesión de respaldo; controles de poda, staging, verificación y activación; subida, cursor y reconciliación completa; disparadores al abrir, al recuperar el foco y periódico; estados visibles y hora de la última consulta | RF-37, RF-42, RNF-16 | L |
 | 4.7 | Pruebas del protocolo con un `RemoteStore` en memoria: tres dispositivos, respuestas perdidas, duplicados, subidas parciales, cursor inválido; después pruebas manuales con Drive real | CA-14, CA-29 | M |
 | 4.8 | CSP con los endpoints exactos de Google, primero en modo informe y después en bloqueo | §13, CA-19 | S |
+| 4.9 | **Cifrado opcional en Drive** (añadida el 13/10/2026): elección al conectar, contraseña y código de recuperación, desbloqueo por equipo, cambio de contraseña y de modo con traslado de los demás equipos | RF-43, RF-44, RNF-15, RN-12, CA-27, §13.1 | L |
 
-**Se avanza cuando** dos PC y el iPad editan el mismo almacén, con y sin red, sin sobrescrituras ni duplicados (CA-14, CA-29, CA-33), y el aviso de cifrado aparece al conectar (CA-27).
+**Se avanza cuando** dos PC y el iPad editan el mismo almacén, con y sin red, sin sobrescrituras ni duplicados (CA-14, CA-29, CA-33), en los dos modos de Drive, y la elección de cifrado con sus avisos aparece al conectar (CA-27).
 
 ### Fase 5 — Entrega «Debe» y beta
 

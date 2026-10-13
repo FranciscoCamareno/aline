@@ -9,7 +9,9 @@ import {
   type SyncRuntime,
 } from '../../app/syncRuntime.ts';
 import { switchVault } from '../../app/vaults.ts';
+import type { DriveEncryptionChoice } from '../../domain/encryption.ts';
 import type { Vault } from '../../domain/vault.ts';
+import { DriveModeChooser, DriveSecrets, DriveUnlock } from './DriveEncryption.tsx';
 
 interface Props {
   services: AppServices;
@@ -17,12 +19,16 @@ interface Props {
   onError: (error: unknown) => void;
 }
 
-/** Pasos de la conexión con Drive; nada llega a Google antes de «accepted» (RN-12, CA-27). */
+/**
+ * Pasos de la conexión con Drive. Nada llega a Google antes de elegir el modo (cifrado o no) y
+ * aceptar su aviso (RN-12, CA-27, diseño §13.1).
+ */
 type DriveStep =
-  | { step: 'warning' }
+  | { step: 'mode' }
   | { step: 'loading' }
-  | { step: 'ready'; reconnect: boolean }
-  | { step: 'choose'; choices: DriveVaultChoice[] };
+  | { step: 'ready'; choice: DriveEncryptionChoice | null }
+  | { step: 'choose'; choices: DriveVaultChoice[]; choice: DriveEncryptionChoice }
+  | { step: 'switch'; target: DriveEncryptionChoice['mode'] };
 
 /**
  * «Dónde se guarda» (plan 4.1, 4.4, RF-41, CA-33): el almacén empieza en el navegador y después
@@ -38,6 +44,7 @@ export function StorageSection({ services, sync, onError }: Props) {
     handle: FileSystemDirectoryHandle;
   } | null>(null);
   const [drive, setDrive] = useState<DriveStep | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (services.temporary || !sync) return null;
 
@@ -59,28 +66,34 @@ export function StorageSection({ services, sync, onError }: Props) {
       if ('mismatch' in result) setMismatch({ vault: result.mismatch, handle: result.handle });
     });
 
-  /** Tras aceptar el aviso: carga GIS sin abrir ventanas; la ventana la abre el siguiente clic. */
-  const prepareDrive = (reconnect: boolean) =>
+  /** Tras elegir el modo: carga GIS sin abrir ventanas; la ventana la abre el siguiente clic. */
+  const prepareDrive = (choice: DriveEncryptionChoice | null) =>
     run(async () => {
       setDrive({ step: 'loading' });
       try {
         await sync.prepareDrive();
-        setDrive({ step: 'ready', reconnect });
+        setDrive({ step: 'ready', choice });
       } catch (error) {
         setDrive(null);
         throw error;
       }
     });
 
-  const authorizeDrive = (reconnect: boolean) =>
+  /** `choice` null: reautorizar una conexión existente (su modo ya se eligió). */
+  const authorizeDrive = (choice: DriveEncryptionChoice | null) =>
     run(async () => {
-      if (reconnect) {
+      if (!choice) {
         await sync.reconnect();
         setDrive(null);
         return;
       }
-      const result = await sync.connectDrive({ acknowledgedUnencryptedContent: true });
-      setDrive('choices' in result ? { step: 'choose', choices: result.choices } : null);
+      const result = await sync.connectDrive(choice);
+      if ('choices' in result) {
+        setDrive({ step: 'choose', choices: result.choices, choice });
+        return;
+      }
+      setDrive(null);
+      if (result.notice) setNotice(t(`storage.enc.${result.notice}`));
     });
 
   const time = (iso: string | null) =>
@@ -88,6 +101,8 @@ export function StorageSection({ services, sync, onError }: Props) {
       ? new Date(iso).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
       : '—';
   const phases = remote?.kind === 'drive' ? 'drivePhase' : 'phase';
+  const driveActive =
+    remote?.kind === 'drive' && remote.phase !== 'needs-auth' && remote.phase !== 'needs-key';
 
   return (
     <section data-testid="storage-section">
@@ -105,12 +120,21 @@ export function StorageSection({ services, sync, onError }: Props) {
               {t(`storage.${phases}.${remote.phase}`, { count: remote.pending })}
             </strong>
           </p>
+          {remote.kind === 'drive' && (
+            <p className="small" data-testid="drive-encryption-mode">
+              {remote.encrypted ? t('storage.enc.modeEncrypted') : t('storage.enc.modePlain')}
+            </p>
+          )}
           <p className="muted small">
             {t(remote.kind === 'drive' ? 'storage.driveLastSync' : 'storage.lastSync', {
               time: time(remote.lastSyncAt),
             })}
           </p>
           {remote.message && <p className="notice small">{remote.message}</p>}
+          {notice && <p className="notice small">{notice}</p>}
+          {remote.phase === 'needs-key' && (
+            <DriveUnlock onUnlock={(secret) => sync.unlockDrive(secret)} />
+          )}
           <div className="startup-actions">
             {remote.phase === 'needs-auth' ? (
               sync.driveReady || drive?.step === 'ready' ? (
@@ -118,7 +142,7 @@ export function StorageSection({ services, sync, onError }: Props) {
                   type="button"
                   disabled={busy}
                   data-testid="drive-authorize"
-                  onClick={() => void authorizeDrive(true)}
+                  onClick={() => void authorizeDrive(null)}
                 >
                   {t('storage.driveContinue')}
                 </button>
@@ -127,7 +151,7 @@ export function StorageSection({ services, sync, onError }: Props) {
                   type="button"
                   disabled={busy}
                   data-testid="drive-reconnect"
-                  onClick={() => void prepareDrive(true)}
+                  onClick={() => void prepareDrive(null)}
                 >
                   {t('storage.driveReconnect')}
                 </button>
@@ -141,7 +165,7 @@ export function StorageSection({ services, sync, onError }: Props) {
               >
                 {t('storage.reconnect')}
               </button>
-            ) : (
+            ) : remote.phase !== 'needs-key' ? (
               <button
                 type="button"
                 disabled={busy}
@@ -150,11 +174,57 @@ export function StorageSection({ services, sync, onError }: Props) {
               >
                 {t('storage.syncNow')}
               </button>
-            )}
+            ) : null}
             <button type="button" disabled={busy} onClick={() => void run(() => sync.disconnect())}>
               {t('storage.disconnect')}
             </button>
           </div>
+
+          {remote.kind === 'drive' && remote.previousFolder && (
+            <div className="notice small" data-testid="drive-previous">
+              <p>{t('storage.enc.previousFolder')}</p>
+              <div className="startup-actions">
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid="drive-trash-previous"
+                  onClick={() => void run(() => sync.trashPreviousDriveFolder())}
+                >
+                  {t('storage.enc.trashPrevious')}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void run(() => sync.forgetPreviousDriveFolder())}
+                >
+                  {t('storage.enc.keepPrevious')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {driveActive && drive?.step !== 'switch' && (
+            <details className="drive-settings" data-testid="drive-settings">
+              <summary>{t('storage.enc.settings')}</summary>
+              {remote.encrypted && (
+                <DriveSecrets
+                  busy={busy}
+                  onChangePassword={(current, next) => sync.changeDrivePassword(current, next)}
+                  onReplaceRecovery={(current, code) => sync.replaceRecoveryCode(current, code)}
+                />
+              )}
+              <button
+                type="button"
+                disabled={busy || remote.previousFolder}
+                data-testid="drive-switch-mode"
+                onClick={() =>
+                  setDrive({ step: 'switch', target: remote.encrypted ? 'plain' : 'encrypted' })
+                }
+              >
+                {remote.encrypted ? t('storage.enc.toPlain') : t('storage.enc.toEncrypted')}
+              </button>
+            </details>
+          )}
         </div>
       )}
 
@@ -178,7 +248,7 @@ export function StorageSection({ services, sync, onError }: Props) {
               type="button"
               disabled={busy}
               data-testid="connect-drive"
-              onClick={() => setDrive({ step: 'warning' })}
+              onClick={() => setDrive({ step: 'mode' })}
             >
               {t('storage.connectDrive')}
             </button>
@@ -190,31 +260,33 @@ export function StorageSection({ services, sync, onError }: Props) {
         </>
       )}
 
-      {drive?.step === 'warning' && (
-        <div className="notice" role="alertdialog" data-testid="drive-warning">
-          <p>
-            <strong>{t('storage.driveWarningTitle')}</strong>
-          </p>
-          <p>{t('storage.driveWarning')}</p>
-          <div className="startup-actions">
-            <button
-              type="button"
-              disabled={busy}
-              data-testid="drive-accept"
-              onClick={() => void prepareDrive(false)}
-            >
-              {t('storage.driveAccept')}
-            </button>
-            <button type="button" data-testid="drive-cancel" onClick={() => setDrive(null)}>
-              {t('title.cancel')}
-            </button>
-          </div>
-        </div>
+      {drive?.step === 'mode' && (
+        <DriveModeChooser
+          connecting
+          busy={busy}
+          onConfirm={(choice) => void prepareDrive(choice)}
+          onCancel={() => setDrive(null)}
+        />
+      )}
+
+      {drive?.step === 'switch' && (
+        <DriveModeChooser
+          only={drive.target}
+          connecting={false}
+          busy={busy}
+          onConfirm={(choice) =>
+            void run(async () => {
+              await sync.switchDriveMode(choice);
+              setDrive(null);
+            })
+          }
+          onCancel={() => setDrive(null)}
+        />
       )}
 
       {drive?.step === 'loading' && <p className="muted small">{t('storage.driveLoading')}</p>}
 
-      {drive?.step === 'ready' && !drive.reconnect && (
+      {drive?.step === 'ready' && drive.choice && (
         <div className="notice" data-testid="drive-ready">
           <p>{t('storage.driveReady')}</p>
           <div className="startup-actions">
@@ -222,7 +294,7 @@ export function StorageSection({ services, sync, onError }: Props) {
               type="button"
               disabled={busy}
               data-testid="drive-authorize"
-              onClick={() => void authorizeDrive(false)}
+              onClick={() => void authorizeDrive(drive.choice)}
             >
               {t('storage.driveContinue')}
             </button>
@@ -239,7 +311,8 @@ export function StorageSection({ services, sync, onError }: Props) {
           <ul className="plain-list">
             {drive.choices.map((choice) => (
               <li key={choice.folderId}>
-                {choice.vault.name}{' '}
+                {choice.vault.name}
+                {choice.encrypted ? ` · ${t('storage.enc.encryptedShort')}` : ''}{' '}
                 <button
                   type="button"
                   disabled={busy}
@@ -262,7 +335,7 @@ export function StorageSection({ services, sync, onError }: Props) {
               data-testid="drive-create"
               onClick={() =>
                 void run(async () => {
-                  await sync.createDriveVault();
+                  await sync.createDriveVault(drive.choice);
                   setDrive(null);
                 })
               }

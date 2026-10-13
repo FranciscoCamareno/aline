@@ -171,3 +171,27 @@ En Drive el árbol es el mismo, dentro de una carpeta de «Mi unidad» llamada `
 - Un mismo objeto o revisión puede aparecer duplicado si dos equipos lo suben a la vez. Las copias son idénticas, porque el nombre es el hash o el id, y cualquiera vale.
 - Los archivos descargados de Drive (o con Google Drive para ordenador) forman un almacén legible según §3, igual que una carpeta local.
 - La aplicación solo tiene el permiso `drive.file`: ve los archivos que creó ella. Un archivo añadido a mano en la carpeta no se lee.
+
+## 7. Almacén cifrado en Google Drive
+
+Opcional (diseño §13.1). Mismo árbol que §6, con estas diferencias:
+
+- La carpeta raíz se llama `Aline - <nombre> (cifrado)` y lleva `appProperties.encrypted = "true"`.
+- `vault.json` y `README.md` quedan sin cifrar.
+- `encryption.json` ([esquema](formato/schemas/v1/encryption.schema.json)) guarda la clave del almacén (32 bytes) envuelta dos veces, una con la contraseña (`kind: "password"`) y otra con el código de recuperación (`kind: "recovery"`). Para cada ranura:
+  1. clave de envoltura = PBKDF2-SHA256(secreto en UTF-8, `salt`, `iterations`), 256 bits. El código de recuperación se normaliza antes: mayúsculas, sin espacios ni guiones, O→0 e I/L→1;
+  2. clave del almacén = AES-256-GCM-descifrar(`wrappedKey`, IV = `iv`, datos autenticados = `mindnote-key|<vaultId>|<kind>`).
+- Claves derivadas, con HKDF-SHA256, sal de 32 bytes a cero y la clave del almacén como material:
+  - contenido: `info = "mindnote-content-aes-gcm-v1"` (AES-256-GCM);
+  - nombres de objetos: `info = "mindnote-object-id-hmac-v1"` (HMAC-SHA256).
+- Cada archivo cifrado (`.bin`) es: `MNE1` (4 bytes) + IV (12 bytes) + texto cifrado AES-256-GCM con su etiqueta de 16 bytes. Los datos autenticados son `<vaultId>|<ámbito>|<id>`:
+
+| Archivo | Ámbito | id | Contenido descifrado |
+| --- | --- | --- | --- |
+| `revisions/<revisionId>.bin` | `revision` | id de la revisión | JSON de la revisión (§2.2) |
+| `objects/<HMAC(hash)>.bin` | `object` | SHA-256 del contenido | 2 bytes (longitud del tipo MIME, big-endian) + tipo MIME + bytes del objeto |
+| `controls/<id>.bin` | `control` | id del control | JSON del control (§2.8) |
+| `heads/<deviceId>.bin`, `catalog.bin` | `index` | ruta `heads/<deviceId>.json` o `catalog.json` | JSON del índice (§2.6, §2.7) |
+
+- No hay `readable/` ni `assets/`: los adjuntos son objetos.
+- Para leerlo sin la aplicación: descifrar cada archivo con las reglas anteriores y seguir §3. El SHA-256 de cada objeto descifrado debe coincidir con el hash que cita la revisión.

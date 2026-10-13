@@ -1,4 +1,5 @@
 import type { DocumentRecord, Revision } from '../../domain/revision.ts';
+import { encryptionFileSchema, type EncryptionFile } from '../../domain/encryption.ts';
 import { vaultSchema, type Vault, type VersionPrune } from '../../domain/vault.ts';
 import {
   assetPath,
@@ -15,66 +16,162 @@ import {
   type RemoteObject,
   type RemoteStore,
 } from '../../ports/RemoteStore.ts';
+import type { VaultCipher } from '../../shared/crypto.ts';
 import { utf8Decode, utf8Encode } from '../../shared/hash.ts';
 import { FOLDER_MIME, hasProperty, quote, type DriveClient, type DriveFile } from './driveApi.ts';
 
 /**
  * Tipos de archivo del almacén en Drive (`appProperties.mindnote`). Todo se busca por
- * propiedades (vaultId + id/hash), nunca por ruta: dos carpetas `revisions` creadas a la vez por
- * dos equipos no rompen nada, solo duplican un contenedor.
+ * propiedades (carpeta raíz + id/hash), nunca por ruta: dos carpetas `revisions` creadas a la
+ * vez por dos equipos no rompen nada, solo duplican un contenedor. La propiedad `root` separa
+ * dos carpetas del mismo almacén (p. ej. la antigua y la nueva al cambiar el modo de cifrado).
  */
 type Kind =
-  'vault' | 'vault-json' | 'dir' | 'revision' | 'object' | 'control' | 'readable' | 'index';
+  | 'vault'
+  | 'vault-json'
+  | 'encryption'
+  | 'dir'
+  | 'revision'
+  | 'object'
+  | 'control'
+  | 'readable'
+  | 'index';
 
 /** Además del feed de cambios, cada cierto tiempo se relista todo (reintenta lo rechazado). */
 const FULL_LISTING_MS = 10 * 60_000;
+const OCTET = 'application/octet-stream';
+
+export const ENCRYPTED_README = `# Almacén cifrado de MindNote
+
+Esta carpeta contiene un almacén cifrado de extremo a extremo (AES-256-GCM). Solo se puede leer
+con la aplicación, o con una herramienta que siga la especificación del formato
+(docs/formato-almacen.md, §7), y la contraseña o el código de recuperación del almacén.
+
+- vault.json: identidad del almacén (sin cifrar).
+- encryption.json: clave del almacén envuelta con la contraseña y con el código de recuperación.
+- revisions/, objects/, controls/, heads/: archivos cifrados (.bin).
+`;
 
 export interface DriveVaultEntry {
   folderId: string;
   folderName: string;
   vault: Vault;
+  encrypted: boolean;
 }
 
 const notTrashed = 'trashed = false';
 
-function props(kind: Kind, vaultId: string, extra: Record<string, string> = {}) {
-  return { mindnote: kind, vaultId, ...extra };
+function props(kind: Kind, vaultId: string, root: string, extra: Record<string, string> = {}) {
+  return { mindnote: kind, vaultId, root, ...extra };
 }
 
-function where(kind: Kind, vaultId: string, extra: Record<string, string> = {}): string {
-  return [
-    hasProperty('mindnote', kind),
-    hasProperty('vaultId', vaultId),
-    ...Object.entries(extra).map(([k, v]) => hasProperty(k, v)),
-    notTrashed,
-  ].join(' and ');
+export function driveFolderName(vault: Vault, encrypted: boolean): string {
+  return `Aline - ${vault.name}${encrypted ? ' (cifrado)' : ''}`;
 }
 
-export function driveFolderName(vault: Vault): string {
-  return `Aline - ${vault.name}`;
-}
-
-/** Almacenes que esta aplicación creó en el Drive de la cuenta autorizada (drive.file). */
+/**
+ * Almacenes que esta aplicación creó en el Drive de la cuenta autorizada (drive.file). Se
+ * omiten las carpetas sustituidas por otra al cambiar el modo de cifrado.
+ */
 export async function listDriveVaults(client: DriveClient): Promise<DriveVaultEntry[]> {
   const roots = await client.list(
     `${hasProperty('mindnote', 'vault')} and mimeType = ${quote(FOLDER_MIME)} and ${notTrashed}`,
   );
   const out: DriveVaultEntry[] = [];
   for (const root of roots) {
-    const vault = await new DriveRemoteStore(client, root.id).readVault();
-    if (vault) out.push({ folderId: root.id, folderName: root.name, vault });
+    if (root.appProperties?.['supersededBy']) continue;
+    try {
+      const vault = await new DriveRemoteStore(client, root.id).readVaultInfo();
+      if (vault) {
+        out.push({
+          folderId: root.id,
+          folderName: root.name,
+          vault,
+          encrypted: root.appProperties?.['encrypted'] === 'true',
+        });
+      }
+    } catch (error) {
+      // Una carpeta dañada no impide ver las demás.
+      if (!(error instanceof RemoteError) || error.kind !== 'not-found') throw error;
+    }
   }
   return out;
 }
 
-/** Crea la carpeta raíz de un almacén en «Mi unidad» y escribe vault.json. */
+/**
+ * Crea la carpeta raíz de un almacén en «Mi unidad»: vault.json y, si se cifra, encryption.json
+ * (la clave envuelta) antes que cualquier contenido.
+ */
 export async function createDriveVault(
   client: DriveClient,
   vault: Vault,
+  encryption: EncryptionFile | null,
 ): Promise<DriveVaultEntry> {
-  const root = await client.createFolder(driveFolderName(vault), null, props('vault', vault.id));
-  await new DriveRemoteStore(client, root.id).initializeVault(vault);
-  return { folderId: root.id, folderName: root.name, vault };
+  const root = await client.createFolder(driveFolderName(vault, Boolean(encryption)), null, {
+    mindnote: 'vault',
+    vaultId: vault.id,
+    ...(encryption ? { encrypted: 'true' } : {}),
+  });
+  if (encryption) {
+    await client.createFile(
+      {
+        name: 'encryption.json',
+        parents: [root.id],
+        mimeType: 'application/json',
+        appProperties: props('encryption', vault.id, root.id),
+      },
+      jsonBytes(encryptionFileSchema.parse(encryption)),
+    );
+  }
+  await new DriveRemoteStore(client, root.id).initializeVault(vault, Boolean(encryption));
+  return { folderId: root.id, folderName: root.name, vault, encrypted: Boolean(encryption) };
+}
+
+/** Lee encryption.json de una carpeta cifrada. */
+export async function readDriveEncryption(
+  client: DriveClient,
+  rootId: string,
+): Promise<EncryptionFile> {
+  const [file] = await client.list(
+    `${hasProperty('mindnote', 'encryption')} and ${hasProperty('root', rootId)} and ${notTrashed}`,
+  );
+  if (!file) throw new RemoteError('not-found', 'Falta encryption.json en la carpeta de Drive');
+  const parsed = encryptionFileSchema.safeParse(
+    JSON.parse(utf8Decode(await client.download(file.id))),
+  );
+  if (!parsed.success) throw new RemoteError('not-found', 'encryption.json no es válido');
+  return parsed.data;
+}
+
+/** Sustituye encryption.json (cambio de contraseña o de código de recuperación). */
+export async function writeDriveEncryption(
+  client: DriveClient,
+  rootId: string,
+  encryption: EncryptionFile,
+): Promise<void> {
+  const [file] = await client.list(
+    `${hasProperty('mindnote', 'encryption')} and ${hasProperty('root', rootId)} and ${notTrashed}`,
+  );
+  if (!file) throw new RemoteError('not-found', 'Falta encryption.json en la carpeta de Drive');
+  await client.updateMedia(
+    file.id,
+    jsonBytes(encryptionFileSchema.parse(encryption)),
+    'application/json',
+  );
+}
+
+/** Marca una carpeta como sustituida: los demás equipos se trasladan a la nueva. */
+export async function markDriveSuperseded(
+  client: DriveClient,
+  oldRootId: string,
+  newRootId: string,
+): Promise<void> {
+  await client.updateMetadata(oldRootId, { appProperties: { supersededBy: newRootId } });
+}
+
+/** Mueve una carpeta a la papelera de Drive (recuperable desde Drive durante un tiempo). */
+export async function trashDriveFolder(client: DriveClient, rootId: string): Promise<void> {
+  await client.updateMetadata(rootId, { trashed: true });
 }
 
 /**
@@ -82,10 +179,14 @@ export async function createDriveVault(
  * abierto que la carpeta local: objetos primero, revisión al final; ningún objeto, revisión ni
  * control se reescribe (si ya existe con esas propiedades, no se vuelve a subir). Solo los
  * índices aceleradores se actualizan en su sitio.
+ *
+ * Con `cipher` (diseño §13.1), revisiones, objetos, controles e índices se suben cifrados con
+ * nombres opacos y sin copias legibles; vault.json y encryption.json quedan sin cifrar.
  */
 export class DriveRemoteStore implements RemoteStore {
   private readonly client: DriveClient;
   private readonly rootId: string;
+  private readonly cipher: VaultCipher | null;
   private vaultId: string | null = null;
   private readonly dirs = new Map<string, Promise<string>>();
   /** revisionId → fileId de la última lista completa (evita una búsqueda por revisión). */
@@ -94,13 +195,41 @@ export class DriveRemoteStore implements RemoteStore {
   private lastFullListing = 0;
   private readonly now: () => number;
 
-  constructor(client: DriveClient, rootId: string, now: () => number = Date.now) {
+  constructor(
+    client: DriveClient,
+    rootId: string,
+    options: { cipher?: VaultCipher | null; now?: () => number } = {},
+  ) {
     this.client = client;
     this.rootId = rootId;
-    this.now = now;
+    this.cipher = options.cipher ?? null;
+    this.now = options.now ?? Date.now;
   }
 
+  /**
+   * Comprueba la carpeta raíz antes de cada ciclo: si se sustituyó o está en la papelera, el
+   * almacén «no está disponible» aquí; si su modo no coincide con este equipo, no se escribe.
+   */
   async readVault(): Promise<Vault | null> {
+    const root = await this.client.getFile(this.rootId);
+    if (root.trashed) throw new RemoteError('not-found', 'La carpeta de Drive está en la papelera');
+    if (root.appProperties?.['supersededBy']) {
+      throw new RemoteError('not-found', 'La carpeta de Drive fue sustituida por otra');
+    }
+    const encrypted = root.appProperties?.['encrypted'] === 'true';
+    if (encrypted !== Boolean(this.cipher)) {
+      throw new RemoteError(
+        'permission',
+        encrypted
+          ? 'La carpeta de Drive está cifrada y este equipo no tiene la clave'
+          : 'La carpeta de Drive no está cifrada; no se escribe contenido cifrado en ella',
+      );
+    }
+    return this.readVaultInfo();
+  }
+
+  /** vault.json sin comprobar el modo (para listar almacenes). */
+  async readVaultInfo(): Promise<Vault | null> {
     const [file] = await this.client.list(
       `${quote(this.rootId)} in parents and name = 'vault.json' and ${notTrashed}`,
     );
@@ -116,8 +245,8 @@ export class DriveRemoteStore implements RemoteStore {
     return parsed.data;
   }
 
-  async initializeVault(vault: Vault): Promise<void> {
-    const existing = await this.readVault();
+  async initializeVault(vault: Vault, encrypted = Boolean(this.cipher)): Promise<void> {
+    const existing = await this.readVaultInfo();
     if (existing && existing.id !== vault.id) {
       throw new RemoteError('permission', 'La carpeta de Drive ya contiene otro almacén');
     }
@@ -128,7 +257,7 @@ export class DriveRemoteStore implements RemoteStore {
           name: 'vault.json',
           parents: [this.rootId],
           mimeType: 'application/json',
-          appProperties: props('vault-json', vault.id),
+          appProperties: props('vault-json', vault.id, this.rootId),
         },
         jsonBytes(vault),
       );
@@ -142,20 +271,19 @@ export class DriveRemoteStore implements RemoteStore {
           name: 'README.md',
           parents: [this.rootId],
           mimeType: 'text/markdown',
-          appProperties: props('index', vault.id, { path: 'README.md' }),
+          appProperties: props('index', vault.id, this.rootId, { path: 'README.md' }),
         },
-        utf8Encode(VAULT_README),
+        utf8Encode(encrypted ? ENCRYPTED_README : VAULT_README),
       );
     }
   }
 
   /**
    * El cursor es un startPageToken de Drive, tomado ANTES de listar para no perder cambios
-   * concurrentes ([S14]). Con cursor, el feed dice si algo de este almacén cambió; si nada
+   * concurrentes ([S14]). Con cursor, el feed dice si algo de esta carpeta cambió; si nada
    * cambió se evita relistar. Un cursor inválido provoca una reconciliación completa.
    */
   async pull(cursor: string | null): Promise<RemoteChangePage> {
-    const vaultId = await this.requireVaultId();
     let token: string;
     let relevant = true;
     if (cursor) {
@@ -166,7 +294,7 @@ export class DriveRemoteStore implements RemoteStore {
           // Los índices (también los propios) son derivados: no obligan a relistar.
           (c) =>
             c.removed ||
-            (c.file?.appProperties?.['vaultId'] === vaultId &&
+            (c.file?.appProperties?.['root'] === this.rootId &&
               c.file.appProperties['mindnote'] !== 'index'),
         );
       } catch (error) {
@@ -182,20 +310,19 @@ export class DriveRemoteStore implements RemoteStore {
       return { revisionIds: [], controls: [], nextCursor: token, complete: true };
     }
 
-    const revisions = await this.client.list(where('revision', vaultId));
+    const revisions = await this.client.list(this.where('revision'));
     this.revisionFiles = new Map();
     for (const file of revisions) {
       const id = file.appProperties?.['revisionId'];
       if (id && !this.revisionFiles.has(id)) this.revisionFiles.set(id, file.id);
     }
     const controls: VersionPrune[] = [];
-    for (const file of await this.client.list(where('control', vaultId))) {
+    for (const file of await this.client.list(this.where('control'))) {
       if (!this.controlCache.has(file.id)) {
+        const id = file.appProperties?.['controlId'] ?? '';
         try {
-          this.controlCache.set(
-            file.id,
-            JSON.parse(utf8Decode(await this.client.download(file.id))) as VersionPrune,
-          );
+          const bytes = await this.open('control', id, await this.client.download(file.id));
+          this.controlCache.set(file.id, JSON.parse(utf8Decode(bytes)) as VersionPrune);
         } catch (error) {
           if (error instanceof RemoteError) throw error;
           this.controlCache.set(file.id, null); // ilegible: el motor valida los que sí se leen
@@ -216,33 +343,57 @@ export class DriveRemoteStore implements RemoteStore {
   async getRevision(id: string): Promise<unknown> {
     const fileId =
       this.revisionFiles.get(id) ??
-      (
-        await this.client.list(where('revision', await this.requireVaultId(), { revisionId: id }))
-      )[0]?.id;
+      (await this.client.list(this.where('revision', { revisionId: id })))[0]?.id;
     if (!fileId) return null;
     try {
-      return JSON.parse(utf8Decode(await this.client.download(fileId)));
+      return JSON.parse(
+        utf8Decode(await this.open('revision', id, await this.client.download(fileId))),
+      );
     } catch (error) {
+      // Ilegible, alterado o de otra clave: el motor lo rechaza como contenido inválido.
       if (error instanceof RemoteError && error.kind !== 'not-found') throw error;
       return null;
     }
   }
 
   async getObject(hash: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
-    const [file] = await this.client.list(where('object', await this.requireVaultId(), { hash }));
+    const [file] = await this.client.list(
+      this.where('object', { hash: await this.objectKey(hash) }),
+    );
     if (!file) return null;
+    let bytes: Uint8Array;
     try {
-      return { bytes: await this.client.download(file.id), mimeType: file.mimeType };
+      bytes = await this.client.download(file.id);
     } catch (error) {
       if (error instanceof RemoteError && error.kind === 'not-found') return null;
       throw error;
     }
+    if (!this.cipher) return { bytes, mimeType: file.mimeType };
+    try {
+      return unpackObject(await this.cipher.decrypt('object', hash, bytes));
+    } catch {
+      // Alterado o de otra clave: equivale a un objeto ausente; el motor no activa la revisión.
+      return null;
+    }
   }
 
   async putObject(object: RemoteObject, operationId: string): Promise<void> {
-    const vaultId = await this.requireVaultId();
+    const key = await this.objectKey(object.hash);
     // Idempotente: una respuesta perdida no duplica el objeto en el siguiente intento.
-    if ((await this.client.list(where('object', vaultId, { hash: object.hash }))).length) return;
+    if ((await this.client.list(this.where('object', { hash: key }))).length) return;
+    const { vaultId } = await this.ids();
+    if (this.cipher) {
+      await this.client.createFile(
+        {
+          name: `${key}.bin`,
+          parents: [await this.dir('objects')],
+          mimeType: OCTET,
+          appProperties: props('object', vaultId, this.rootId, { hash: key, operationId }),
+        },
+        await this.cipher.encrypt('object', object.hash, packObject(object)),
+      );
+      return;
+    }
     const path =
       object.role === 'asset'
         ? assetPath({ hash: object.hash, mimeType: object.mimeType })
@@ -253,22 +404,20 @@ export class DriveRemoteStore implements RemoteStore {
         name,
         parents: [await this.dir(folder)],
         mimeType: object.mimeType || mimeForPath(name),
-        appProperties: props('object', vaultId, { hash: object.hash, operationId }),
+        appProperties: props('object', vaultId, this.rootId, { hash: object.hash, operationId }),
       },
       object.bytes,
     );
   }
 
   async publishRevision(revision: Revision, operationId: string): Promise<void> {
-    const vaultId = await this.requireVaultId();
-    if ((await this.client.list(where('revision', vaultId, { revisionId: revision.id }))).length) {
+    const { vaultId } = await this.ids();
+    if ((await this.client.list(this.where('revision', { revisionId: revision.id }))).length) {
       return;
     }
-    // Copia legible por versión (§8.3), antes de la revisión, como en la carpeta.
-    if (revision.metadata.kind === 'note' && revision.contentRefs.body) {
-      const existing = await this.client.list(
-        where('readable', vaultId, { revisionId: revision.id }),
-      );
+    // Copia legible por versión (§8.3), antes de la revisión; no existe si se cifra.
+    if (!this.cipher && revision.metadata.kind === 'note' && revision.contentRefs.body) {
+      const existing = await this.client.list(this.where('readable', { revisionId: revision.id }));
       const body = existing.length ? null : await this.getObject(revision.contentRefs.body);
       if (body) {
         await this.client.createFile(
@@ -276,7 +425,7 @@ export class DriveRemoteStore implements RemoteStore {
             name: `${revision.id}.md`,
             parents: [await this.dir(`readable/${revision.documentId}`)],
             mimeType: 'text/markdown',
-            appProperties: props('readable', vaultId, {
+            appProperties: props('readable', vaultId, this.rootId, {
               documentId: revision.documentId,
               revisionId: revision.id,
             }),
@@ -287,52 +436,56 @@ export class DriveRemoteStore implements RemoteStore {
     }
     const file = await this.client.createFile(
       {
-        name: `${revision.id}.json`,
+        name: `${revision.id}.${this.cipher ? 'bin' : 'json'}`,
         parents: [await this.dir('revisions')],
-        mimeType: 'application/json',
-        appProperties: props('revision', vaultId, {
+        mimeType: this.cipher ? OCTET : 'application/json',
+        // Cifrado: sin documentId, para no revelar qué versiones son del mismo documento.
+        appProperties: props('revision', vaultId, this.rootId, {
           revisionId: revision.id,
-          documentId: revision.documentId,
+          ...(this.cipher ? {} : { documentId: revision.documentId }),
           operationId,
         }),
       },
-      jsonBytes(revision),
+      await this.seal('revision', revision.id, jsonBytes(revision)),
     );
     this.revisionFiles.set(revision.id, file.id);
   }
 
   async publishControl(control: VersionPrune): Promise<void> {
-    const vaultId = await this.requireVaultId();
-    if ((await this.client.list(where('control', vaultId, { controlId: control.id }))).length) {
+    const { vaultId } = await this.ids();
+    if ((await this.client.list(this.where('control', { controlId: control.id }))).length) {
       return;
     }
     await this.client.createFile(
       {
-        name: `${control.id}.json`,
+        name: `${control.id}.${this.cipher ? 'bin' : 'json'}`,
         parents: [await this.dir('controls')],
-        mimeType: 'application/json',
-        appProperties: props('control', vaultId, { controlId: control.id }),
+        mimeType: this.cipher ? OCTET : 'application/json',
+        appProperties: props('control', vaultId, this.rootId, { controlId: control.id }),
       },
-      jsonBytes(control),
+      await this.seal('control', control.id, jsonBytes(control)),
     );
   }
 
   /** Los índices sí se reescriben: son derivados y no son autoridad (§6). */
   async publishIndexes(deviceId: string, documents: DocumentRecord[], vault: Vault): Promise<void> {
-    const vaultId = await this.requireVaultId();
-    for (const [path, bytes] of indexFiles(deviceId, documents, vault, new Date().toISOString())) {
-      const [existing] = await this.client.list(where('index', vaultId, { path }));
+    const { vaultId } = await this.ids();
+    for (const [path, plain] of indexFiles(deviceId, documents, vault, new Date().toISOString())) {
+      const bytes = await this.seal('index', path, plain);
+      const mime = this.cipher ? OCTET : 'application/json';
+      const [existing] = await this.client.list(this.where('index', { path }));
       if (existing) {
-        await this.client.updateMedia(existing.id, bytes, 'application/json');
+        await this.client.updateMedia(existing.id, bytes, mime);
         continue;
       }
       const parts = path.split('/');
+      const name = this.cipher ? parts.at(-1)!.replace(/\.json$/, '.bin') : parts.at(-1)!;
       await this.client.createFile(
         {
-          name: parts.at(-1)!,
+          name,
           parents: [parts.length > 1 ? await this.dir(parts[0]!) : this.rootId],
-          mimeType: 'application/json',
-          appProperties: props('index', vaultId, { path }),
+          mimeType: mime,
+          appProperties: props('index', vaultId, this.rootId, { path }),
         },
         bytes,
       );
@@ -342,9 +495,11 @@ export class DriveRemoteStore implements RemoteStore {
   /**
    * Copias legibles. Con drive.file solo se ven archivos creados por esta aplicación; una
    * edición que conserve el archivo (p. ej. Google Drive para ordenador) cambia modifiedTime.
+   * Un almacén cifrado no tiene copias legibles.
    */
   async listReadableCopies(): Promise<ReadableCopy[]> {
-    const files = await this.client.list(where('readable', await this.requireVaultId()));
+    if (this.cipher) return [];
+    const files = await this.client.list(this.where('readable'));
     return files.flatMap((file: DriveFile) => {
       const documentId = file.appProperties?.['documentId'];
       const revisionId = file.appProperties?.['revisionId'];
@@ -361,11 +516,32 @@ export class DriveRemoteStore implements RemoteStore {
     });
   }
 
-  private async requireVaultId(): Promise<string> {
-    if (this.vaultId) return this.vaultId;
-    const vault = await this.readVault();
+  private where(kind: Kind, extra: Record<string, string> = {}): string {
+    return [
+      hasProperty('mindnote', kind),
+      hasProperty('root', this.rootId),
+      ...Object.entries(extra).map(([k, v]) => hasProperty(k, v)),
+      notTrashed,
+    ].join(' and ');
+  }
+
+  private async ids(): Promise<{ vaultId: string }> {
+    if (this.vaultId) return { vaultId: this.vaultId };
+    const vault = await this.readVaultInfo();
     if (!vault) throw new RemoteError('not-found', 'La carpeta de Drive no contiene un almacén');
-    return vault.id;
+    return { vaultId: vault.id };
+  }
+
+  private objectKey(hash: string): Promise<string> {
+    return this.cipher ? this.cipher.objectId(hash) : Promise.resolve(hash);
+  }
+
+  private seal(scope: 'revision' | 'control' | 'index', id: string, plain: Uint8Array) {
+    return this.cipher ? this.cipher.encrypt(scope, id, plain) : Promise.resolve(plain);
+  }
+
+  private open(scope: 'revision' | 'control', id: string, bytes: Uint8Array) {
+    return this.cipher ? this.cipher.decrypt(scope, id, bytes) : Promise.resolve(bytes);
   }
 
   /** Busca o crea una subcarpeta (`revisions`, `readable/<doc>`…); se memoriza por sesión. */
@@ -380,12 +556,35 @@ export class DriveRemoteStore implements RemoteStore {
   }
 
   private async findOrCreateDir(path: string): Promise<string> {
-    const vaultId = await this.requireVaultId();
-    const [found] = await this.client.list(where('dir', vaultId, { path }));
+    const { vaultId } = await this.ids();
+    const [found] = await this.client.list(this.where('dir', { path }));
     if (found) return found.id;
     const parts = path.split('/');
     const parent = parts.length > 1 ? await this.dir(parts.slice(0, -1).join('/')) : this.rootId;
-    return (await this.client.createFolder(parts.at(-1)!, parent, props('dir', vaultId, { path })))
-      .id;
+    return (
+      await this.client.createFolder(
+        parts.at(-1)!,
+        parent,
+        props('dir', vaultId, this.rootId, { path }),
+      )
+    ).id;
   }
+}
+
+/** Objeto cifrado: el tipo MIME va dentro (2 bytes de longitud + MIME + contenido). */
+function packObject(object: RemoteObject): Uint8Array {
+  const mime = utf8Encode(object.mimeType);
+  const out = new Uint8Array(2 + mime.byteLength + object.bytes.byteLength);
+  new DataView(out.buffer).setUint16(0, mime.byteLength);
+  out.set(mime, 2);
+  out.set(object.bytes, 2 + mime.byteLength);
+  return out;
+}
+
+function unpackObject(plain: Uint8Array): { bytes: Uint8Array; mimeType: string } {
+  const length = new DataView(plain.buffer, plain.byteOffset).getUint16(0);
+  return {
+    mimeType: utf8Decode(plain.subarray(2, 2 + length)),
+    bytes: plain.slice(2 + length),
+  };
 }

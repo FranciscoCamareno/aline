@@ -134,9 +134,11 @@ Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
 - Si el documento abierto cambia en otro sitio y no tiene cambios sin guardar, se recarga solo;
   si los tiene, se avisa y no se pisa nada.
 - **Google Drive** (Estado y diagnóstico → «Dónde se guarda» → «Conectar Google Drive…»):
-  - primero aparece el aviso RN-12 (contenido sin cifrar en Drive). Hasta aceptarlo no se hace
-    ninguna petición a Google; al aceptarlo se carga la librería de Google y «Continuar con
-    Google» abre su ventana;
+  - primero hay que elegir **sin cifrar** (aviso RN-12: Google puede leer el contenido) o
+    **cifrado de extremo a extremo** (aviso: sin la contraseña ni el código de recuperación, la
+    copia de Drive no se recupera). Con cifrado se crea una contraseña y se muestra un código de
+    recuperación que hay que confirmar como guardado. Hasta elegir no se hace ninguna petición a
+    Google; después se carga la librería de Google y «Continuar con Google» abre su ventana;
   - permiso `drive.file` (solo los archivos que crea la aplicación). El token vive en memoria:
     al recargar aparece «Necesita autorización» y se renueva con un clic, sin tocar lo local;
   - crea la carpeta «Aline - <almacén>» con el mismo formato abierto que la carpeta local. Cada
@@ -146,6 +148,16 @@ Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
   - la barra superior muestra «☁️ Sincronizado · hh:mm» solo tras un ciclo completo sin nada
     pendiente;
   - un almacén usa un solo destino externo: la carpeta o Drive.
+- **Cifrado de la copia en Drive** (opcional; diseño §13.1, formato §7):
+  - AES-256-GCM con Web Crypto. Una clave por almacén, protegida con la contraseña (PBKDF2, 600 000
+    iteraciones) y con el código de recuperación;
+  - cada equipo la pide una vez y la guarda como clave no extraíble;
+  - en Drive solo quedan sin cifrar `vault.json`, `encryption.json` y el README; los objetos se
+    nombran con HMAC, no con su hash;
+  - el equipo y la carpeta local siguen sin cifrar;
+  - en «Cifrado y contraseña» se puede cambiar la contraseña, generar otro código o cambiar de
+    modo. Al cambiar de modo se crea una carpeta nueva y se sube todo; los demás equipos se
+    trasladan solos y la carpeta anterior se puede mover a la papelera.
 - **Integración continua** en `.github/workflows/ci.yml` (formato, licencias, verify y E2E).
 - Borrador de cabeceras de seguridad para Cloudflare Pages en `public/_headers`. La CSP va en
   modo informe (`Report-Only`) y **no es la definitiva**.
@@ -182,15 +194,23 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 
 Última ejecución: 13/10/2026, Windows 11, Node 24.21.
 
-- `pnpm verify`: typecheck, lint, 90 pruebas unitarias y compilación, todo correcto.
-- `pnpm test:e2e:all`: 33 recorridos en **Chromium** y los mismos 33 en **Microsoft Edge**, sin
-  fallos. Los de Drive se repitieron 4 veces sin fallos. La fase 4 incluye:
+- `pnpm verify`: typecheck, lint, 95 pruebas unitarias y compilación, todo correcto.
+- `pnpm test:e2e:all`: 34 recorridos en **Chromium** y los mismos 34 en **Microsoft Edge**, sin
+  fallos. La fase 4 incluye:
   - conectar una carpeta, sincronizar, abrir su almacén desde otro almacén («segundo equipo») y
     ver los cambios en ambos sentidos (RF-36, CA-33);
   - editar una copia legible fuera de la aplicación y verla importada como «Cambio externo»
     (CA-28);
-  - Drive, aviso RN-12: aparece antes de nada, cancelarlo no hace ninguna petición a Google y
-    aceptarlo solo pide la librería de inicio de sesión (CA-27);
+  - Drive, elección de modo (RN-12): aparece antes de nada, ninguna opción viene marcada,
+    cancelar no hace ninguna petición a Google y aceptar solo pide la librería de inicio de sesión
+    (CA-27);
+  - Drive cifrado, **contra una simulación de Google**:
+    - crear la contraseña y confirmar el código;
+    - comprobar que en Drive no hay texto ni identificadores legibles;
+    - recargar sin volver a pedir la contraseña;
+    - abrir el almacén en otro «equipo»: una contraseña errónea no sirve y el código sí;
+    - quitar el cifrado desde la configuración y mover la carpeta anterior a la papelera;
+    - el primer «equipo» se traslada solo a la carpeta nueva;
   - Drive, recorrido completo **contra una simulación de Google**: conectar, crear la carpeta,
     «Sincronizado · hh:mm», «Necesita autorización» al recargar, abrir el almacén desde otro
     almacén y ver la nota.
@@ -210,10 +230,18 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
   - solo con Drive: clasificación de errores (401, 403 por límite, cuota o permiso, 404, 429,
     5xx, sin red), cursor inválido que reconcilia todo, ciclos sin cambios que solo consultan el
     feed, y subida reanudable por encima de 5 MB.
+  - solo con Drive cifrado (`tests/unit/drive.test.ts`):
+    - clave abierta solo con la contraseña o el código;
+    - cambio de contraseña sin volver a subir nada;
+    - dos equipos que convergen sin nada legible en Drive;
+    - archivos alterados o intercambiados que se rechazan;
+    - nunca se escribe sin cifrar en una carpeta cifrada ni al revés;
+    - cambio de modo con traslado del otro equipo.
 - Fases anteriores: los recorridos de las fases 1 a 3 (Chromium y Edge), la búsqueda con 2 000
-  notas y 500 lienzos, y las 8 pruebas de viabilidad de la fase 0. En esta ejecución, con
-  Chromium y Edge a la vez, el lienzo con 2 500 documentos tardó 10,6 s en Chromium y 2,2 s en
-  Edge. Es una medición con la máquina cargada, no un resultado de rendimiento.
+  notas y 500 lienzos, y las 8 pruebas de viabilidad de la fase 0. Con 2 500 documentos, el
+  lienzo aparece en 3,2 s en Chromium ejecutando la prueba sola. Con Chromium y Edge a la vez
+  sube a 10–14 s en Chromium (2,2–2,9 s en Edge): es contención de la máquina, no un resultado
+  de rendimiento.
 
 **No verificado** (no se ha ejecutado):
 
@@ -243,6 +271,11 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
   real la tiene que hacer el propietario con su cuenta (pasos en `docs/Plan-de-fases.md`, fase 4).
 
 - Drive en Safari/iPad: ventanas emergentes de Google y almacenamiento.
+- Cifrado:
+  - tiempo de PBKDF2 (600 000 iteraciones) en el iPad;
+  - que Safari conserve en IndexedDB la clave no extraíble;
+  - el cambio de modo con un almacén grande y Drive real.
+  - Ni la implementación ni el formato han pasado una auditoría de seguridad externa.
 
 ## Funciones pendientes
 
