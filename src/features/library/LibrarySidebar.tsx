@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../app/store.ts';
 import { effectiveFolder, RECOVERY_FOLDER } from '../../domain/folders.ts';
@@ -14,6 +14,10 @@ interface Props {
   onTrash: (documentId: string) => Promise<void>;
   onRestoreFromTrash: (documentId: string) => Promise<void>;
   onPurge: (documentId: string) => Promise<void>;
+  /** RF-34, RF-35: archivos sueltos o una carpeta, dentro de la carpeta seleccionada. */
+  onImport: (files: File[], folderId: string | null) => Promise<void>;
+  /** RF-35: notas de la carpeta seleccionada (o de todo el almacén) en un ZIP de Markdown. */
+  onExportMarkdown: (folderId: string | null) => Promise<void>;
 }
 
 const RECENT_COUNT = 5;
@@ -29,11 +33,26 @@ export function LibrarySidebar({
   onTrash,
   onRestoreFromTrash,
   onPurge,
+  onImport,
+  onExportMarkdown,
 }: Props) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
   const documents = useUiStore((s) => s.documents);
   const activeId = useUiStore((s) => s.activeId);
-  const setActive = useUiStore((s) => s.setActive);
+  const setActiveDocument = useUiStore((s) => s.setActive);
+  const toggleLibrary = useUiStore((s) => s.toggleLibrary);
+  /** En pantallas estrechas la biblioteca tapa el lienzo: abrir un documento la cierra. */
+  const closeIfNarrow = () => {
+    if (window.matchMedia('(max-width: 820px)').matches) toggleLibrary();
+  };
+  const setActive = (id: string) => {
+    setActiveDocument(id);
+    closeIfNarrow();
+  };
+  const create = (kind: DocumentKind) => void onCreate(kind, selected).then(closeIfNarrow);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -185,21 +204,27 @@ export function LibrarySidebar({
     : null;
 
   return (
-    <nav className="library" aria-label={t('library.title')}>
+    <nav
+      className="library"
+      aria-label={t('library.title')}
+      // Deslizar hacia la izquierda con el dedo cierra el panel (uso táctil, plan 5.4).
+      onPointerDown={(e) => {
+        swipe.current = e.pointerType === 'touch' ? { x: e.clientX, y: e.clientY } : null;
+      }}
+      onPointerUp={(e) => {
+        const start = swipe.current;
+        swipe.current = null;
+        if (!start) return;
+        const dx = e.clientX - start.x;
+        if (dx < -60 && Math.abs(dx) > Math.abs(e.clientY - start.y) * 1.5) toggleLibrary();
+      }}
+    >
       <h2>{t('library.title')}</h2>
       <div className="library-actions">
-        <button
-          type="button"
-          data-testid="new-canvas"
-          onClick={() => void onCreate('canvas', selected)}
-        >
+        <button type="button" data-testid="new-canvas" onClick={() => create('canvas')}>
           + {t('library.newCanvas')}
         </button>
-        <button
-          type="button"
-          data-testid="new-note"
-          onClick={() => void onCreate('note', selected)}
-        >
+        <button type="button" data-testid="new-note" onClick={() => create('note')}>
           + {t('library.newNote')}
         </button>
         {newFolder === null ? (
@@ -228,6 +253,58 @@ export function LibrarySidebar({
             <button type="submit">✓</button>
           </form>
         )}
+        <details className="library-more">
+          <summary>{t('library.importExport')}</summary>
+          <button
+            type="button"
+            data-testid="import-files"
+            onClick={() => fileInput.current?.click()}
+          >
+            {t('import.files')}
+          </button>
+          <button
+            type="button"
+            data-testid="import-folder"
+            onClick={() => folderInput.current?.click()}
+          >
+            {t('import.folder')}
+          </button>
+          <button
+            type="button"
+            data-testid="export-markdown"
+            onClick={() => void onExportMarkdown(selected)}
+          >
+            {selected
+              ? t('export.markdownFolder', { folder: folders.get(selected)?.title })
+              : t('export.markdownAll')}
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            hidden
+            multiple
+            accept=".md,.markdown,.txt,.excalidraw,.json,text/markdown,text/plain,application/json"
+            data-testid="import-files-input"
+            onChange={(e) => {
+              const files = [...(e.target.files ?? [])];
+              e.target.value = '';
+              if (files.length) void onImport(files, selected);
+            }}
+          />
+          <input
+            ref={folderInput}
+            type="file"
+            hidden
+            multiple
+            {...{ webkitdirectory: '' }}
+            data-testid="import-folder-input"
+            onChange={(e) => {
+              const files = [...(e.target.files ?? [])];
+              e.target.value = '';
+              if (files.length) void onImport(files, selected);
+            }}
+          />
+        </details>
         {selected && (
           <p className="muted small" data-testid="selected-folder">
             {t('library.createInside', { folder: folders.get(selected)?.title })}

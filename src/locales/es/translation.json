@@ -46,7 +46,8 @@
     "recent": "Recientes",
     "all": "Todo",
     "recovery": "Recuperación",
-    "recoveryHint": "Documentos cuya carpeta está en la papelera o ya no existe. Muévelos a otra carpeta."
+    "recoveryHint": "Documentos cuya carpeta está en la papelera o ya no existe. Muévelos a otra carpeta.",
+    "importExport": "Importar y exportar"
   },
   "title": {
     "edit": "Editar título",
@@ -120,7 +121,8 @@
     "storage-failure": "Falló el guardado local. El cambio NO se ha guardado.",
     "not-implemented": "Función pendiente.",
     "unsupported-version": "Versión de formato no soportada: el documento está en solo lectura.",
-    "unknown": "Error inesperado."
+    "unknown": "Error inesperado.",
+    "invalid-content": "El contenido no es válido o está dañado."
   },
   "pwa": {
     "updateAvailable": "Hay una nueva versión disponible.",
@@ -222,7 +224,8 @@
     "indexing": "Indexando… {{done}} de {{total}}",
     "meta": "{{count}} resultados en {{ms}} ms",
     "empty": "Sin resultados.",
-    "elements": "{{count}} elementos coinciden"
+    "elements": "{{count}} elementos coinciden",
+    "shortcut": "Ctrl+Mayús+F"
   },
   "storage": {
     "title": "Dónde se guarda",
@@ -339,6 +342,68 @@
       "keepPrevious": "Conservarla",
       "existing-plain": "Este almacén ya estaba en Drive sin cifrar, así que se usa esa carpeta. Puedes cifrarlo en «Cifrado y contraseña».",
       "existing-encrypted": "Este almacén ya estaba cifrado en Drive, así que se usa esa carpeta; escribe su contraseña para desbloquearlo."
+    }
+  },
+  "export": {
+    "open": "Exportar…",
+    "title": "Exportar el lienzo",
+    "format": "Formato",
+    "formats": {
+      "png": "PNG (imagen)",
+      "svg": "SVG (vectorial)",
+      "pdf": "PDF (A4)",
+      "excalidraw": ".excalidraw (para abrir en Excalidraw)"
+    },
+    "background": "Incluir el fondo",
+    "scale": "Escala",
+    "onlySelected": "Solo la selección",
+    "pdfLayout": "Páginas",
+    "pdf": {
+      "fit": "Encajar en una página",
+      "paginate": "Varias páginas, a lo ancho de la hoja"
+    },
+    "size": "Tamaño de la imagen: {{width}} × {{height}} px",
+    "tooBig": "A esta escala la imagen no cabe en la memoria del navegador. Baja la escala (como máximo {{max}}×), exporta solo la selección o usa SVG. No se recorta nada.",
+    "useScale": "Usar {{scale}}×",
+    "lossesTitle": "Excalidraw no tiene equivalente para lo siguiente, que no viaja en el archivo:",
+    "losses": {
+      "internal-links_one": "{{count}} enlace a una nota o lienzo de este almacén: en Excalidraw no llevará a ninguna parte.",
+      "internal-links_other": "{{count}} enlaces a notas o lienzos de este almacén: en Excalidraw no llevarán a ninguna parte.",
+      "product-semantics": "Backlinks, historial de versiones, carpetas, etiquetas e identidad de las notas. Para conservarlo todo, usa la copia completa (ZIP)."
+    },
+    "empty": "El lienzo está vacío.",
+    "failed": "No se pudo exportar. Prueba con una escala menor o solo con la selección.",
+    "working": "Exportando…",
+    "run": "Exportar",
+    "markdown": "Exportar .md",
+    "markdownFolder": "Exportar «{{folder}}» en Markdown (ZIP)",
+    "markdownAll": "Exportar todas las notas en Markdown (ZIP)",
+    "noNotes": "No hay notas que exportar."
+  },
+  "import": {
+    "title": "Importación terminada",
+    "created_one": "Se creó {{count}} documento.",
+    "created_other": "Se crearon {{count}} documentos.",
+    "problemsTitle": "Avisos:",
+    "close": "Cerrar",
+    "files": "Importar archivos (.md, .excalidraw)…",
+    "folder": "Importar una carpeta de Markdown…",
+    "droppedKeys": "no se conservan estos campos del frontmatter: {{keys}}",
+    "frontmatterAsText": "el frontmatter no se reconoció y quedó como texto al principio de la nota",
+    "unsupported": "tipo de archivo no admitido (solo .md, .markdown, .txt, .excalidraw y .json)",
+    "failed": "no se pudo importar",
+    "issues": {
+      "embedded-web-content": "contenido web incrustado no importado ({{count}}: {{types}}); cargaría páginas externas",
+      "unknown-element": "elementos de un tipo no soportado no importados ({{count}}: {{types}})",
+      "missing-image": "imágenes sin datos ({{count}}): aparecerán como no disponibles",
+      "remote-image": "imágenes enlazadas desde internet no importadas ({{count}})",
+      "deleted-elements": "elementos borrados en el original, no importados ({{count}})"
+    },
+    "errors": {
+      "too-large": "archivo demasiado grande (máximo 100 MB)",
+      "not-excalidraw": "no es un archivo .excalidraw válido",
+      "library": "es una biblioteca de Excalidraw, no un lienzo",
+      "too-many-elements": "demasiados elementos (máximo 50 000)"
     }
   }
 }

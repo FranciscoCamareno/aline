@@ -8,6 +8,10 @@ local son opcionales.
 
 > `mindnote` es un nombre provisional, igual que el esquema `mindnote://` del diseño.
 
+**Documentación de uso:** [guía de uso](docs/guia-de-uso.md) ([English](docs/user-guide.md)),
+[operación, copias y recuperación](docs/operacion.md) ([English](docs/operations.md)),
+[rendimiento medido](docs/rendimiento.md) y [matriz de pruebas en el iPad](docs/pruebas-ipad.md).
+
 ## Requisitos
 
 - Node.js 22.18 o superior (probado con Node 24.21). Los scripts de `scripts/*.ts` se ejecutan
@@ -43,6 +47,7 @@ sirvan desde el mismo origen y no desde un CDN (diseño §13).
 | `pnpm test:fase0`                       | Pruebas de viabilidad del motor (fase 0) sobre el banco `spikes/fase0/`                     |
 | `pnpm spike:fase0 --host`               | Sirve el banco en http://<IP>:4174 para las pruebas manuales en el iPad                     |
 | `pnpm schemas`                          | Regenera los JSON Schema del formato en `docs/formato/schemas/v1`                           |
+| `pnpm test:rendimiento`                 | Banco de rendimiento (CA-12, CA-31) en Chromium; resultados en `docs/rendimiento.md`        |
 | `pnpm licenses` / `pnpm licenses:check` | Inventario de licencias en `docs/licencias.md`; `check` falla ante una licencia no admitida |
 
 Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
@@ -158,6 +163,27 @@ Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
   - en «Cifrado y contraseña» se puede cambiar la contraseña, generar otro código o cambiar de
     modo. Al cambiar de modo se crea una carpeta nueva y se sube todo; los demás equipos se
     trasladan solos y la carpeta anterior se puede mover a la papelera.
+- **Exportar el lienzo** (botón «Exportar…» o menú del lienzo; RF-33, RF-45):
+  - PNG y SVG con fondo opcional, escala 1×–3× y opción de solo la selección;
+  - PDF A4 encajado o paginado (raster insertado con jsPDF, como decide el diseño);
+  - `.excalidraw` autocontenido, con la lista de lo que no viaja;
+  - si el raster no cabe en memoria (límite de Safari, 16,7 Mpx), se propone una escala menor o
+    la selección; nunca se recorta en silencio.
+- **Importar** (biblioteca → «Importar y exportar»; RF-34, RF-35):
+  - `.excalidraw` validado, sin contenido web incrustado ni imágenes remotas;
+  - notas Markdown sueltas o carpetas con subcarpetas;
+  - cada importación crea documentos nuevos y termina con un informe de lo no importado y por qué.
+- **Exportar Markdown:** cada nota con su frontmatter («Exportar .md»), o una carpeta o todo el
+  almacén en un ZIP con la estructura de carpetas.
+- **Uso táctil (iPad):**
+  - objetivos de 44 px y campos de 16 px (sin zoom al enfocar en iOS);
+  - biblioteca superpuesta en vertical que se cierra al abrir un documento, al tocar fuera o al
+    deslizarla;
+  - zonas seguras de la PWA instalada.
+- **Accesibilidad:**
+  - foco visible en todo lo navegable con el teclado;
+  - contraste WCAG AA comprobado en los temas claro y oscuro;
+  - traducciones es/en completas, con una prueba que lo exige.
 - **Integración continua** en `.github/workflows/ci.yml` (formato, licencias, verify y E2E).
 - Borrador de cabeceras de seguridad para Cloudflare Pages en `public/_headers`. La CSP va en
   modo informe (`Report-Only`) y **no es la definitiva**.
@@ -194,26 +220,38 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 
 Última ejecución: 13/10/2026, Windows 11, Node 24.21.
 
-- `pnpm verify`: typecheck, lint, 95 pruebas unitarias y compilación, todo correcto.
-- `pnpm test:e2e:all`: 34 recorridos en **Chromium** y los mismos 34 en **Microsoft Edge**, sin
-  fallos. La fase 4 incluye:
+- `pnpm verify`: typecheck, lint, 109 pruebas unitarias y compilación, todo correcto.
+- `pnpm test:e2e:all`: 39 recorridos en **Chromium** y los mismos 39 en **Microsoft Edge**.
+  - De cuatro ejecuciones completas, una tuvo un fallo intermitente (una comprobación de texto)
+    que no se volvió a reproducir en las otras tres; no se identificó qué prueba fue.
+  - Los recorridos nuevos de la fase 5, junto con los de Drive, se repitieron 4 veces en los dos
+    navegadores, sin fallos.
+- La fase 5 incluye:
+  - exportar a PNG, SVG, PDF y `.excalidraw` con todos los elementos. Se comprueba:
+    - el PNG decodificado tiene el tamaño anunciado;
+    - el SVG es XML válido y contiene el texto;
+    - el PDF es válido, con una página al encajar;
+    - el `.excalidraw` contiene la forma y el texto;
+    - exportar no conecta con ningún otro origen (CA-13, CA-30, CA-19);
+  - importar un `.excalidraw` con contenido web incrustado: se lista y no se importa (CA-18);
+  - importar una carpeta de Markdown con subcarpetas y un archivo no admitido, exportar la nota y
+    exportar todo el almacén en un ZIP con la misma estructura (RF-35);
+  - uso solo con teclado con el foco visible;
+  - pantalla táctil estrecha emulada: botones de 44 px, editor de 16 px y biblioteca que se
+    cierra al abrir, al tocar fuera y al deslizar.
+- La fase 4 incluye:
   - conectar una carpeta, sincronizar, abrir su almacén desde otro almacén («segundo equipo») y
     ver los cambios en ambos sentidos (RF-36, CA-33);
   - editar una copia legible fuera de la aplicación y verla importada como «Cambio externo»
     (CA-28);
-  - Drive, elección de modo (RN-12): aparece antes de nada, ninguna opción viene marcada,
-    cancelar no hace ninguna petición a Google y aceptar solo pide la librería de inicio de sesión
-    (CA-27);
-  - Drive cifrado, **contra una simulación de Google**:
-    - crear la contraseña y confirmar el código;
-    - comprobar que en Drive no hay texto ni identificadores legibles;
-    - recargar sin volver a pedir la contraseña;
-    - abrir el almacén en otro «equipo»: una contraseña errónea no sirve y el código sí;
-    - quitar el cifrado desde la configuración y mover la carpeta anterior a la papelera;
-    - el primer «equipo» se traslada solo a la carpeta nueva;
-  - Drive, recorrido completo **contra una simulación de Google**: conectar, crear la carpeta,
-    «Sincronizado · hh:mm», «Necesita autorización» al recargar, abrir el almacén desde otro
-    almacén y ver la nota.
+  - Drive, sin cifrar y cifrado, contra una simulación de Google (detalle en las pruebas del
+    protocolo).
+- **Rendimiento** (`pnpm test:rendimiento`, i5-1155G7; detalle en
+  [docs/rendimiento.md](docs/rendimiento.md)):
+  - abrir un lienzo de 1 000 elementos: 114–166 ms;
+  - arrastrar: p95 17 ms entre fotogramas;
+  - abrir con 100 versiones: 62–67 ms;
+  - búsqueda: 1,5–7 ms por consulta.
 - Pruebas del protocolo, con el mismo motor contra dos destinos:
   - carpeta en memoria con la API de File System Access (`tests/unit/sync.test.ts`);
   - simulación de Drive API v3 (`tests/unit/fakeDrive.ts`: `files.list` con `q` y paginación,
@@ -253,6 +291,11 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
   no llenando el disco.
 - Tamaño máximo de copia ZIP que soporta el iPad (diseño §12.2): no se ha medido.
 - Instalación como PWA en el escritorio o en la pantalla de inicio del iPad.
+- Toda la fase 5 en el iPad: lápiz, gestos, teclado en pantalla, exportaciones con el límite de
+  memoria de Safari e importación desde la app Archivos. La matriz para hacerlo está en
+  [docs/pruebas-ipad.md](docs/pruebas-ipad.md). La emulación táctil de Chromium no lo sustituye.
+- Que los PDF, PNG y SVG exportados se abran en visores externos (Acrobat, Vista previa…): se
+  comprobó su estructura y que el navegador los decodifica.
 - El flujo de actualización de la PWA con una versión nueva publicada (requiere un despliegue).
 - El resultado del CI en GitHub: el repositorio es privado y no se ha consultado desde aquí.
 - La carpeta con el selector nativo de Windows y con una carpeta real del disco: las pruebas usan
@@ -283,20 +326,22 @@ Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes d
 error `not-implemented` en vez de simular un éxito.
 El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
 
-| Área                                                                  | Estado                                                                                                                                      | Dónde                                |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Google Drive: comprobación con la cuenta real                         | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                  | `adapters/drive/`, `public/_headers` |
-| Google Picker (abrir archivos ajenos a la aplicación)                 | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                 | —                                    |
-| Poda selectiva de versiones y espacio que ocupan (RF-46)              | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio           | `features/history/`                  |
-| Enlaces `[[Título]]` escritos a mano en la vista previa               | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID    | `features/notes/`                    |
-| Biblioteca con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                    | `features/library/`                  |
-| Exportación PNG/SVG/PDF propia, `.excalidraw` autocontenido, Markdown | Pendiente (fase 5). La copia ZIP completa ya está hecha. Solo están disponibles las exportaciones del menú de Excalidraw                    | —                                    |
-| Sidecar: ramas colapsables y notas incrustadas                        | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes           | `domain/sidecar.ts`                  |
-| Pila de deshacer coordinada para comandos propios                     | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                       | —                                    |
-| Interfaz del modo «Solo lápiz»                                        | El motor activa `penMode` al detectar el lápiz y el Apple Pencil funciona en el iPad (fase 0); el borrador del trazo en curso ya está hecho | `features/canvas/CanvasView.tsx`     |
-| Búsqueda en documentos en conflicto                                   | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                        | `application/KnowledgeService.ts`    |
-| Frontmatter YAML completo                                             | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                         | `domain/frontmatter.ts`              |
-| Desactivar la biblioteca externa de Excalidraw                        | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                    | —                                    |
+| Área                                                                     | Estado                                                                                                                                                                                   | Dónde                                   |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Google Drive: comprobación con la cuenta real                            | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                                                               | `adapters/drive/`, `public/_headers`    |
+| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                              | —                                       |
+| Poda selectiva de versiones y espacio que ocupan (RF-46)                 | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                        | `features/history/`                     |
+| Enlaces `[[Título]]` escritos a mano en la vista previa                  | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID                                                 | `features/notes/`                       |
+| Biblioteca con miles de documentos                                       | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                 | `features/library/`                     |
+| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                             | `app/importExport.ts`                   |
+| Mensajes técnicos de sincronización en inglés                            | Los textos de la interfaz están traducidos; los mensajes de error que llegan del adaptador (Drive, carpeta) se muestran en español                                                       | `adapters/drive`, `adapters/filesystem` |
+| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                            | —                                       |
+| Sidecar: ramas colapsables y notas incrustadas                           | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                        | `domain/sidecar.ts`                     |
+| Pila de deshacer coordinada para comandos propios                        | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                    | —                                       |
+| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y muestra su propio botón; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6 | `features/canvas/CanvasView.tsx`        |
+| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                     | `application/KnowledgeService.ts`       |
+| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                      | `domain/frontmatter.ts`                 |
+| Desactivar la biblioteca externa de Excalidraw                           | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                                                                 | —                                       |
 
 ## Decisiones de implementación
 

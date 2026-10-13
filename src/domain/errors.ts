@@ -5,7 +5,8 @@ export type DomainErrorCode =
   | 'quota-exceeded'
   | 'storage-failure'
   | 'not-implemented'
-  | 'unsupported-version';
+  | 'unsupported-version'
+  | 'invalid-content';
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

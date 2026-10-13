@@ -1,14 +1,33 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
+
+/**
+ * Las dependencias opcionales de jsPDF (HTML/SVG a PDF) no se instalan ni se distribuyen
+ * (pnpm-workspace.yaml). Solo las importaciones que hace jsPDF se resuelven a un sustituto que
+ * falla al usarse; dompurify sigue resolviéndose normalmente para el resto (Mermaid).
+ */
+const JSPDF_OPTIONAL = new Set(['canvg', 'dompurify', 'html2canvas']);
+const jspdfOptional: Plugin = {
+  name: 'jspdf-optional',
+  enforce: 'pre',
+  resolveId(source, importer) {
+    if (JSPDF_OPTIONAL.has(source) && importer?.replaceAll('\\', '/').includes('/jspdf/')) {
+      return fileURLToPath(new URL('./src/vendor/jspdfOptional.ts', import.meta.url));
+    }
+    return null;
+  },
+};
 
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
+    jspdfOptional,
     react(),
     VitePWA({
       // Actualización controlada por el usuario (diseño §14.4), nunca en mitad de una escritura.

@@ -19,6 +19,8 @@ import { QUOTA_WARNING_RATIO, quotaRatio, StatusPanel } from '../features/status
 import { describeError } from '../ports/Diagnostics.ts';
 import { runEmergencyExport } from './emergency.ts';
 import { LANGUAGES, setLanguage, type AppLanguage } from './i18n.ts';
+import { ImportReportDialog } from '../features/library/ImportReportDialog.tsx';
+import { exportMarkdownZip, importFiles, type ImportReport } from './importExport.ts';
 import { PwaPrompt } from './PwaPrompt.tsx';
 import { flushAllWrites, logDiagnostic } from './runtime.ts';
 import { bootstrap, type AppServices } from './services.ts';
@@ -56,6 +58,7 @@ export function App() {
   const [services, setServices] = useState<AppServices | null>(null);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [panel, setPanel] = useState<'status' | 'history' | 'conflict' | 'details' | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   /** Índices de enlaces y búsqueda del almacén abierto. */
@@ -300,6 +303,35 @@ export function App() {
     [services, upsertDocument, reportError],
   );
 
+  /** RF-34, RF-35: importar archivos; el informe lista lo que no se importó o cambió. */
+  const importDocuments = useCallback(
+    async (files: File[], folderId: string | null) => {
+      try {
+        const report = await importFiles(services!, files, folderId);
+        setDocuments(await services!.service.listDocuments());
+        const first = report.created.find((d) => d.kind !== 'folder');
+        if (first) setActive(first.id);
+        setImportReport(report);
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, setDocuments, setActive, reportError],
+  );
+
+  const exportMarkdown = useCallback(
+    async (folderId: string | null) => {
+      try {
+        await flushAllWrites();
+        const count = await exportMarkdownZip(services!, folderId);
+        if (!count) setActionError(t('export.noNotes'));
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, reportError, t],
+  );
+
   /** FA-03a: crear la nota de destino al enlazar, sin abandonar el documento actual. */
   const createNoteForLink = useCallback(
     async (title: string) => {
@@ -415,7 +447,7 @@ export function App() {
           type="button"
           className="icon-button"
           aria-label={t('search.title')}
-          title={`${t('search.title')} (Ctrl+Mayús+F)`}
+          title={`${t('search.title')} (${t('search.shortcut')})`}
           data-testid="open-search"
           onClick={() => setSearchOpen(true)}
         >
@@ -480,6 +512,9 @@ export function App() {
         </p>
       )}
 
+      {importReport && (
+        <ImportReportDialog report={importReport} onClose={() => setImportReport(null)} />
+      )}
       {actionError && (
         <div className="toast" role="alert">
           {actionError}
@@ -490,6 +525,9 @@ export function App() {
       )}
 
       {libraryOpen && (
+        <div className="library-backdrop" aria-hidden="true" onClick={toggleLibrary} />
+      )}
+      {libraryOpen && (
         <LibrarySidebar
           onCreate={createDocument}
           onCreateFolder={createFolder}
@@ -497,6 +535,8 @@ export function App() {
           onTrash={trashDocument}
           onRestoreFromTrash={restoreFromTrash}
           onPurge={purgeDocument}
+          onImport={importDocuments}
+          onExportMarkdown={exportMarkdown}
         />
       )}
 
@@ -533,6 +573,7 @@ export function App() {
           <CanvasView
             key={`${active.id}:${reloads[active.id] ?? 0}`}
             documentId={active.id}
+            title={active.title}
             service={services.service}
             theme={theme}
             onCreateNote={createNoteForLink}
@@ -542,6 +583,7 @@ export function App() {
           <NoteView
             key={`${active.id}:${reloads[active.id] ?? 0}`}
             documentId={active.id}
+            title={active.title}
             service={services.service}
             onCreateNote={createNoteForLink}
           />

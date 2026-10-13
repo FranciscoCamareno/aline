@@ -1,2 +1,9 @@
 minimumReleaseAgeExclude:
   - zod@4.6.6
+# jsPDF solo se usa para insertar imágenes (diseño §12.1). Sus dependencias opcionales
+# (HTML/SVG a PDF) no se usan y no se distribuyen.
+overrides:
+  jspdf>canvg: '-'
+  jspdf>core-js: '-'
+  jspdf>dompurify: '-'
+  jspdf>html2canvas: '-'

@@ -1,6 +1,6 @@
 # Plan de fases: del núcleo local a la versión beta
 
-Versión 1.7 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
+Versión 1.8 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
 
 Este plan parte de lo que ya está construido y llega hasta una **beta utilizable** y después a la **versión 1.0**. Conserva la numeración de fases del diseño técnico (§17) para no crear dos mapas distintos. No incluye fechas: el diseño exige no darlas sin conocer la dedicación disponible (D-09). Los tamaños S, M y L indican complejidad relativa, no tiempo.
 
@@ -265,7 +265,28 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **Se avanza cuando** dos PC y el iPad editan el mismo almacén, con y sin red, sin sobrescrituras ni duplicados (CA-14, CA-29, CA-33), en los dos modos de Drive, y la elección de cifrado con sus avisos aparece al conectar (CA-27).
 
-### Fase 5 — Entrega «Debe» y beta
+### Fase 5 — Entrega «Debe» y beta (implementada el 13/10/2026; faltan las pruebas en el iPad y el uso real)
+
+**Estado:**
+
+- **Hechas y probadas en Chromium y Edge:** 5.1, 5.2, 5.3, 5.4 (emulación táctil), 5.5, 5.6 (en el PC) y 5.7.
+- **Las hace el propietario:**
+  - la matriz del iPad ([pruebas-ipad.md](pruebas-ipad.md)), que es parte del criterio de salida;
+  - 5.8: desplegar y usar la aplicación dos semanas con copias.
+
+**Decisiones de esta fase:**
+
+- **PDF con jsPDF, como decide el diseño.**
+  - Se carga solo al exportar.
+  - Sus dependencias opcionales (HTML/SVG a PDF) no se instalan (`pnpm-workspace.yaml`). Un plugin de Vite resuelve solo las importaciones que hace jsPDF a un sustituto que falla al usarse, así que no se distribuye código sin uso.
+- **Presupuesto de memoria de 16,7 Mpx** (el máximo de Safari). Por encima se propone la mayor escala que cabe, o exportar la selección; nunca se recorta en silencio (FA-05a). El PDF paginado reparte el raster en hojas A4 a lo ancho.
+- **Importar crea siempre documentos nuevos, en una sola revisión** (`VaultService.importNote`, `importCanvas`), con la operación `save` para no cambiar el formato v1.
+  - Los adjuntos importados se verifican por SHA-256.
+  - Se descartan, y se listan, el contenido web incrustado (`embeddable`, `iframe`), las imágenes remotas, los tipos desconocidos y los elementos borrados.
+  - Los campos de frontmatter que el modelo no tiene se listan como no conservados.
+- **iPad.** El modo lápiz es el del motor, que ya muestra su botón al detectar el Apple Pencil. El modo «Solo lápiz» propio sigue en la fase 6 (6.7).
+- **Pendiente detectado:** conservar el `.excalidraw` original cuando la importación lo convierte (§12.1), y traducir los mensajes técnicos que vienen de los adaptadores.
+
 
 | # | Tarea | Requisitos y CA | Tamaño |
 | --- | --- | --- | --- |

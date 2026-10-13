@@ -25,9 +25,12 @@ import type { EditSession, VaultService } from '../../application/VaultService.t
 import type { DocumentRecord } from '../../domain/revision.ts';
 import type { CanvasExtensions } from '../../domain/sidecar.ts';
 import { LinkPicker } from '../knowledge/LinkPicker.tsx';
+import { ExportDialog } from './ExportDialog.tsx';
 
 interface Props {
   documentId: string;
+  /** Título vigente, para el nombre de los archivos exportados. */
+  title: string;
   service: VaultService;
   theme: 'light' | 'dark';
   /** FA-03a: crear la nota de destino al vincular. */
@@ -56,7 +59,7 @@ function isElementLike(value: unknown): value is ExcalidrawElement {
  * El motor activa `penMode` al detectar el lápiz (fase 0). Pendiente: interfaz propia del modo
  * «Solo lápiz» y pila de deshacer coordinada con comandos propios.
  */
-export function CanvasView({ documentId, service, theme, onCreateNote }: Props) {
+export function CanvasView({ documentId, title, service, theme, onCreateNote }: Props) {
   const { t, i18n } = useTranslation();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -69,6 +72,7 @@ export function CanvasView({ documentId, service, theme, onCreateNote }: Props) 
   const [selection, setSelection] = useState<ExcalidrawElement | null>(null);
   const selectionKey = useRef('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const navigate = useUiStore((s) => s.navigate);
   const focus = useUiStore((s) => s.focus);
 
@@ -243,6 +247,14 @@ export function CanvasView({ documentId, service, theme, onCreateNote }: Props) 
         </p>
       )}
       <div className="canvas-tools">
+        <button
+          type="button"
+          data-testid="canvas-export"
+          disabled={!api}
+          onClick={() => setExportOpen(true)}
+        >
+          {t('export.open')}
+        </button>
         {selection && !loaded.session.readOnly && (
           <button type="button" data-testid="link-element" onClick={() => setPickerOpen(true)}>
             🔗 {selection.link ? t('links.editLink') : t('links.linkElement')}
@@ -259,6 +271,9 @@ export function CanvasView({ documentId, service, theme, onCreateNote }: Props) 
           </button>
         )}
       </div>
+      {exportOpen && api && (
+        <ExportDialog api={api} title={title} onClose={() => setExportOpen(false)} />
+      )}
       {pickerOpen && selection && (
         <LinkPicker
           sourceId={documentId}
@@ -296,8 +311,8 @@ export function CanvasView({ documentId, service, theme, onCreateNote }: Props) 
       >
         {/* Menú propio sin enlaces a servicios externos (diseño §13). */}
         <MainMenu>
-          <MainMenu.DefaultItems.Export />
-          <MainMenu.DefaultItems.SaveAsImage />
+          {/* Exportación propia: PNG, SVG, PDF y .excalidraw con avisos (diseño §12.1). */}
+          <MainMenu.Item onSelect={() => setExportOpen(true)}>{t('export.open')}</MainMenu.Item>
           <MainMenu.DefaultItems.SearchMenu />
           <MainMenu.DefaultItems.Help />
           <MainMenu.DefaultItems.ClearCanvas />

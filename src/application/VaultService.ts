@@ -170,6 +170,98 @@ export class VaultService {
     return result.document;
   }
 
+  /**
+   * ImportNote (RF-35): documento nuevo con su contenido en una sola revisión. Usa la
+   * operación `save` para no ampliar el formato v1. Notifica a los oyentes como cualquier commit.
+   */
+  async importNote(input: {
+    title: string;
+    body: string;
+    tags?: readonly string[];
+    folderId?: Uuid | null;
+  }): Promise<DocumentRecord> {
+    const title = validateTitle(input.title);
+    const tags = dedupeTags(input.tags ?? []);
+    const documentId = newId();
+    const body = await toBlob(
+      utf8Encode(this.noteMarkdown(documentId, title, tags, input.body)),
+      MIME.markdown,
+    );
+    const result = await this.repo.commit({
+      documentId,
+      kind: 'note',
+      operation: 'save',
+      knownHeads: [],
+      metadata: { kind: 'note', title, folderId: input.folderId ?? null, tags, deleted: false },
+      contentRefs: { body: body.hash, extensions: null, assets: [] },
+      blobs: [body],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  /**
+   * ImportCanvas (RF-34): lienzo nuevo con la escena ya serializada por el adaptador. El sidecar
+   * se deriva con el id definitivo del documento (`extensionsFor`).
+   */
+  async importCanvas(input: {
+    title: string;
+    canvas: SerializedCanvas;
+    folderId?: Uuid | null;
+    extensionsFor?: (base: CanvasExtensions) => CanvasExtensions;
+  }): Promise<DocumentRecord> {
+    const title = validateTitle(input.title);
+    const documentId = newId();
+    const base = emptyCanvasExtensions(documentId);
+    const extensions = input.extensionsFor ? input.extensionsFor(base) : base;
+    // Contenido que llega de fuera: cada asset debe corresponder a su hash.
+    for (const asset of input.canvas.assets) {
+      if ((await sha256Hex(asset.bytes)) !== asset.hash) {
+        throw new DomainError('invalid-content', 'Un adjunto importado no coincide con su hash');
+      }
+    }
+    const scene = await toBlob(utf8Encode(input.canvas.sceneJson), MIME.excalidraw);
+    const sidecar = await toBlob(utf8Encode(JSON.stringify(extensions)), MIME.extensions);
+    const assets: StoredBlob[] = input.canvas.assets.map((a) => ({
+      hash: a.hash,
+      mimeType: a.mimeType,
+      byteLength: a.bytes.byteLength,
+      bytes: a.bytes,
+    }));
+    const result = await this.repo.commit({
+      documentId,
+      kind: 'canvas',
+      operation: 'save',
+      knownHeads: [],
+      metadata: {
+        kind: 'canvas',
+        title,
+        folderId: input.folderId ?? null,
+        tags: [],
+        deleted: false,
+      },
+      contentRefs: {
+        body: scene.hash,
+        extensions: sidecar.hash,
+        assets: [...new Set(assets.map((a) => a.hash))].sort(),
+      },
+      blobs: [scene, sidecar, ...assets],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  /**
+   * Markdown de la versión vigente tal como se guarda (frontmatter + cuerpo, diseño §12.1).
+   * Espera a los guardados pendientes para no exportar una versión anterior.
+   */
+  async exportNoteMarkdown(documentId: Uuid): Promise<string> {
+    await this.pendingWrites(documentId);
+    const { head } = await this.loadHead(documentId, 'note');
+    if (!head.contentRefs.body) throw new DomainError('not-found', 'Nota sin contenido');
+    return this.readText(head.contentRefs.body);
+  }
+
   async openNote(documentId: Uuid): Promise<OpenedNote> {
     await this.pendingWrites(documentId);
     const { document, head } = await this.loadHead(documentId, 'note');

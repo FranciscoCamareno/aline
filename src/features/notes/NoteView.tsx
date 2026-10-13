@@ -1,9 +1,11 @@
 import { EditorView } from 'codemirror';
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { downloadText } from '../../app/download.ts';
 import { useUiStore } from '../../app/store.ts';
 import { useAutosave } from '../../app/useAutosave.ts';
 import { parseInternalLink } from '../../application/knowledge.ts';
+import { safeFilename } from '../../application/portability.ts';
 import { normalizeForSearch } from '../../application/searchIndex.ts';
 import type { OpenedNote, VaultService } from '../../application/VaultService.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
@@ -12,12 +14,14 @@ import { renderMarkdownPreview } from './markdown.ts';
 
 interface Props {
   documentId: string;
+  /** Título vigente, para el nombre del archivo exportado. */
+  title: string;
   service: VaultService;
   /** FA-03a: crear la nota de destino desde el autocompletado [[. */
   onCreateNote: (title: string) => Promise<DocumentRecord>;
 }
 
-export function NoteView({ documentId, service, onCreateNote }: Props) {
+export function NoteView({ documentId, title, service, onCreateNote }: Props) {
   const { t } = useTranslation();
   const [opened, setOpened] = useState<OpenedNote | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -124,6 +128,20 @@ export function NoteView({ documentId, service, onCreateNote }: Props) {
       <div className="note-toolbar">
         <button type="button" onClick={() => setShowPreview((v) => !v)} aria-pressed={showPreview}>
           {showPreview ? t('notes.hidePreview') : t('notes.showPreview')}
+        </button>
+        <button
+          type="button"
+          data-testid="note-export"
+          onClick={() =>
+            // Lo escrito y aún no guardado se guarda antes: se exporta la versión vigente.
+            void (autosave.pending ? autosave.flush() : Promise.resolve())
+              .then(() => service.exportNoteMarkdown(documentId))
+              .then((markdown) =>
+                downloadText(safeFilename(title, 'md'), markdown, 'text/markdown;charset=utf-8'),
+              )
+          }
+        >
+          {t('export.markdown')}
         </button>
       </div>
       <div className="note-panes">

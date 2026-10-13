@@ -46,7 +46,8 @@
     "recent": "Recent",
     "all": "All",
     "recovery": "Recovery",
-    "recoveryHint": "Documents whose folder is in the trash or no longer exists. Move them to another folder."
+    "recoveryHint": "Documents whose folder is in the trash or no longer exists. Move them to another folder.",
+    "importExport": "Import and export"
   },
   "title": {
     "edit": "Edit title",
@@ -120,7 +121,8 @@
     "storage-failure": "Local save failed. The change was NOT saved.",
     "not-implemented": "Pending feature.",
     "unsupported-version": "Unsupported format version: the document is read-only.",
-    "unknown": "Unexpected error."
+    "unknown": "Unexpected error.",
+    "invalid-content": "The content is invalid or damaged."
   },
   "pwa": {
     "updateAvailable": "A new version is available.",
@@ -222,7 +224,8 @@
     "indexing": "Indexing… {{done}} of {{total}}",
     "meta": "{{count}} results in {{ms}} ms",
     "empty": "No results.",
-    "elements": "{{count}} elements match"
+    "elements": "{{count}} elements match",
+    "shortcut": "Ctrl+Shift+F"
   },
   "storage": {
     "title": "Where it is stored",
@@ -339,6 +342,68 @@
       "keepPrevious": "Keep it",
       "existing-plain": "This vault was already in Drive unencrypted, so that folder is used. You can encrypt it in “Encryption and password”.",
       "existing-encrypted": "This vault was already encrypted in Drive, so that folder is used; enter its password to unlock it."
+    }
+  },
+  "export": {
+    "open": "Export…",
+    "title": "Export the canvas",
+    "format": "Format",
+    "formats": {
+      "png": "PNG (image)",
+      "svg": "SVG (vector)",
+      "pdf": "PDF (A4)",
+      "excalidraw": ".excalidraw (to open in Excalidraw)"
+    },
+    "background": "Include the background",
+    "scale": "Scale",
+    "onlySelected": "Selection only",
+    "pdfLayout": "Pages",
+    "pdf": {
+      "fit": "Fit on one page",
+      "paginate": "Several pages, page-wide"
+    },
+    "size": "Image size: {{width}} × {{height}} px",
+    "tooBig": "At this scale the image does not fit in the browser memory. Lower the scale (at most {{max}}×), export only the selection or use SVG. Nothing is cropped.",
+    "useScale": "Use {{scale}}×",
+    "lossesTitle": "Excalidraw has no equivalent for the following, which is not included in the file:",
+    "losses": {
+      "internal-links_one": "{{count}} link to a note or canvas in this vault: in Excalidraw it will lead nowhere.",
+      "internal-links_other": "{{count}} links to notes or canvases in this vault: in Excalidraw they will lead nowhere.",
+      "product-semantics": "Backlinks, version history, folders, tags and note identity. To keep everything, use the full backup (ZIP)."
+    },
+    "empty": "The canvas is empty.",
+    "failed": "Export failed. Try a lower scale or the selection only.",
+    "working": "Exporting…",
+    "run": "Export",
+    "markdown": "Export .md",
+    "markdownFolder": "Export “{{folder}}” as Markdown (ZIP)",
+    "markdownAll": "Export all notes as Markdown (ZIP)",
+    "noNotes": "There are no notes to export."
+  },
+  "import": {
+    "title": "Import finished",
+    "created_one": "{{count}} document was created.",
+    "created_other": "{{count}} documents were created.",
+    "problemsTitle": "Notices:",
+    "close": "Close",
+    "files": "Import files (.md, .excalidraw)…",
+    "folder": "Import a Markdown folder…",
+    "droppedKeys": "these frontmatter fields are not kept: {{keys}}",
+    "frontmatterAsText": "the frontmatter was not recognised and was kept as text at the top of the note",
+    "unsupported": "unsupported file type (only .md, .markdown, .txt, .excalidraw and .json)",
+    "failed": "could not be imported",
+    "issues": {
+      "embedded-web-content": "embedded web content not imported ({{count}}: {{types}}); it would load external pages",
+      "unknown-element": "elements of an unsupported type not imported ({{count}}: {{types}})",
+      "missing-image": "images without data ({{count}}): they will show as unavailable",
+      "remote-image": "images linked from the internet not imported ({{count}})",
+      "deleted-elements": "elements deleted in the original, not imported ({{count}})"
+    },
+    "errors": {
+      "too-large": "file too large (100 MB maximum)",
+      "not-excalidraw": "not a valid .excalidraw file",
+      "library": "it is an Excalidraw library, not a canvas",
+      "too-many-elements": "too many elements (50,000 maximum)"
     }
   }
 }

@@ -1,6 +1,6 @@
 # Inventario de licencias
 
-Generado con `node scripts/licenses.ts` el 2026-10-12 a partir de `pnpm licenses list --prod`. No editar a mano.
+Generado con `node scripts/licenses.ts` el 2026-10-13 a partir de `pnpm licenses list --prod`. No editar a mano.
 
 Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso previsto. Se admiten las licencias permisivas de la lista del script; cualquier otra aparece en «Por revisar» y hace fallar `--check`.
 
@@ -8,7 +8,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 
 | Licencia | Paquetes |
 | --- | --- |
-| MIT | 280 |
+| MIT | 284 |
 | ISC | 38 |
 | Apache-2.0 | 11 |
 | BSD-3-Clause | 7 |
@@ -165,6 +165,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @types/hast | 3.0.5 | MIT |
 | @types/mdast | 4.0.4 | MIT |
 | @types/ms | 2.1.0 | MIT |
+| @types/pako | 2.0.4 | MIT |
 | @types/unist | 3.0.3 | MIT |
 | @ungap/structured-clone | 1.4.0 | ISC |
 | @upsetjs/venn.js | 2.0.0 | MIT |
@@ -244,6 +245,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | escape-string-regexp | 5.0.0 | MIT |
 | extend | 3.0.2 | MIT |
 | fake-indexeddb | 6.2.5 | Apache-2.0 |
+| fast-png | 6.4.0 | MIT |
 | fastdom | 1.0.12 | MIT |
 | fflate | 0.8.3 | MIT |
 | fill-range | 7.1.1 | MIT |
@@ -265,6 +267,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | import-meta-resolve | 4.2.0 | MIT |
 | inherits | 2.0.4 | ISC |
 | internmap | 1.0.1, 2.0.3 | ISC |
+| iobuffer | 5.4.0 | MIT |
 | is-binary-path | 2.1.0 | MIT |
 | is-extglob | 2.1.1 | MIT |
 | is-glob | 4.0.3 | MIT |
@@ -273,6 +276,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | isexe | 2.0.0 | ISC |
 | jotai | 2.11.0 | MIT |
 | jotai-scope | 0.7.2 | MIT |
+| jspdf | 4.2.1 | MIT |
 | katex | 0.16.47 | MIT |
 | khroma | 2.1.0 | MIT |
 | langium | 3.3.1 | MIT |
@@ -333,7 +337,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | object-assign | 4.1.1 | MIT |
 | open-color | 1.9.1 | MIT |
 | package-manager-detector | 1.9.0 | MIT |
-| pako | 2.0.3 | (MIT AND Zlib) |
+| pako | 2.0.3, 2.2.0 | (MIT AND Zlib) |
 | path-data-parser | 0.1.0 | MIT |
 | path-key | 3.1.1 | MIT |
 | perfect-freehand | 1.2.0 | MIT |
