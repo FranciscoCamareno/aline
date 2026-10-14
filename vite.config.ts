@@ -32,22 +32,28 @@ export default defineConfig({
     VitePWA({
       // Actualización controlada por el usuario (diseño §14.4), nunca en mitad de una escritura.
       registerType: 'prompt',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'favicon-32.png', 'aline-icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'MindNote — mapas mentales y notas',
-        short_name: 'MindNote',
+        name: 'aline — mapas mentales y notas',
+        short_name: 'aline',
         description: 'Mapas mentales y notas conectadas, guardados en este dispositivo.',
         lang: 'es',
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#5b57d1',
+        // Papel y papel viejo del sistema de diseño (docs/DESIGN.md §2.1).
+        background_color: '#FFFDF4',
+        theme_color: '#F8F2E1',
         icons: [
-          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' },
+          { src: 'aline-icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'aline-icon-512.png', sizes: '512x512', type: 'image/png' },
+          {
+            src: 'aline-icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+          { src: 'aline-icon.svg', sizes: 'any', type: 'image/svg+xml' },
         ],
       },
       workbox: {

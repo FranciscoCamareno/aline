@@ -5,6 +5,9 @@ import type { CanvasAdapter, CanvasAsset, SerializedCanvas } from '../../ports/C
 import { base64ToBytes, bytesToBase64 } from '../../shared/base64.ts';
 import { sha256Hex } from '../../shared/hash.ts';
 
+/** Preferencias del motor que no forman parte del contenido; se aplican al abrir. */
+const ENGINE_DEFAULTS: Partial<AppState> = { currentItemStrokeColor: '#262118' };
+
 /** Escena tal como la entrega el motor en onChange. */
 export interface EngineScene {
   elements: readonly ExcalidrawElement[];
@@ -39,6 +42,21 @@ function bytesToDataUrl(mimeType: string, bytes: Uint8Array): string {
 }
 
 /**
+ * El motor muestra el HTML de `customData.generationData` de un elemento `iframe` (función de
+ * generación con IA que esta aplicación no usa) en un marco con scripts. Ese HTML vendría de la
+ * escena guardada, así que nunca se entrega al motor; el elemento queda como marco vacío.
+ */
+function withoutGeneratedHtml(element: ExcalidrawElement): ExcalidrawElement {
+  const customData = element.customData as Record<string, unknown> | undefined;
+  if (element.type !== 'iframe' || !customData || !('generationData' in customData)) {
+    return element;
+  }
+  const rest = { ...customData };
+  delete rest['generationData'];
+  return { ...element, customData: rest };
+}
+
+/**
  * Adaptador Excalidraw (diseño §9): serializa con las utilidades de la versión fijada,
  * separa imágenes como assets direccionados por SHA-256 y las rehidrata al cargar.
  */
@@ -68,17 +86,27 @@ export const excalidrawCanvasAdapter: CanvasAdapter<EngineScene> = {
     const files: BinaryFiles = {};
     for (const [id, file] of Object.entries(data.files ?? {})) {
       let { dataURL } = file;
+      if (typeof dataURL !== 'string') continue;
       if (dataURL.startsWith(ASSET_REF_PREFIX)) {
         const asset = await loadAsset(dataURL.slice(ASSET_REF_PREFIX.length));
         // Un asset ausente no se inventa: el motor mostrará la imagen como no disponible.
         if (!asset) continue;
         dataURL = bytesToDataUrl(asset.mimeType, asset.bytes);
+      } else if (!dataURL.startsWith('data:')) {
+        // Misma regla que al importar (RF-34): una URL remota haría una petición al mostrarla.
+        // Vale para toda escena, también la recibida al sincronizar o restaurar (auditoría H02).
+        continue;
       }
       files[id] = { ...file, dataURL } as unknown as BinaryFileData;
     }
     const restored = restore(
-      { elements: data.elements ?? [], appState: data.appState ?? {}, files },
-      null,
+      {
+        elements: (data.elements ?? []).map(withoutGeneratedHtml),
+        appState: data.appState ?? {},
+        files,
+      },
+      // Valores de herramienta que la escena no guarda: el trazo empieza en tinta (DESIGN.md §3.2).
+      ENGINE_DEFAULTS,
       null,
     );
     return { elements: restored.elements, appState: restored.appState, files: restored.files };

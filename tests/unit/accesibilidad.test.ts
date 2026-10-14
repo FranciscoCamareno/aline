@@ -16,7 +16,7 @@ function tokens(block: string): Record<string, string> {
 const light = tokens(/:root\s*\{([\s\S]*?)\n\}/.exec(css)![1]!);
 const dark = {
   ...light,
-  ...tokens(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([\s\S]*?)\}/.exec(css)![1]!),
+  ...tokens(/:root\[data-theme='dark'\]\s*\{([\s\S]*?)\n\}/.exec(css)![1]!),
 };
 
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -28,41 +28,59 @@ function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi! + 0.05) / (lo! + 0.05);
 }
-/** `color-mix(in srgb, A p%, B)` de los avisos (.notice). */
-function mix(a: string, b: string, p: number): string {
-  const [ca, cb] = [rgb(a), rgb(b)];
-  return `#${ca
-    .map((c, i) =>
-      Math.round((c * p + cb[i]! * (1 - p)) * 255)
-        .toString(16)
-        .padStart(2, '0'),
-    )
-    .join('')}`;
-}
+/** Pares texto/fondo de los tokens (docs/DESIGN.md §2): todo texto ≥ 4,5:1. */
+const TEXT_PAIRS: Array<[string, string]> = [
+  ['text-primary', 'bg-canvas'],
+  ['text-primary', 'bg-panel'],
+  ['text-primary', 'bg-popover'],
+  ['text-primary', 'selection-soft'],
+  ['text-primary', 'warning-bg'],
+  ['text-primary', 'danger-bg'],
+  ['text-secondary', 'bg-canvas'],
+  ['text-secondary', 'bg-panel'],
+  ['text-secondary', 'bg-popover'],
+  ['text-secondary', 'selection-soft'],
+  ['text-accent', 'bg-canvas'],
+  ['link', 'bg-canvas'],
+  ['link', 'bg-panel'],
+  ['link', 'bg-popover'],
+  ['on-brand', 'brand'],
+  ['on-brand', 'brand-hover'],
+  ['on-selection-soft', 'selection-soft'],
+  ['on-secondary', 'secondary-soft'],
+  ['on-secondary', 'secondary'],
+  ['success', 'success-bg'],
+  ['warning', 'warning-bg'],
+  ['danger', 'danger-bg'],
+  ['danger', 'bg-panel'],
+  ['danger', 'bg-popover'],
+];
+/** Iconos, bordes de controles y anillo de foco: ≥ 3:1 (WCAG 1.4.11). */
+const UI_PAIRS: Array<[string, string]> = [
+  ['focus', 'bg-canvas'],
+  ['focus', 'bg-panel'],
+  ['border-ink', 'bg-canvas'],
+  ['border-ink', 'bg-panel'],
+];
 
 describe('contraste del tema (WCAG 2.1 AA, RNF-08)', () => {
   for (const [name, t] of [
     ['claro', light],
     ['oscuro', dark],
   ] as const) {
+    const failing = (pairs: Array<[string, string]>, min: number) =>
+      pairs
+        .map(
+          ([fg, bg]) =>
+            [`${fg} / ${bg}`, Math.round(contrast(t[fg]!, t[bg]!) * 100) / 100] as const,
+        )
+        .filter(([, ratio]) => !(ratio >= min));
+
     it(`tema ${name}: todos los textos alcanzan 4,5:1`, () => {
-      const notice = mix(t['warn']!, t['bg']!, 0.18);
-      const pairs: Array<[string, string, string]> = [
-        ['texto / fondo', t['text']!, t['bg']!],
-        ['texto / superficie', t['text']!, t['surface']!],
-        ['secundario / fondo', t['muted']!, t['bg']!],
-        ['secundario / superficie', t['muted']!, t['surface']!],
-        ['enlace / fondo', t['accent']!, t['bg']!],
-        ['botón principal', t['accent-text']!, t['accent']!],
-        ['correcto / superficie', t['ok']!, t['surface']!],
-        ['aviso / superficie', t['warn']!, t['surface']!],
-        ['error / superficie', t['danger']!, t['surface']!],
-        ['texto / aviso', t['text']!, notice],
-      ];
-      const failing = pairs
-        .map(([label, fg, bg]) => [label, Math.round(contrast(fg, bg) * 100) / 100] as const)
-        .filter(([, ratio]) => ratio < 4.5);
-      expect(failing).toEqual([]);
+      expect(failing(TEXT_PAIRS, 4.5)).toEqual([]);
+    });
+    it(`tema ${name}: iconos, bordes y foco alcanzan 3:1`, () => {
+      expect(failing(UI_PAIRS, 3)).toEqual([]);
     });
   }
 });

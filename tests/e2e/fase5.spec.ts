@@ -49,6 +49,7 @@ async function bytesOf(download: Download): Promise<Buffer> {
 }
 
 async function exportAs(page: Page, format: string, setup?: () => Promise<void>) {
+  await page.getByTestId('export-menu').click();
   await page.getByTestId('canvas-export').click();
   await page.getByTestId(`export-format-${format}`).check();
   await setup?.();
@@ -122,6 +123,7 @@ test('exporta el lienzo a PNG, SVG, PDF y .excalidraw con todos los elementos (C
   expect((await bytesOf(paged)).toString('latin1').startsWith('%PDF-')).toBe(true);
 
   // .excalidraw: autocontenido, con los dos elementos y el aviso de lo que no viaja.
+  await page.getByTestId('export-menu').click();
   await page.getByTestId('canvas-export').click();
   await page.getByTestId('export-format-excalidraw').check();
   await expect(page.getByTestId('export-losses')).toContainText('Backlinks, historial');
@@ -258,6 +260,7 @@ test('importa una carpeta de Markdown con subcarpetas y la vuelve a exportar (RF
     .click();
   await expect(page.locator('.cm-content')).toContainText('Ver [[Plan]]');
   const md = page.waitForEvent('download');
+  await page.getByTestId('export-menu').click();
   await page.getByTestId('note-export').click();
   const text = (await bytesOf(await md)).toString('utf8');
   expect((await md).suggestedFilename()).toBe('Inicio.md');
@@ -267,8 +270,8 @@ test('importa una carpeta de Markdown con subcarpetas y la vuelve a exportar (RF
   expect(text).toContain('Ver [[Plan]]');
 
   // Todas las notas en un ZIP con la estructura de carpetas.
-  await page.locator('.library-more summary').click();
   const zip = page.waitForEvent('download');
+  await page.getByTestId('export-menu').click();
   await page.getByTestId('export-markdown').click();
   const files = unzipSync(new Uint8Array(await bytesOf(await zip)));
   expect(Object.keys(files).sort()).toEqual(['Inicio.md', 'Proyectos/Plan.md']);

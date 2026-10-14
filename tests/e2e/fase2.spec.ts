@@ -33,6 +33,7 @@ async function activeId(page: Page): Promise<string> {
 }
 
 async function newNote(page: Page, text: string): Promise<string> {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   const editor = page.locator('.cm-content');
   await expect(editor).toBeVisible();
@@ -54,6 +55,7 @@ test('papelera: enviar, restaurar y eliminar definitivamente (RN-03, CA-15)', as
   await freshStart(page);
   const id = await newNote(page, 'para la papelera');
   const item = page.locator(`[data-testid="library-item"][data-document-id="${id}"]`);
+  await item.getByTestId('library-actions').click();
   await item.getByTestId('library-trash').click();
   await expect(item).toHaveCount(0);
 
@@ -64,6 +66,7 @@ test('papelera: enviar, restaurar y eliminar definitivamente (RN-03, CA-15)', as
   await expect(item).toBeVisible();
   await expect(page.locator('.cm-content')).toContainText('para la papelera');
 
+  await item.getByTestId('library-actions').click();
   await item.getByTestId('library-trash').click();
   page.once('dialog', (d) => void d.accept());
   await trashed.getByTestId('trash-purge').click();
@@ -138,6 +141,7 @@ test('copia ZIP y restauración en un almacén nuevo (RF-32, CA-16)', async ({ p
   await freshStart(page);
   await newNote(page, 'contenido para la copia ✓');
 
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   const download = page.waitForEvent('download');
   await page.getByTestId('backup-zip').click();
@@ -153,6 +157,7 @@ test('copia ZIP y restauración en un almacén nuevo (RF-32, CA-16)', async ({ p
   await expect(page.locator('.excalidraw, .cm-content').first()).toBeVisible();
   await page.getByTestId('library-title-text').filter({ hasText: 'Nota sin título' }).click();
   await expect(page.locator('.cm-content')).toContainText('contenido para la copia ✓');
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await expect(page.getByTestId('vault-item').filter({ hasText: '(abierto)' })).toContainText(
     'restaurado',

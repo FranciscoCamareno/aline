@@ -9,7 +9,18 @@ const forbid = (patterns, message) => ({
 });
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', 'public', 'playwright-report', 'test-results', 'docs'] },
+  {
+    ignores: [
+      'dist',
+      'dev-dist',
+      'public',
+      'playwright-report',
+      'test-results',
+      'docs',
+      // Material de auditorías externas: evidencia conservada tal cual, no código del producto.
+      'auditoria-*',
+    ],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

@@ -181,6 +181,7 @@ Opcional (diseño §13.1). Mismo árbol que §6, con estas diferencias:
 - `encryption.json` ([esquema](formato/schemas/v1/encryption.schema.json)) guarda la clave del almacén (32 bytes) envuelta dos veces, una con la contraseña (`kind: "password"`) y otra con el código de recuperación (`kind: "recovery"`). Para cada ranura:
   1. clave de envoltura = PBKDF2-SHA256(secreto en UTF-8, `salt`, `iterations`), 256 bits. El código de recuperación se normaliza antes: mayúsculas, sin espacios ni guiones, O→0 e I/L→1;
   2. clave del almacén = AES-256-GCM-descifrar(`wrappedKey`, IV = `iv`, datos autenticados = `mindnote-key|<vaultId>|<kind>`).
+- Límites de `encryption.json`, comprobados antes de derivar ninguna clave: 16 KiB como máximo, de 1 a 4 ranuras, `iterations` entre 1 000 y 10 000 000, y `salt`, `iv` y `wrappedKey` en base64 estándar de 16, 12 y 48 bytes exactos (32 de clave + 16 de etiqueta). Un descriptor fuera de estos límites no es válido.
 - Claves derivadas, con HKDF-SHA256, sal de 32 bytes a cero y la clave del almacén como material:
   - contenido: `info = "mindnote-content-aes-gcm-v1"` (AES-256-GCM);
   - nombres de objetos: `info = "mindnote-object-id-hmac-v1"` (HMAC-SHA256).

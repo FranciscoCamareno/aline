@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 64"><g transform="translate(0 0)">
+<path stroke="#F3EEDF" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="#F3EEDF" d="M19 28 L22 20 H26 L29 28 L29 70 L19 70 Z"/>
+<path stroke="#F3EEDF" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="#F3EEDF" d="M19 40 H29 V46 H19 Z"/>
+<circle stroke="#F3EEDF" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="#F3EEDF" cx="24" cy="11" r="3.6"/>
+<path stroke="#F3EEDF" stroke-width="5.5" stroke-linecap="round" fill="#F3EEDF" d="M24 3 V4.5 M31 6 L30 7 M17 6 L18 7 M33 11 H31.5 M15 11 H16.5"/>
+<path stroke="#262118" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#FFFDF4" d="M19 28 L22 20 H26 L29 28 L29 70 L19 70 Z"/>
+<path stroke="#262118" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#262118" d="M19 40 H29 V46 H19 Z"/>
+<circle stroke="#262118" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#B83A26" cx="24" cy="11" r="3.6"/>
+<path stroke="#B83A26" stroke-width="2" stroke-linecap="round" fill="none" d="M24 3 V4.5 M31 6 L30 7 M17 6 L18 7 M33 11 H31.5 M15 11 H16.5"/></g></svg>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { DomainError } from '../domain/errors.ts';
@@ -18,7 +18,6 @@ import { NoteView } from '../features/notes/NoteView.tsx';
 import { QUOTA_WARNING_RATIO, quotaRatio, StatusPanel } from '../features/status/StatusPanel.tsx';
 import { describeError } from '../ports/Diagnostics.ts';
 import { runEmergencyExport } from './emergency.ts';
-import { LANGUAGES, setLanguage, type AppLanguage } from './i18n.ts';
 import { ImportReportDialog } from '../features/library/ImportReportDialog.tsx';
 import { exportMarkdownZip, importFiles, type ImportReport } from './importExport.ts';
 import { PwaPrompt } from './PwaPrompt.tsx';
@@ -26,18 +25,13 @@ import { flushAllWrites, logDiagnostic } from './runtime.ts';
 import { bootstrap, type AppServices } from './services.ts';
 import { StartupError } from './StartupError.tsx';
 import { useUiStore } from './store.ts';
-
-const darkQuery = '(prefers-color-scheme: dark)';
-function subscribeTheme(callback: () => void) {
-  const mq = window.matchMedia(darkQuery);
-  mq.addEventListener('change', callback);
-  return () => mq.removeEventListener('change', callback);
-}
-function useSystemTheme(): 'light' | 'dark' {
-  return useSyncExternalStore(subscribeTheme, () =>
-    window.matchMedia(darkQuery).matches ? 'dark' : 'light',
-  );
-}
+import { useTheme } from './theme.ts';
+import { Icon } from './ui/Icon.tsx';
+import { Menu } from './ui/Menu.tsx';
+import { ThemeSwitch } from './ui/ThemeSwitch.tsx';
+import logoDark from '../../brand/aline-logo-dark.svg?url';
+import logoLight from '../../brand/aline-logo.svg?url';
+import stickerA from '../../brand/stickers/sticker-a.svg?url';
 
 /** Abre el almacén y elige el documento inicial: el último abierto, o el más reciente. */
 async function loadApp(firstCanvasTitle: string, temporary: boolean) {
@@ -53,8 +47,8 @@ async function loadApp(firstCanvasTitle: string, temporary: boolean) {
 }
 
 export function App() {
-  const { t, i18n } = useTranslation();
-  const theme = useSystemTheme();
+  const { t } = useTranslation();
+  const { theme } = useTheme();
   const [services, setServices] = useState<AppServices | null>(null);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -70,16 +64,24 @@ export function App() {
   /** Documento abierto que otra pestaña acaba de modificar. */
   const [changedElsewhere, setChangedElsewhere] = useState<string | null>(null);
   const [quotaHigh, setQuotaHigh] = useState(false);
-  const { documents, activeId, saveStatus, libraryOpen } = useUiStore(
+  const { documents, activeId, saveStatus, libraryOpen, selectedFolder } = useUiStore(
     useShallow((s) => ({
       documents: s.documents,
       activeId: s.activeId,
       saveStatus: s.saveStatus,
       libraryOpen: s.libraryOpen,
+      selectedFolder: s.selectedFolder,
     })),
   );
-  const { setDocuments, upsertDocument, removeDocument, setActive, setSaveStatus, toggleLibrary } =
-    useUiStore.getState();
+  const {
+    setDocuments,
+    upsertDocument,
+    removeDocument,
+    setActive,
+    setSaveStatus,
+    toggleLibrary,
+    sendViewCommand,
+  } = useUiStore.getState();
   const statusOpen = panel === 'status';
   const reloadView = useCallback(
     (documentId: string) => setReloads((r) => ({ ...r, [documentId]: (r[documentId] ?? 0) + 1 })),
@@ -160,7 +162,7 @@ export function App() {
     [runtime],
   );
 
-  // Búsqueda: Ctrl+Mayús+F (Cmd+Mayús+F en Mac), además del botón 🔍.
+  // Búsqueda: Ctrl+Mayús+F (Cmd+Mayús+F en Mac), además del botón de búsqueda.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
@@ -403,22 +405,37 @@ export function App() {
   if (!services) return <div className="view-message">{t('app.loading')}</div>;
 
   const active = documents.find((d) => d.id === activeId) ?? null;
+  /** Carpeta elegida en la biblioteca, si sigue viva: la exportación de Markdown se limita a ella. */
+  const exportFolder =
+    selectedFolder && documents.some((d) => d.id === selectedFolder && !d.deleted)
+      ? selectedFolder
+      : null;
   const storageAlert =
     saveStatus === 'out-of-space' ? 'outOfSpace' : quotaHigh ? 'quotaHigh' : null;
 
   return (
-    <div className={`shell ${libraryOpen ? 'library-open' : ''}`} data-theme={theme}>
+    <div className={`shell ${libraryOpen ? 'library-open' : ''}`}>
       <header className="topbar">
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t('app.toggleLibrary')}
-          aria-expanded={libraryOpen}
-          onClick={toggleLibrary}
-        >
-          ☰
-        </button>
-        <span className="brand">{t('app.name')}</span>
+        {!libraryOpen && (
+          <>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={t('app.toggleLibrary')}
+              title={t('app.toggleLibrary')}
+              aria-expanded={false}
+              onClick={toggleLibrary}
+            >
+              <Icon name="panel-lateral" />
+            </button>
+            <img
+              className="brand"
+              src={theme === 'dark' ? logoDark : logoLight}
+              alt={t('app.name')}
+              height={24}
+            />
+          </>
+        )}
         {active && (
           <RenameableTitle
             key={active.id}
@@ -432,40 +449,7 @@ export function App() {
           {t(`status.${saveStatus}`)}
         </span>
         <RemoteChip onOpen={() => setPanel('status')} />
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t('app.openStatus')}
-          title={t('app.openStatus')}
-          aria-expanded={statusOpen}
-          data-testid="open-status"
-          onClick={() => setPanel((p) => (p === 'status' ? null : 'status'))}
-        >
-          ⓘ
-        </button>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t('search.title')}
-          title={`${t('search.title')} (${t('search.shortcut')})`}
-          data-testid="open-search"
-          onClick={() => setSearchOpen(true)}
-        >
-          🔍
-        </button>
-        {active && (
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={t('details.title')}
-            title={t('details.title')}
-            aria-expanded={panel === 'details'}
-            data-testid="open-details"
-            onClick={() => setPanel((p) => (p === 'details' ? null : 'details'))}
-          >
-            🔗
-          </button>
-        )}
+        <span className="topbar-spacer" />
         {active && (
           <button
             type="button"
@@ -476,20 +460,91 @@ export function App() {
             data-testid="open-history"
             onClick={() => setPanel((p) => (p === 'history' ? null : 'history'))}
           >
-            🕘
+            <Icon name="historial" />
           </button>
         )}
-        <select
-          aria-label={t('app.language')}
-          value={i18n.language.startsWith('en') ? 'en' : 'es'}
-          onChange={(e) => setLanguage(e.target.value as AppLanguage)}
-        >
-          {LANGUAGES.map((lang) => (
-            <option key={lang} value={lang}>
-              {lang.toUpperCase()}
-            </option>
-          ))}
-        </select>
+        {active && (
+          <button
+            type="button"
+            className="topbar-button"
+            aria-label={t('details.title')}
+            title={t('details.title')}
+            aria-expanded={panel === 'details'}
+            data-testid="open-details"
+            onClick={() => setPanel((p) => (p === 'details' ? null : 'details'))}
+          >
+            <Icon name="enlace" size={18} />
+            <span className="topbar-button-label">{t('nav.links')}</span>
+          </button>
+        )}
+        <Menu
+          trigger={
+            <>
+              <span className="topbar-button-label">{t('nav.export')}</span>
+              <Icon name="chevron-abajo" size={16} />
+            </>
+          }
+          label={t('nav.export')}
+          triggerClassName="topbar-button"
+          testId="export-menu"
+          placement="bottom-end"
+          items={[
+            ...(active?.kind === 'canvas'
+              ? [
+                  {
+                    id: 'canvas-export',
+                    label: t('nav.exportCanvas'),
+                    icon: 'imagen' as const,
+                    onSelect: () => sendViewCommand(active.id, 'export'),
+                  },
+                ]
+              : []),
+            ...(active?.kind === 'note'
+              ? [
+                  {
+                    id: 'note-export',
+                    label: t('nav.exportNote'),
+                    icon: 'nota' as const,
+                    onSelect: () => sendViewCommand(active.id, 'export'),
+                  },
+                ]
+              : []),
+            {
+              id: 'export-markdown',
+              label: exportFolder
+                ? t('nav.exportMarkdownFolder', {
+                    folder: documents.find((d) => d.id === exportFolder)?.title,
+                  })
+                : t('nav.exportMarkdownAll'),
+              icon: 'descargar',
+              separated: active?.kind === 'canvas' || active?.kind === 'note',
+              onSelect: () => void exportMarkdown(exportFolder),
+            },
+          ]}
+        />
+        <Menu
+          trigger={<Icon name="mas-opciones" />}
+          label={t('nav.more')}
+          triggerClassName="icon-button"
+          testId="more-menu"
+          placement="bottom-end"
+          items={[
+            {
+              id: 'open-search',
+              label: t('search.title'),
+              icon: 'buscar',
+              hint: t('search.shortcut'),
+              onSelect: () => setSearchOpen(true),
+            },
+            {
+              id: 'open-status',
+              label: t('app.openStatus'),
+              icon: 'info',
+              onSelect: () => setPanel((p) => (p === 'status' ? null : 'status')),
+            },
+          ]}
+        />
+        <ThemeSwitch />
       </header>
 
       {services.temporary && (
@@ -518,8 +573,13 @@ export function App() {
       {actionError && (
         <div className="toast" role="alert">
           {actionError}
-          <button type="button" onClick={() => setActionError(null)}>
-            ✕
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={t('app.dismiss')}
+            onClick={() => setActionError(null)}
+          >
+            <Icon name="cerrar" size={18} />
           </button>
         </div>
       )}
@@ -536,7 +596,6 @@ export function App() {
           onRestoreFromTrash={restoreFromTrash}
           onPurge={purgeDocument}
           onImport={importDocuments}
-          onExportMarkdown={exportMarkdown}
         />
       )}
 
@@ -569,6 +628,21 @@ export function App() {
             </p>
           )}
         </div>
+        {!active && (
+          // Estado vacío (DESIGN.md §6): una invitación con el personaje de la marca.
+          <div className="empty-state" data-testid="empty-state">
+            <img className="sticker" src={stickerA} alt="" width={120} height={120} />
+            <h2>{t('empty.title')}</h2>
+            <p>{t('empty.body')}</p>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => void createDocument('canvas', null)}
+            >
+              {t('empty.action')}
+            </button>
+          </div>
+        )}
         {active?.kind === 'canvas' && (
           <CanvasView
             key={`${active.id}:${reloads[active.id] ?? 0}`}

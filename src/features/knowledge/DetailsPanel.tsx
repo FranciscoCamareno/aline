@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore, type FocusTarget } from '../../app/store.ts';
+import { Icon, KindIcon } from '../../app/ui/Icon.tsx';
 import type { KnowledgeService, ResolvedLink } from '../../application/KnowledgeService.ts';
 import { folderPath, wouldCreateCycle } from '../../domain/folders.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
@@ -149,7 +150,7 @@ export function DetailsPanel({ document, knowledge, onMove, onSetTags, onClose }
               {backlinks.map((r, i) => (
                 <li key={i}>
                   <button type="button" className="link-button" onClick={() => goToSource(r)}>
-                    {r.source?.kind === 'canvas' ? '◇' : '¶'} {r.source?.title}
+                    {r.source && <KindIcon kind={r.source.kind} />} {r.source?.title}
                     {r.link.label ? <span className="muted"> — {r.link.label}</span> : null}
                   </button>
                 </li>
@@ -170,11 +171,11 @@ export function DetailsPanel({ document, knowledge, onMove, onSetTags, onClose }
                         navigate({ documentId: r.target!.id, elementId: r.link.targetElementId })
                       }
                     >
-                      → {r.target.title}
+                      <Icon name="enlace" size={16} /> {r.target.title}
                     </button>
                   ) : (
                     <span>
-                      → {r.link.label || r.target?.title || '?'}
+                      <Icon name="enlace" size={16} /> {r.link.label || r.target?.title || '?'}
                       {status(r)}
                     </span>
                   )}

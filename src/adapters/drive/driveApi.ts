@@ -39,6 +39,27 @@ export function hasProperty(key: string, value: string): string {
   return `appProperties has { key=${quote(key)} and value=${quote(value)} }`;
 }
 
+/**
+ * URI de sesión de una subida reanudable: HTTPS, mismo origen y ruta que la API de subidas y
+ * sin credenciales en la URL. Cualquier otra cosa no recibe la cabecera Authorization.
+ */
+export function isUploadSession(location: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(location);
+  } catch {
+    return false;
+  }
+  const api = new URL(DRIVE_UPLOAD);
+  return (
+    url.protocol === 'https:' &&
+    url.origin === api.origin &&
+    url.pathname.startsWith(`${api.pathname}/`) &&
+    !url.username &&
+    !url.password
+  );
+}
+
 export class DriveClient {
   private readonly fetchImpl: FetchLike;
   private readonly getToken: () => string | null;
@@ -198,6 +219,10 @@ export class DriveClient {
     );
     const session = start.headers.get('Location');
     if (!session) throw new RemoteError('transient', 'Drive no devolvió la sesión de subida');
+    // El token solo viaja a la API de subidas de Google (auditoría 13/10/2026, O01).
+    if (!isUploadSession(session)) {
+      throw new RemoteError('permission', 'Drive devolvió una sesión de subida no válida');
+    }
     const res = await this.request('PUT', session, {
       body: bytes as Uint8Array<ArrayBuffer>,
       headers: { 'Content-Type': metadata.mimeType },

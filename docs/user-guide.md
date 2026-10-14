@@ -16,10 +16,11 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 
 ## 2. Canvases and mind maps
 
-- **New canvas:** library (☰) → "+ New canvas". The tools, shortcuts and styles are Excalidraw's.
-- **Linking an element** to a note, another canvas or a web page: select the element and press "🔗 Link" (above the canvas). The link opens from the element's icon.
+- **New canvas:** in the library, "+ New" → "Canvas". The tools are in the tray at the bottom; their shortcuts and styles are Excalidraw's.
+- **Sticky notes and stickers:** the note in the tray (or the N key) puts a sticky note in the middle of the view; double-click it to write. The sticker sheet (or the B key) opens the stickers: click one or drag it onto the canvas.
+- **Linking an element** to a note, another canvas or a web page: select the element and press "Link" (above the canvas). The link opens from the element's icon.
 - **Loose connectors:** if an arrow becomes detached from a shape, a notice lets you select those arrows.
-- **Export** ("Export…" button above the canvas, or the canvas ☰ menu):
+- **Export** ("Export" in the top bar → "Image, PDF or .excalidraw…", or the canvas ☰ menu):
   - **PNG or SVG**, with or without background, at 1×, 2× or 3×;
   - **A4 PDF**, fitted on one page or split across several;
   - **.excalidraw**, to open the canvas in Excalidraw. The dialog lists what is not carried over: internal links, backlinks, history, folders and tags.
@@ -27,24 +28,23 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 
 ## 3. Notes
 
-- **New note:** "+ New note". You write Markdown on the left and see the result on the right.
+- **New note:** "+ New" → "Note". You write Markdown on the left and see the result on the right.
 - **Linking another note:** type `[[` and pick a note from the list; if it does not exist, you can create it.
-- **Details and links** (🔗 button in the top bar): backlinks (what links here), broken links and tags.
-- **Exporting the note:** "Export .md" downloads the note with its frontmatter (id, title and tags).
+- **Details and links** ("Links" button in the top bar): backlinks (what links here), broken links and tags.
+- **Exporting the note:** "Export" → "Note as Markdown (.md)" downloads the note with its frontmatter (id, title and tags).
 
 ## 4. Organising and searching
 
-- **Folders:** "+ New folder" creates a folder. Anything created while a folder is selected goes inside it. Deleting a folder never deletes its content: anything left without a folder appears in "Recovery".
+- **Folders:** "+ New" → "Folder" creates a folder. Anything created while a folder is selected goes inside it. Deleting a folder never deletes its content: anything left without a folder appears in "Recovery".
 - **Tags:** added in Details. In the library they work as a filter.
-- **Search** (Ctrl+Shift+F): searches titles, notes and canvas texts. Opening a result highlights the matching text or element.
+- **Search files:** the library field filters the list by title. The "All" and "Recent" tabs switch the view; each document's actions (rename, trash) are in its "⋯" menu.
+- **Search** (Ctrl+Shift+F, or "⋯" in the top bar → "Search"): searches titles, notes and canvas texts. Opening a result highlights the matching text or element.
 
 ## 5. Bulk import and export
 
-In the library, "Import and export":
-
-- **Import files:** `.md` notes and `.excalidraw` canvases.
-- **Import a Markdown folder:** subfolders are recreated.
-- **Export as Markdown (ZIP):** the notes of the selected folder or of the whole vault.
+- **Import files:** "+ New" → "Import files…" (`.md` notes and `.excalidraw` canvases).
+- **Import a Markdown folder:** "+ New" → "Import folder…"; subfolders are recreated.
+- **Export as Markdown (ZIP):** "Export" in the top bar → the notes of the selected folder or of the whole vault.
 
 After an import, a report lists what could not be brought in and why. For example:
 
@@ -56,13 +56,13 @@ Importing always creates new documents; it never overwrites existing ones.
 
 ## 6. History, trash and conflicts
 
-- **History:** every save is a version. From "Version history" (🕘 button) you can view an earlier version, compare it and restore it. Restoring creates a new version; nothing is lost.
-- **Trash:** deleting sends a document to the trash, from where it can be restored. "Delete permanently" asks for confirmation.
+- **History:** every save is a version. From "Version history" (clock button in the top bar) you can view an earlier version, compare it and restore it. Restoring creates a new version; nothing is lost.
+- **Trash:** deleting sends a document to the trash ("Trash", at the bottom of the library), from where it can be restored. "Delete permanently" asks for confirmation.
 - **Conflicts:** if two devices edit the same thing offline, both versions are kept and you are notified. You resolve it by choosing one, merging them or keeping both as separate documents.
 
 ## 7. Backups and vaults
 
-In "Status and diagnostics" (ⓘ button):
+In "Status and diagnostics" ("⋯" in the top bar):
 
 - **Full backup (ZIP):** the whole vault with history, trash and attachments, in the open format. Make one regularly and keep it off the device.
 - **Restoring a backup:** always goes into a new vault, never over the current one.

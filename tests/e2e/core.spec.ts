@@ -100,6 +100,7 @@ test('un lienzo dibujado se guarda y se conserva al reabrir', async ({ page }) =
 });
 
 test('una nota Markdown se guarda automáticamente y se conserva al reabrir', async ({ page }) => {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   const editor = page.locator('.cm-content');
   await expect(editor).toBeVisible();
@@ -120,6 +121,7 @@ test('una nota Markdown se guarda automáticamente y se conserva al reabrir', as
 });
 
 test('cambiar de documento guarda antes de salir', async ({ page }) => {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   const editor = page.locator('.cm-content');
   await expect(editor).toBeVisible();
@@ -137,11 +139,13 @@ test('cambiar de documento guarda antes de salir', async ({ page }) => {
 });
 
 test('renombrar conserva la identidad y persiste tras recargar', async ({ page }) => {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.cm-content')).toBeVisible();
   const id = await activeDocumentId(page);
 
   const item = page.locator(`[data-testid="library-item"][data-document-id="${id}"]`);
+  await item.getByTestId('library-actions').click();
   await item.getByTestId('library-title-rename').click();
   await item.getByTestId('library-title-input').fill('Ideas de arquitectura');
   await item.getByTestId('library-title-input').press('Enter');

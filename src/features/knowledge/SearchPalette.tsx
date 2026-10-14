@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../app/store.ts';
+import { KindIcon } from '../../app/ui/Icon.tsx';
 import type { SearchHit } from '../../application/searchIndex.ts';
 
 interface Props {
@@ -102,7 +103,7 @@ export function SearchPalette({ search, onClose }: Props) {
                 onClick={() => open(hit)}
               >
                 <strong>
-                  {hit.kind === 'canvas' ? '◇' : '¶'} {hit.title}
+                  <KindIcon kind={hit.kind} /> {hit.title}
                 </strong>
                 <span className="muted">{hit.snippet}</span>
               </button>

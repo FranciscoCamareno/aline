@@ -422,6 +422,7 @@ Configurar CSP y cabeceras mediante el alojamiento [S16]. Allowlist mínima por 
 
 - Cada almacén tiene una clave aleatoria de 256 bits. Se guarda envuelta en `encryption.json` (raíz de la carpeta de Drive, sin cifrar) con dos ranuras: una con la contraseña y otra con el código de recuperación.
 - Ranuras: PBKDF2-SHA256 con 600 000 iteraciones y sal aleatoria, y la clave envuelta con AES-256-GCM. Los datos autenticados atan cada ranura a su almacén.
+- `encryption.json` llega de Drive sin cifrar y se lee antes de comprobar ningún secreto, así que se valida antes de derivar nada: como mucho 16 KiB y 4 ranuras, entre 1 000 y 10 000 000 iteraciones, y sal, IV y clave envuelta de 16, 12 y 48 bytes exactos (auditoría de seguridad del 13/10/2026, H06).
 - De la clave se derivan, con HKDF-SHA256, una clave AES-256-GCM para el contenido y otra HMAC-SHA256 para nombrar objetos.
 - Cambiar la contraseña o el código solo reenvuelve la clave; no hay que volver a subir nada.
 - En cada equipo, la clave derivada se guarda como `CryptoKey` no extraíble en IndexedDB, junto al almacén local, que ya está sin cifrar. Se pide una vez por equipo. Desconectar Drive la borra.
@@ -440,7 +441,12 @@ Configurar CSP y cabeceras mediante el alojamiento [S16]. Allowlist mínima por 
 
 1. Se crea una carpeta nueva del mismo almacén en el otro modo y se sube todo, con marcas de publicación propias del destino `drive:<carpeta>`. Las versiones, el historial y los conflictos se conservan.
 2. Cuando la carpeta nueva está completa, la antigua se marca `supersededBy` y se ofrece moverla a la papelera de Drive.
-3. Los demás equipos detectan la marca (o la carpeta en la papelera), se trasladan solos a la carpeta nueva y, si está cifrada, piden la contraseña. Lo que hubieran subido solo a la carpeta antigua no se pierde: está en su almacén local y se publica en la nueva.
+3. Los demás equipos detectan la marca (o la carpeta en la papelera) y se trasladan a la carpeta que indica `supersededBy`, siguiendo la cadena si hubo varios cambios; sin esa marca, solo si la cuenta tiene exactamente otra carpeta del almacén. Si la nueva está cifrada, piden la contraseña. Lo que hubieran subido solo a la carpeta antigua no se pierde: está en su almacén local y se publica en la nueva.
+4. **Nunca se deja de cifrar sin confirmación** (auditoría de seguridad del 13/10/2026, H01). Si un equipo con la carpeta cifrada encuentra que la sustituye una sin cifrar, no sube nada a ella: queda en «revisar cifrado» y el propietario elige entre aceptar la carpeta sin cifrar o volver a cifrar en una carpeta nueva (contraseña y código nuevos), que sustituirá a la sin cifrar cuando esté completa.
+
+**Conectar eligiendo cifrar cuando Drive ya tiene el almacén sin cifrar.** No se publica nada. Se ofrece crear una carpeta cifrada nueva (la sin cifrar se marca como sustituida cuando la nueva está completa y se ofrece moverla a la papelera) o usar expresamente la carpeta sin cifrar.
+
+**Desconectar.** Siempre desvincula el equipo y borra su clave, sin tocar el almacén local ni Drive. Si Google no confirma la revocación del permiso (respuesta sin éxito, sin respuesta en 15 s, o sin token en memoria tras recargar), se avisa de que el permiso puede seguir concedido y de dónde retirarlo (H07).
 
 Pasar de sin cifrar a cifrado no borra lo que Google ya pudo leer. La papelera y el historial de Drive conservan la carpeta antigua durante un tiempo, y el aviso lo dice.
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../app/store.ts';
+import { KindIcon } from '../../app/ui/Icon.tsx';
 import type { DocumentRecord } from '../../domain/revision.ts';
 import { normalizeForSearch } from '../../application/searchIndex.ts';
 
@@ -87,7 +88,7 @@ export function LinkPicker({
                 data-testid="link-candidate"
                 onClick={() => onPick(d)}
               >
-                {d.kind === 'canvas' ? '◇' : '¶'} {d.title}
+                <KindIcon kind={d.kind} /> {d.title}
               </button>
             </li>
           ))}

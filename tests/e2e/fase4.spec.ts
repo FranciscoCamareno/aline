@@ -67,6 +67,7 @@ async function activeId(page: Page): Promise<string> {
 }
 
 async function newNote(page: Page, text: string): Promise<string> {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   const editor = page.locator('.cm-content');
   await expect(editor).toBeVisible();
@@ -78,6 +79,7 @@ async function newNote(page: Page, text: string): Promise<string> {
 }
 
 async function connectFolder(page: Page) {
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByTestId('connect-folder').click();
 }
@@ -107,6 +109,7 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
   await expect(page.getByTestId('remote-status')).toContainText('Carpeta al día');
 
   // «Otro equipo»: un almacén distinto de este navegador abre el de la carpeta.
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByPlaceholder('Nombre del almacén nuevo').fill('Equipo B');
   await page.getByRole('button', { name: 'Crear y abrir' }).click();

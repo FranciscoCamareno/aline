@@ -37,6 +37,34 @@ export const revisionSchema = z.object({
   }),
 });
 
+/**
+ * Sobre mínimo de una revisión con versión posterior a la soportada (auditoría 13/10/2026, H05):
+ * se acepta para abrirla en solo lectura (§5), pero solo si los campos que usan el motor de
+ * sincronización y el almacén local existen y tienen el tipo esperado. Los campos desconocidos
+ * se conservan; los límites evitan que un archivo remoto pequeño dispare trabajo desmedido.
+ */
+export const revisionEnvelopeSchema = z.object({
+  schemaVersion: z.number().int().min(1),
+  id: z.uuid(),
+  documentId: z.uuid(),
+  parentIds: z.array(z.uuid()).max(1_000),
+  deviceId: z.uuid(),
+  createdAt: z.string(),
+  operation: z.string(),
+  metadata: z.looseObject({
+    kind: revisionKindSchema,
+    title: z.string(),
+    folderId: z.uuid().nullable(),
+    tags: z.array(z.string()).max(1_000),
+    deleted: z.boolean(),
+  }),
+  contentRefs: z.looseObject({
+    body: sha256Schema.nullable(),
+    extensions: sha256Schema.nullable(),
+    assets: z.array(sha256Schema).max(10_000),
+  }),
+});
+
 export type Revision = z.infer<typeof revisionSchema>;
 export type RevisionMetadata = Revision['metadata'];
 export type ContentRefs = Revision['contentRefs'];

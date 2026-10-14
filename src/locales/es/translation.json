@@ -1,13 +1,20 @@
 {
   "app": {
-    "name": "MindNote",
+    "name": "aline",
     "loading": "Abriendo el almacén…",
     "startupError": "No se pudo abrir el almacén local: {{message}}",
     "toggleLibrary": "Mostrar u ocultar biblioteca",
     "language": "Idioma",
     "openStatus": "Estado y diagnóstico",
     "changedElsewhere": "Este documento cambió en otra pestaña.",
-    "reload": "Recargar"
+    "reload": "Recargar",
+    "dismiss": "Cerrar aviso",
+    "darkTheme": "Tema oscuro"
+  },
+  "empty": {
+    "title": "Crea tu primer lienzo",
+    "body": "Un lienzo para pensar en grande, con notas conectadas alrededor.",
+    "action": "Nuevo lienzo"
   },
   "startup": {
     "title": "No se puede abrir el almacén de este navegador",
@@ -18,8 +25,6 @@
   },
   "library": {
     "title": "Biblioteca",
-    "newCanvas": "Nuevo lienzo",
-    "newNote": "Nueva nota",
     "untitledCanvas": "Lienzo sin título",
     "untitledNote": "Nota sin título",
     "empty": "Aún no hay documentos.",
@@ -44,10 +49,16 @@
     "tags": "Filtrar por etiqueta",
     "filteredBy": "Con la etiqueta #{{tag}}",
     "recent": "Recientes",
-    "all": "Todo",
+    "all": "Todos",
     "recovery": "Recuperación",
     "recoveryHint": "Documentos cuya carpeta está en la papelera o ya no existe. Muévelos a otra carpeta.",
-    "importExport": "Importar y exportar"
+    "new": "Nuevo",
+    "actions": "Acciones",
+    "searchPlaceholder": "Buscar archivos…",
+    "noResults": "Ningún título coincide.",
+    "trashShort": "Papelera",
+    "importFiles": "Importar archivos…",
+    "importFolder": "Importar carpeta…"
   },
   "title": {
     "edit": "Editar título",
@@ -135,6 +146,30 @@
   "canvas": {
     "draftRecovered": "Se recuperó un trazo que quedó a medias al cerrarse la aplicación.",
     "dangling": "{{count}} conectores sueltos: seleccionar"
+  },
+  "toolbar": {
+    "label": "Herramientas",
+    "lock": "Mantener la herramienta activa",
+    "selection": "Selección",
+    "hand": "Mano",
+    "freedraw": "Lápiz",
+    "text": "Texto",
+    "sticky": "Nota adhesiva",
+    "rectangle": "Rectángulo",
+    "diamond": "Rombo",
+    "ellipse": "Elipse",
+    "arrow": "Flecha",
+    "line": "Línea",
+    "eraser": "Borrador",
+    "shapes": "Formas",
+    "more": "Más herramientas",
+    "frame": "Marco",
+    "laser": "Puntero láser",
+    "image": "Imagen",
+    "mermaid": "Diagrama desde Mermaid",
+    "penMode": "Solo lápiz",
+    "sticker": "Stickers",
+    "stickers": "Stickers"
   },
   "history": {
     "title": "Historial de versiones",
@@ -243,7 +278,8 @@
       "unavailable": "la carpeta no está disponible",
       "error": "error al escribir en la carpeta",
       "needs-auth": "necesita autorización",
-      "needs-key": "necesita contraseña"
+      "needs-key": "necesita contraseña",
+      "needs-confirm": "la copia cifrada se sustituyó por una sin cifrar"
     },
     "chip": {
       "idle": "Carpeta",
@@ -256,7 +292,8 @@
       "unavailable": "Carpeta no disponible",
       "error": "Error de carpeta",
       "needs-auth": "Autorizar Drive",
-      "needs-key": "Contraseña"
+      "needs-key": "Contraseña",
+      "needs-confirm": "Revisar cifrado"
     },
     "syncNow": "Sincronizar ahora",
     "reconnect": "Reconectar carpeta",
@@ -280,7 +317,8 @@
       "mismatch": "la carpeta de Drive contiene otro almacén",
       "unavailable": "la carpeta de Drive no está disponible (¿otra cuenta o en la papelera?)",
       "error": "error al sincronizar con Drive",
-      "needs-key": "necesita la contraseña del almacén cifrado"
+      "needs-key": "necesita la contraseña del almacén cifrado",
+      "needs-confirm": "la copia cifrada se sustituyó por una sin cifrar: decide antes de seguir"
     },
     "driveChip": {
       "idle": "Drive",
@@ -293,7 +331,8 @@
       "mismatch": "Otro almacén",
       "unavailable": "Drive no disponible",
       "error": "Error de Drive",
-      "needs-key": "Necesita contraseña"
+      "needs-key": "Necesita contraseña",
+      "needs-confirm": "Revisar cifrado"
     },
     "connectDrive": "Conectar Google Drive…",
     "driveWarningTitle": "Antes de conectar Google Drive: ¿quieres cifrar el contenido?",
@@ -319,7 +358,7 @@
       "download": "Descargar el código",
       "copy": "Copiar",
       "recoverySaved": "He guardado el código de recuperación en un lugar seguro",
-      "modeEncrypted": "🔒 Cifrado de extremo a extremo",
+      "modeEncrypted": "Cifrado de extremo a extremo",
       "modePlain": "Sin cifrar (Google puede leer el contenido)",
       "encryptedShort": "cifrado",
       "unlockText": "Este almacén está cifrado en Drive. Escribe su contraseña (o el código de recuperación) para usarlo en este equipo; solo se pide una vez.",
@@ -340,9 +379,15 @@
       "previousFolder": "El cambio de modo terminó: los demás equipos pasarán a la carpeta nueva al sincronizar. La carpeta anterior ya no se usa.",
       "trashPrevious": "Mover la carpeta anterior a la papelera de Drive",
       "keepPrevious": "Conservarla",
-      "existing-plain": "Este almacén ya estaba en Drive sin cifrar, así que se usa esa carpeta. Puedes cifrarlo en «Cifrado y contraseña».",
-      "existing-encrypted": "Este almacén ya estaba cifrado en Drive, así que se usa esa carpeta; escribe su contraseña para desbloquearlo."
-    }
+      "existing-encrypted": "Este almacén ya estaba cifrado en Drive, así que se usa esa carpeta; escribe su contraseña para desbloquearlo.",
+      "existingPlain": "Este almacén ya está en Drive SIN cifrar. Todavía no se ha subido nada. Puedes crear una carpeta cifrada nueva con la contraseña que acabas de elegir (la copia sin cifrar no se toca; cuando la nueva esté completa podrás moverla a la papelera) o usar la carpeta existente sin cifrar, donde Google puede leer el contenido.",
+      "existingPlainEncrypt": "Crear una carpeta cifrada nueva",
+      "existingPlainUse": "Usar la carpeta sin cifrar",
+      "relocatePlain": "Otro equipo quitó el cifrado: la copia cifrada de Drive se sustituyó por una SIN cifrar. Este equipo no ha subido nada a esa carpeta. Si la aceptas, se subirá ahí lo pendiente y Google podrá leerlo; también puedes volver a cifrar en una carpeta nueva.",
+      "relocateAccept": "Aceptar la carpeta sin cifrar",
+      "relocateReencrypt": "Volver a cifrar en una carpeta nueva…"
+    },
+    "revokeUnconfirmed": "Se desconectó en este equipo, pero Google no confirmó que haya retirado el permiso de la aplicación (por ejemplo, porque la página se recargó desde la última autorización). Puedes retirarlo en la configuración de seguridad de tu cuenta de Google, en «Aplicaciones y servicios de terceros»."
   },
   "export": {
     "open": "Exportar…",
@@ -375,9 +420,6 @@
     "failed": "No se pudo exportar. Prueba con una escala menor o solo con la selección.",
     "working": "Exportando…",
     "run": "Exportar",
-    "markdown": "Exportar .md",
-    "markdownFolder": "Exportar «{{folder}}» en Markdown (ZIP)",
-    "markdownAll": "Exportar todas las notas en Markdown (ZIP)",
     "noNotes": "No hay notas que exportar."
   },
   "import": {
@@ -386,8 +428,6 @@
     "created_other": "Se crearon {{count}} documentos.",
     "problemsTitle": "Avisos:",
     "close": "Cerrar",
-    "files": "Importar archivos (.md, .excalidraw)…",
-    "folder": "Importar una carpeta de Markdown…",
     "droppedKeys": "no se conservan estos campos del frontmatter: {{keys}}",
     "frontmatterAsText": "el frontmatter no se reconoció y quedó como texto al principio de la nota",
     "unsupported": "tipo de archivo no admitido (solo .md, .markdown, .txt, .excalidraw y .json)",
@@ -405,5 +445,37 @@
       "library": "es una biblioteca de Excalidraw, no un lienzo",
       "too-many-elements": "demasiados elementos (máximo 50 000)"
     }
+  },
+  "preferences": {
+    "title": "Preferencias",
+    "followSystem": "Seguir al sistema"
+  },
+  "help": {
+    "title": "Ayuda",
+    "onlyCanvas": "La ayuda de atajos está disponible con un lienzo abierto"
+  },
+  "nav": {
+    "links": "Enlaces",
+    "export": "Exportar",
+    "exportCanvas": "Imagen, PDF o .excalidraw…",
+    "more": "Más opciones",
+    "exportNote": "Nota en Markdown (.md)",
+    "exportMarkdownAll": "Todas las notas en Markdown (.zip)",
+    "exportMarkdownFolder": "Notas de «{{folder}}» en Markdown (.zip)"
+  },
+  "stickers": {
+    "a": "La «a»",
+    "nube": "Nube",
+    "corazon": "Corazón",
+    "nota": "Nota",
+    "lapiz": "Lápiz",
+    "estallido": "Estallido",
+    "rayo": "Rayo",
+    "chispas": "Chispas",
+    "bocadillo": "Bocadillo",
+    "exclamacion": "Exclamación",
+    "flecha": "Flecha",
+    "garabato": "Garabato",
+    "corona": "Corona"
   }
 }

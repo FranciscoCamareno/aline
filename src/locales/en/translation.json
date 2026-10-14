@@ -1,13 +1,20 @@
 {
   "app": {
-    "name": "MindNote",
+    "name": "aline",
     "loading": "Opening vault…",
     "startupError": "Could not open the local vault: {{message}}",
     "toggleLibrary": "Show or hide library",
     "language": "Language",
     "openStatus": "Status and diagnostics",
     "changedElsewhere": "This document changed in another tab.",
-    "reload": "Reload"
+    "reload": "Reload",
+    "dismiss": "Dismiss",
+    "darkTheme": "Dark theme"
+  },
+  "empty": {
+    "title": "Create your first canvas",
+    "body": "A canvas to think big, with connected notes around it.",
+    "action": "New canvas"
   },
   "startup": {
     "title": "This browser's vault cannot be opened",
@@ -18,8 +25,6 @@
   },
   "library": {
     "title": "Library",
-    "newCanvas": "New canvas",
-    "newNote": "New note",
     "untitledCanvas": "Untitled canvas",
     "untitledNote": "Untitled note",
     "empty": "No documents yet.",
@@ -47,7 +52,13 @@
     "all": "All",
     "recovery": "Recovery",
     "recoveryHint": "Documents whose folder is in the trash or no longer exists. Move them to another folder.",
-    "importExport": "Import and export"
+    "new": "New",
+    "actions": "Actions",
+    "searchPlaceholder": "Search files…",
+    "noResults": "No title matches.",
+    "trashShort": "Trash",
+    "importFiles": "Import files…",
+    "importFolder": "Import folder…"
   },
   "title": {
     "edit": "Edit title",
@@ -135,6 +146,30 @@
   "canvas": {
     "draftRecovered": "A stroke left unfinished when the app closed was recovered.",
     "dangling": "{{count}} loose connectors: select"
+  },
+  "toolbar": {
+    "label": "Tools",
+    "lock": "Keep selected tool active",
+    "selection": "Selection",
+    "hand": "Hand",
+    "freedraw": "Pencil",
+    "text": "Text",
+    "sticky": "Sticky note",
+    "rectangle": "Rectangle",
+    "diamond": "Diamond",
+    "ellipse": "Ellipse",
+    "arrow": "Arrow",
+    "line": "Line",
+    "eraser": "Eraser",
+    "shapes": "Shapes",
+    "more": "More tools",
+    "frame": "Frame",
+    "laser": "Laser pointer",
+    "image": "Image",
+    "mermaid": "Diagram from Mermaid",
+    "penMode": "Pen only",
+    "sticker": "Stickers",
+    "stickers": "Stickers"
   },
   "history": {
     "title": "Version history",
@@ -243,7 +278,8 @@
       "unavailable": "the folder is not available",
       "error": "error writing to the folder",
       "needs-auth": "needs authorization",
-      "needs-key": "needs password"
+      "needs-key": "needs password",
+      "needs-confirm": "the encrypted copy was replaced by an unencrypted one"
     },
     "chip": {
       "idle": "Folder",
@@ -256,7 +292,8 @@
       "unavailable": "Folder unavailable",
       "error": "Folder error",
       "needs-auth": "Authorize Drive",
-      "needs-key": "Password"
+      "needs-key": "Password",
+      "needs-confirm": "Review encryption"
     },
     "syncNow": "Sync now",
     "reconnect": "Reconnect folder",
@@ -280,7 +317,8 @@
       "mismatch": "the Drive folder contains another vault",
       "unavailable": "the Drive folder is not available (another account or in the trash?)",
       "error": "error syncing with Drive",
-      "needs-key": "needs the password of the encrypted vault"
+      "needs-key": "needs the password of the encrypted vault",
+      "needs-confirm": "the encrypted copy was replaced by an unencrypted one: decide before continuing"
     },
     "driveChip": {
       "idle": "Drive",
@@ -293,7 +331,8 @@
       "mismatch": "Another vault",
       "unavailable": "Drive unavailable",
       "error": "Drive error",
-      "needs-key": "Needs password"
+      "needs-key": "Needs password",
+      "needs-confirm": "Review encryption"
     },
     "connectDrive": "Connect Google Drive…",
     "driveWarningTitle": "Before connecting Google Drive: do you want to encrypt the content?",
@@ -319,7 +358,7 @@
       "download": "Download the code",
       "copy": "Copy",
       "recoverySaved": "I have saved the recovery code in a safe place",
-      "modeEncrypted": "🔒 End-to-end encrypted",
+      "modeEncrypted": "End-to-end encrypted",
       "modePlain": "Not encrypted (Google can read the content)",
       "encryptedShort": "encrypted",
       "unlockText": "This vault is encrypted in Drive. Enter its password (or the recovery code) to use it on this device; it is only asked once.",
@@ -340,9 +379,15 @@
       "previousFolder": "The mode change finished: other devices will move to the new folder when they sync. The previous folder is no longer used.",
       "trashPrevious": "Move the previous folder to the Drive trash",
       "keepPrevious": "Keep it",
-      "existing-plain": "This vault was already in Drive unencrypted, so that folder is used. You can encrypt it in “Encryption and password”.",
-      "existing-encrypted": "This vault was already encrypted in Drive, so that folder is used; enter its password to unlock it."
-    }
+      "existing-encrypted": "This vault was already encrypted in Drive, so that folder is used; enter its password to unlock it.",
+      "existingPlain": "This vault is already in Drive UNENCRYPTED. Nothing has been uploaded yet. You can create a new encrypted folder with the password you just chose (the unencrypted copy is not touched; once the new one is complete you can move it to the trash) or use the existing unencrypted folder, where Google can read the content.",
+      "existingPlainEncrypt": "Create a new encrypted folder",
+      "existingPlainUse": "Use the unencrypted folder",
+      "relocatePlain": "Another device removed encryption: the encrypted Drive copy was replaced by an UNENCRYPTED one. This device has not uploaded anything to that folder. If you accept it, pending changes will be uploaded there and Google will be able to read them; you can also encrypt again in a new folder.",
+      "relocateAccept": "Accept the unencrypted folder",
+      "relocateReencrypt": "Encrypt again in a new folder…"
+    },
+    "revokeUnconfirmed": "Disconnected on this device, but Google did not confirm that the app’s permission was removed (for example, because the page was reloaded since the last authorization). You can remove it in your Google Account security settings, under “Third-party apps & services”."
   },
   "export": {
     "open": "Export…",
@@ -375,9 +420,6 @@
     "failed": "Export failed. Try a lower scale or the selection only.",
     "working": "Exporting…",
     "run": "Export",
-    "markdown": "Export .md",
-    "markdownFolder": "Export “{{folder}}” as Markdown (ZIP)",
-    "markdownAll": "Export all notes as Markdown (ZIP)",
     "noNotes": "There are no notes to export."
   },
   "import": {
@@ -386,8 +428,6 @@
     "created_other": "{{count}} documents were created.",
     "problemsTitle": "Notices:",
     "close": "Close",
-    "files": "Import files (.md, .excalidraw)…",
-    "folder": "Import a Markdown folder…",
     "droppedKeys": "these frontmatter fields are not kept: {{keys}}",
     "frontmatterAsText": "the frontmatter was not recognised and was kept as text at the top of the note",
     "unsupported": "unsupported file type (only .md, .markdown, .txt, .excalidraw and .json)",
@@ -405,5 +445,37 @@
       "library": "it is an Excalidraw library, not a canvas",
       "too-many-elements": "too many elements (50,000 maximum)"
     }
+  },
+  "preferences": {
+    "title": "Preferences",
+    "followSystem": "Follow the system"
+  },
+  "help": {
+    "title": "Help",
+    "onlyCanvas": "Shortcut help is available with a canvas open"
+  },
+  "nav": {
+    "links": "Links",
+    "export": "Export",
+    "exportCanvas": "Image, PDF or .excalidraw…",
+    "more": "More options",
+    "exportNote": "Note as Markdown (.md)",
+    "exportMarkdownAll": "All notes as Markdown (.zip)",
+    "exportMarkdownFolder": "Notes in “{{folder}}” as Markdown (.zip)"
+  },
+  "stickers": {
+    "a": "The “a”",
+    "nube": "Cloud",
+    "corazon": "Heart",
+    "nota": "Note",
+    "lapiz": "Pencil",
+    "estallido": "Burst",
+    "rayo": "Lightning",
+    "chispas": "Sparkles",
+    "bocadillo": "Speech bubble",
+    "exclamacion": "Exclamation",
+    "flecha": "Arrow",
+    "garabato": "Squiggle",
+    "corona": "Crown"
   }
 }

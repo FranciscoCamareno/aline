@@ -47,6 +47,8 @@ export interface DriveConnection {
     next: string,
   ): Promise<void>;
   markSuperseded(oldFolderId: string, newFolderId: string): Promise<void>;
+  /** Carpeta que sustituyó a esta, si la hay (aunque esta esté en la papelera). */
+  successorOf(folderId: string): Promise<string | null>;
   trashFolder(folderId: string): Promise<void>;
 }
 
@@ -115,6 +117,7 @@ export async function driveConnection(): Promise<DriveConnection> {
     },
     markSuperseded: (oldFolderId, newFolderId) =>
       drive.markDriveSuperseded(client, oldFolderId, newFolderId),
+    successorOf: (folderId) => drive.driveSuccessor(client, folderId),
     trashFolder: (folderId) => drive.trashDriveFolder(client, folderId),
   };
 }

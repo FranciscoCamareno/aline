@@ -50,6 +50,11 @@ export type RemotePhase =
   | 'needs-permission'
   | 'needs-auth'
   | 'needs-key'
+  /**
+   * Drive: la carpeta cifrada se sustituyó por otra SIN cifrar (otro equipo quitó el cifrado).
+   * No se publica nada hasta que el propietario lo acepte o vuelva a cifrar (auditoría H01).
+   */
+  | 'needs-confirm'
   | 'mismatch'
   | 'unavailable'
   | 'error';
@@ -108,8 +113,16 @@ function webLock(name: string) {
 }
 
 export type DriveConnectResult =
-  | { connected: true; notice?: 'existing-plain' | 'existing-encrypted' }
+  | { connected: true; notice?: 'existing-encrypted' }
+  /**
+   * Se eligió cifrar, pero Drive ya tiene este almacén SIN cifrar: no se ha publicado nada; el
+   * propietario decide entre crear una carpeta cifrada nueva o usar la existente (auditoría H01).
+   */
+  | { existingPlain: DriveVaultChoice }
   | { choices: DriveVaultChoice[] };
+
+/** Saltos máximos al seguir `supersededBy` (varios cambios de modo seguidos). */
+const MAX_RELOCATION_HOPS = 8;
 
 /**
  * Sincronización con una carpeta local (plan 4.2) o con Google Drive (plan 4.5), cifrado o no
@@ -126,6 +139,8 @@ export class SyncRuntime {
   private drive: DriveConnection | null = null;
   /** Clave del almacén cifrado (no extraíble), también guardada en este dispositivo. */
   private keys: VaultKeys | null = null;
+  /** Carpeta sin cifrar que sustituyó a la cifrada de este equipo, pendiente de aceptar. */
+  private pendingPlainRelocation: DriveVaultChoice | null = null;
   private status: RemoteStatus | null = null;
   private running: Promise<void> | null = null;
   private again = false;
@@ -219,14 +234,17 @@ export class SyncRuntime {
   /**
    * Conecta Google Drive con el modo elegido (CA-27, diseño §13.1). Debe llamarse desde un gesto
    * del usuario: abre la ventana de Google. Si Drive ya tiene este almacén, se usa su carpeta y
-   * su modo; si no tiene ninguno, se crea en el modo elegido; si solo tiene otros, se devuelven
-   * para que el propietario elija (nunca se mezclan).
+   * su modo, salvo que se haya elegido cifrar y la carpeta no lo esté: entonces no se publica
+   * nada y decide el propietario (auditoría H01). Si no tiene ninguno, se crea en el modo
+   * elegido; si solo tiene otros, se devuelven para que el propietario elija (nunca se mezclan).
    */
   async connectDrive(choice: DriveEncryptionChoice): Promise<DriveConnectResult> {
     const drive = await this.authorizeDrive();
     const vaults = await drive.listVaults();
     const same = vaults.find((v) => v.vault.id === this.services.vault.id);
     if (same) {
+      // Elegir cifrar nunca acaba publicando en claro sin una confirmación explícita.
+      if (!same.encrypted && choice.mode === 'encrypted') return { existingPlain: same };
       let keys: VaultKeys | null = null;
       if (same.encrypted && choice.mode === 'encrypted') {
         keys = await drive.unlock(same.folderId, choice.password).catch(() => null);
@@ -234,20 +252,67 @@ export class SyncRuntime {
       await this.bind(driveBinding(same), keys);
       if (same.encrypted && choice.mode === 'plain')
         return { connected: true, notice: 'existing-encrypted' };
-      if (!same.encrypted && choice.mode === 'encrypted')
-        return { connected: true, notice: 'existing-plain' };
       return { connected: true };
     }
     if (vaults.length) return { choices: vaults };
     return this.createDriveVault(choice);
   }
 
-  /** Crea en Drive la carpeta de ESTE almacén en el modo elegido, aunque la cuenta tenga otros. */
-  async createDriveVault(choice: DriveEncryptionChoice): Promise<{ connected: true }> {
+  /**
+   * Usa la carpeta SIN cifrar que ya existe en Drive, aceptado expresamente por el propietario
+   * tras elegir cifrar (respuesta `existingPlain` de connectDrive).
+   */
+  async useExistingPlainDrive(existing: DriveVaultChoice): Promise<void> {
+    if (existing.encrypted || existing.vault.id !== this.services.vault.id) {
+      throw new Error('La carpeta elegida no es la copia sin cifrar de este almacén');
+    }
+    this.requireDrive();
+    await this.bind(driveBinding(existing));
+  }
+
+  /**
+   * Crea en Drive la carpeta de ESTE almacén en el modo elegido, aunque la cuenta tenga otros.
+   * Con `supersedes`, la carpeta indicada (otra copia de este almacén) se marcará como sustituida
+   * cuando la nueva esté completa, como en un cambio de modo.
+   */
+  async createDriveVault(
+    choice: DriveEncryptionChoice,
+    supersedes?: string,
+  ): Promise<{ connected: true }> {
     const drive = this.requireDrive();
     const { entry, keys } = await drive.createVault(this.services.vault, choice);
-    await this.bind(driveBinding(entry), keys);
+    await this.bind(
+      supersedes ? { ...driveBinding(entry), supersedes } : driveBinding(entry),
+      keys,
+    );
     return { connected: true };
+  }
+
+  /**
+   * Fase `needs-confirm`: el propietario acepta pasar a la carpeta SIN cifrar que sustituyó a
+   * la cifrada. Solo a partir de aquí se publica en ella lo pendiente de este equipo.
+   */
+  async acceptPlainRelocation(): Promise<void> {
+    const next = this.pendingPlainRelocation;
+    if (!next) return;
+    const binding = this.driveBinding();
+    this.pendingPlainRelocation = null;
+    await this.services.repo.setDevicePreference(keysPref(binding.folderId), null);
+    logDiagnostic('info', 'drive-relocated', 'sin cifrar (aceptado)');
+    await this.bind(driveBinding(next));
+  }
+
+  /**
+   * Fase `needs-confirm`, alternativa: se mantiene el cifrado creando una carpeta cifrada nueva
+   * (contraseña y código nuevos) que sustituirá a la carpeta sin cifrar cuando esté completa.
+   */
+  async reencryptAfterPlainRelocation(choice: DriveEncryptionChoice): Promise<void> {
+    const next = this.pendingPlainRelocation;
+    if (!next || choice.mode !== 'encrypted') return;
+    const binding = this.driveBinding();
+    this.pendingPlainRelocation = null;
+    await this.services.repo.setDevicePreference(keysPref(binding.folderId), null);
+    await this.createDriveVault(choice, next.folderId);
   }
 
   /** Abre en este navegador un almacén de Drive como almacén aparte enlazado a él. */
@@ -332,16 +397,32 @@ export class SyncRuntime {
   }
 
   /** Desconectar no borra nada: ni el almacén local ni la carpeta o Drive (§8.4). */
-  async disconnect(): Promise<void> {
+  /**
+   * Para Drive devuelve si Google confirmó la revocación del permiso (auditoría H07): la
+   * desvinculación local se hace siempre, pero no equivale a retirar el permiso en la cuenta.
+   */
+  async disconnect(): Promise<{ revoked: boolean } | null> {
+    let result: { revoked: boolean } | null = null;
     if (this.binding?.kind === 'drive') {
       await this.services.repo.setDevicePreference(keysPref(this.binding.folderId), null);
-      await this.drive?.auth.disconnect().catch(() => undefined);
+      let revoked = false;
+      try {
+        if (this.drive) {
+          await this.drive.auth.disconnect();
+          revoked = true;
+        }
+      } catch (error) {
+        logDiagnostic('warn', 'drive-revoke-failed', describeError(error));
+      }
+      result = { revoked };
       this.drive = null;
       this.keys = null;
+      this.pendingPlainRelocation = null;
     }
     this.binding = null;
     await this.services.repo.setDevicePreference(BINDING_KEY, null);
     this.setStatus(null);
+    return result;
   }
 
   async sync(): Promise<void> {
@@ -436,20 +517,40 @@ export class SyncRuntime {
   }
 
   /**
-   * La carpeta de Drive se sustituyó (otro equipo cambió el modo) o se borró: si la cuenta tiene
-   * otra carpeta de este mismo almacén, se pasa a ella; si está cifrada, se pedirá la clave.
+   * La carpeta de Drive se sustituyó (otro equipo cambió el modo) o se borró. Si la carpeta
+   * indica su sustituta (`supersededBy`, siguiendo la cadena), solo se acepta esa; si no lo
+   * indica, solo si la cuenta tiene exactamente otra carpeta de este almacén. Si la nueva está
+   * cifrada, se pedirá la clave; si deja de estar cifrada, no se publica nada hasta que el
+   * propietario lo confirme (auditoría H01).
    */
   private async relocateDrive(binding: DriveBinding): Promise<boolean> {
     let vaults: DriveVaultChoice[];
+    let successor: string | null;
     try {
-      vaults = await this.requireDrive().listVaults();
+      const drive = this.requireDrive();
+      vaults = (await drive.listVaults()).filter(
+        (v) => v.vault.id === this.services.vault.id && v.folderId !== binding.folderId,
+      );
+      successor = await drive.successorOf(binding.folderId);
+      for (let hop = 0; successor && hop < MAX_RELOCATION_HOPS; hop++) {
+        if (vaults.some((v) => v.folderId === successor)) break;
+        successor = await drive.successorOf(successor);
+      }
     } catch {
       return false;
     }
-    const next = vaults.find(
-      (v) => v.vault.id === this.services.vault.id && v.folderId !== binding.folderId,
-    );
+    const next = successor
+      ? vaults.find((v) => v.folderId === successor)
+      : vaults.length === 1
+        ? vaults[0]
+        : undefined;
     if (!next) return false;
+    if (binding.encrypted && !next.encrypted) {
+      this.pendingPlainRelocation = next;
+      logDiagnostic('warn', 'drive-relocation-to-plain-blocked', 'pendiente de confirmar');
+      this.setStatus(this.make('needs-confirm', null));
+      return true;
+    }
     await this.saveBinding(driveBinding(next));
     // La clave de la carpeta anterior ya no sirve para nada en este equipo.
     await this.services.repo.setDevicePreference(keysPref(binding.folderId), null);

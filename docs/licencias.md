@@ -1,6 +1,6 @@
 # Inventario de licencias
 
-Generado con `node scripts/licenses.ts` el 2026-10-13 a partir de `pnpm licenses list --prod`. No editar a mano.
+Generado con `node scripts/licenses.ts` el 2026-10-14 a partir de `pnpm licenses list --prod`. No editar a mano.
 
 Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso previsto. Se admiten las licencias permisivas de la lista del script; cualquier otra aparece en «Por revisar» y hace fallar `--check`.
 
@@ -12,6 +12,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 | ISC | 38 |
 | Apache-2.0 | 11 |
 | BSD-3-Clause | 7 |
+| OFL-1.1 | 1 |
 | (MPL-2.0 OR Apache-2.0) | 1 |
 | CC0-1.0 | 1 |
 | (MIT AND Zlib) | 1 |
@@ -57,7 +58,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 
 | Recurso | Origen | Licencia |
 | --- | --- | --- |
-| Icono de la aplicación (`public/icon.svg` y PNG derivados) | Propio | MIT (la del código propio) |
+| Marca: logotipo, iconos de la PWA, iconos de interfaz y stickers (`brand/`, copiados a `public/`) | Propio | MIT (la del código propio) |
 | Iconos de la interfaz del motor | Incluidos en el código de `@excalidraw/excalidraw` | MIT (licencia del paquete) |
 
 ## Paquetes
@@ -93,6 +94,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @floating-ui/dom | 1.8.0 | MIT |
 | @floating-ui/react-dom | 2.1.9 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
+| @fontsource/nunito | 5.3.0 | OFL-1.1 |
 | @iconify/types | 2.0.0 | MIT |
 | @iconify/utils | 3.1.7 | MIT |
 | @lezer/common | 1.5.3 | MIT |
@@ -281,7 +283,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | khroma | 2.1.0 | MIT |
 | langium | 3.3.1 | MIT |
 | layout-base | 1.0.2, 2.0.1 | MIT |
-| lodash-es | 4.17.21, 4.18.1 | MIT |
+| lodash-es | 4.18.1 | MIT |
 | lodash.debounce | 4.0.8 | MIT |
 | lodash.throttle | 4.1.1 | MIT |
 | longest-streak | 3.1.0 | MIT |
@@ -332,7 +334,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | minisearch | 7.2.0 | MIT |
 | ms | 2.1.3 | MIT |
 | multimath | 2.0.0 | MIT |
-| nanoid | 3.3.3, 4.0.2 | MIT |
+| nanoid | 3.3.20, 4.0.2 | MIT |
 | normalize-path | 3.0.0 | MIT |
 | object-assign | 4.1.1 | MIT |
 | open-color | 1.9.1 | MIT |

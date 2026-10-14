@@ -13,3 +13,7 @@ dist-spike
 # Generados por pnpm assets (scripts/third-party-notices.ts)
 public/THIRD-PARTY-NOTICES.txt
 public/LICENSE.txt
+# Informes y arneses de auditorías externas: material interno, no se versiona
+auditoria-*/
+# Configuraciones locales temporales de Playwright
+playwright.tmp-*.config.ts

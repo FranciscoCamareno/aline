@@ -50,6 +50,7 @@ async function headBody(page: Page, documentId: string): Promise<{ heads: number
 test('reabre el último documento abierto, no el último modificado (FP-01)', async ({ page }) => {
   await freshVault(page);
   const canvasId = await activeDocumentId(page);
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.cm-content')).toBeVisible();
   // La nota es la más reciente; se vuelve al lienzo antes de recargar.
@@ -63,6 +64,7 @@ test('reabre el último documento abierto, no el último modificado (FP-01)', as
 
 test('panel de estado: persistencia, diagnóstico y exportación de emergencia', async ({ page }) => {
   await freshVault(page);
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   const editor = page.locator('.cm-content');
   await editor.click();
@@ -72,6 +74,7 @@ test('panel de estado: persistencia, diagnóstico y exportación de emergencia',
     .poll(async () => (await headBody(page, noteId)).body)
     .toContain('texto de emergencia');
 
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   const panel = page.getByTestId('status-panel');
   await expect(panel).toBeVisible();
@@ -115,6 +118,7 @@ test('almacén inaccesible: aviso sin borrar nada y almacén temporal (FA-01b)',
   await page.getByTestId('startup-temporary').click();
   await expect(page.getByTestId('temporary-banner')).toBeVisible();
   await expect(page.locator('.excalidraw')).toBeVisible();
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await page.locator('.cm-content').click();
   await page.keyboard.type('en memoria');
@@ -125,6 +129,7 @@ test('una revisión de versión futura se abre en solo lectura y no se sobrescri
   page,
 }) => {
   await freshVault(page);
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.cm-content')).toBeVisible();
   const noteId = await activeDocumentId(page);
@@ -164,6 +169,7 @@ test('una nota grande se guarda (hash en worker) y se reabre íntegra', async ({
   const workerScripts: string[] = [];
   page.on('worker', (w) => workerScripts.push(w.url()));
   await freshVault(page);
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.cm-content')).toBeVisible();
   const noteId = await activeDocumentId(page);

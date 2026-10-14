@@ -84,6 +84,7 @@ async function importCanvas(page: Page, title: string, count: number) {
 
 /** Abre un documento desde la biblioteca y mide hasta que el motor pinta la escena. */
 async function timeOpen(page: Page, title: string): Promise<number> {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.cm-content')).toBeVisible();
   const start = Date.now();

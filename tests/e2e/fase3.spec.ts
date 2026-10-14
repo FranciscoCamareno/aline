@@ -126,6 +126,7 @@ async function saved(page: Page) {
 }
 
 async function newNote(page: Page, text: string): Promise<string> {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   const editor = page.locator('.cm-content');
   await expect(editor).toBeVisible();
@@ -373,10 +374,9 @@ test('[[ sugiere destinos, crea la nota si falta y los enlaces rotos se listan (
   expect(await activeId(page)).toBe(targetId);
 
   // Enviar el destino a la papelera: el enlace aparece como roto.
-  await page
-    .locator(`[data-testid="library-item"][data-document-id="${targetId}"]`)
-    .getByTestId('library-trash')
-    .click();
+  const target = page.locator(`[data-testid="library-item"][data-document-id="${targetId}"]`);
+  await target.getByTestId('library-actions').click();
+  await target.getByTestId('library-trash').click();
   await page
     .locator(`[data-testid="library-item"][data-document-id="${sourceId}"]`)
     .getByTestId('library-title-text')
@@ -388,6 +388,7 @@ test('[[ sugiere destinos, crea la nota si falta y los enlaces rotos se listan (
 
 test('carpetas, etiquetas y carpeta de recuperación (RF-25, CA-21)', async ({ page }) => {
   await freshStart(page);
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-folder').click();
   await page.getByTestId('new-folder-input').fill('Proyectos');
   await page.getByTestId('new-folder-input').press('Enter');
@@ -410,6 +411,7 @@ test('carpetas, etiquetas y carpeta de recuperación (RF-25, CA-21)', async ({ p
   await page.getByTestId('tag-chip').filter({ hasText: '#Idea' }).click();
 
   // Borrar la carpeta no borra la nota: pasa a «Recuperación».
+  await folder.getByTestId('folder-actions').first().click();
   await folder.getByTestId('folder-trash').first().click();
   await expect(page.getByTestId('recovery-list')).toContainText('Nota sin título');
   await page.reload();
@@ -437,6 +439,7 @@ test('la búsqueda encuentra texto dentro de una forma y resalta el elemento (CA
   await expect(page.getByTestId('canvas-host')).toBeVisible();
   await expect(page.getByTestId('link-element')).toBeVisible(); // la forma encontrada queda seleccionada
 
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-search').click();
   await page.getByTestId('search-input').fill('zafiro');
   await page.getByTestId('search-hit').first().click();
@@ -444,7 +447,9 @@ test('la búsqueda encuentra texto dentro de una forma y resalta el elemento (CA
   await expect.poll(() => page.evaluate(() => document.getSelection()?.toString())).toBe('zafiro');
 
   // Un documento recién creado se encuentra por su título sin necesidad de editarlo.
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-canvas').click();
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-search').click();
   await page.getByTestId('search-input').fill('lienzo sin');
   await expect(page.getByTestId('search-hit')).toHaveCount(2);
@@ -511,6 +516,7 @@ test('búsqueda con el volumen de referencia en el navegador: 2 000 notas y 500 
   await page.reload();
   await expect(page.locator('.excalidraw')).toBeVisible({ timeout: 30_000 });
   const firstRender = Date.now() - t0;
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-search').click();
   await expect(page.getByTestId('search-indexing')).toHaveCount(0, { timeout: 120_000 });
   const ready = Date.now() - t0;

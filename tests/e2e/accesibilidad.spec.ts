@@ -35,12 +35,19 @@ test('solo con teclado: llegar a «Nota», crearla y escribir, con el foco siemp
   for (let i = 0; i < 40 && !reached; i++) {
     await page.keyboard.press('Tab');
     reached = await page.evaluate(
-      () => document.activeElement?.getAttribute('data-testid') === 'new-note',
+      () => document.activeElement?.getAttribute('data-testid') === 'new-menu',
     );
   }
   expect(reached).toBe(true);
-  const outline = await page.evaluate(() => getComputedStyle(document.activeElement!).outlineStyle);
-  expect(outline).not.toBe('none');
+  const outlineOf = () =>
+    page.evaluate(() => getComputedStyle(document.activeElement!).outlineStyle);
+  expect(await outlineOf()).not.toBe('none');
+  // «Nuevo» abre su menú con Intro y deja el foco en el primer elemento (Lienzo).
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('new-canvas')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByTestId('new-note')).toBeFocused();
+  expect(await outlineOf()).not.toBe('none');
   await page.keyboard.press('Enter');
   await expect(page.locator('.cm-content')).toBeVisible();
   await page.locator('.cm-content').focus();
@@ -72,6 +79,7 @@ test.describe('pantalla táctil estrecha (iPad vertical emulado)', () => {
     expect(small).toEqual([]);
 
     // Crear una nota cierra la biblioteca (taparía el editor) y el editor no provoca zoom.
+    await page.getByTestId('new-menu').tap();
     await page.getByTestId('new-note').tap();
     await expect(page.locator('.library')).toBeHidden();
     await expect(page.locator('.cm-content')).toBeVisible();

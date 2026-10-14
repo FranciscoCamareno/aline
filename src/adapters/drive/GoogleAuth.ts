@@ -5,6 +5,8 @@ export const GIS_SRC = 'https://accounts.google.com/gsi/client';
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 /** Margen para no usar un token a punto de vencer. */
 const EXPIRY_MARGIN_MS = 60_000;
+/** Si GIS no responde a la revocación en este tiempo, no se da por revocada. */
+const REVOKE_TIMEOUT_MS = 15_000;
 
 interface TokenResponse {
   access_token?: string;
@@ -25,8 +27,14 @@ interface GoogleOAuth2 {
     callback: (response: TokenResponse) => void;
     error_callback?: (error: { type?: string; message?: string }) => void;
   }): TokenClient;
-  revoke(token: string, done?: () => void): void;
+  revoke(token: string, done?: (response?: RevocationResponse) => void): void;
   hasGrantedAllScopes(response: TokenResponse, scope: string): boolean;
+}
+/** Respuesta de `google.accounts.oauth2.revoke` (referencia de GIS). */
+interface RevocationResponse {
+  successful?: boolean;
+  error?: string;
+  error_description?: string;
 }
 type GoogleGlobal = { accounts: { oauth2: GoogleOAuth2 } };
 
@@ -119,14 +127,39 @@ export class GoogleAuth implements RemoteAuth {
     return this.token;
   }
 
-  /** Revoca el permiso; cambiar de cuenta o desconectar no elimina el almacén local (§8.4). */
+  /**
+   * Olvida el token y pide a Google que revoque el permiso; cambiar de cuenta o desconectar no
+   * elimina el almacén local (§8.4). Solo se resuelve si Google confirma la revocación
+   * (auditoría 13/10/2026, H07); el token local se olvida en cualquier caso.
+   */
   async disconnect(): Promise<void> {
     const token = this.token;
     this.token = null;
     this.expiresAt = 0;
-    if (token && this.oauth) {
-      const oauth = this.oauth;
-      await new Promise<void>((resolve) => oauth.revoke(token, resolve));
+    if (!token || !this.oauth) {
+      // Tras recargar no queda token en memoria: no hay con qué revocar.
+      throw new RemoteError('auth', 'No hay una sesión de Google activa con la que revocar');
+    }
+    const oauth = this.oauth;
+    const response = await new Promise<RevocationResponse | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), REVOKE_TIMEOUT_MS);
+      try {
+        oauth.revoke(token, (r) => {
+          clearTimeout(timer);
+          resolve(r ?? null);
+        });
+      } catch {
+        clearTimeout(timer);
+        resolve(null);
+      }
+    });
+    if (!response?.successful) {
+      throw new RemoteError(
+        'auth',
+        response?.error_description ??
+          response?.error ??
+          'Google no confirmó la revocación del permiso',
+      );
     }
   }
 }

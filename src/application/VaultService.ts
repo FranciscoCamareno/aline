@@ -943,7 +943,8 @@ function emptySceneJson(): string {
     version: 2,
     source: 'mindnote',
     elements: [],
-    appState: {},
+    // Fondo «papel» del sistema de diseño (docs/DESIGN.md §3.2); en oscuro el motor lo invierte.
+    appState: { viewBackgroundColor: '#FFFDF4' },
     files: {},
   });
 }

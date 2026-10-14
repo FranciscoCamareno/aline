@@ -27,6 +27,8 @@ const ALLOWED = new Set([
   'Zlib',
   '(MIT AND Zlib)',
   '(MPL-2.0 OR Apache-2.0)',
+  // Solo fuentes (Nunito de la interfaz): la misma licencia que las fuentes del motor.
+  'OFL-1.1',
 ]);
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -100,7 +102,7 @@ const md = [
   '',
   '| Recurso | Origen | Licencia |',
   '| --- | --- | --- |',
-  '| Icono de la aplicación (`public/icon.svg` y PNG derivados) | Propio | MIT (la del código propio) |',
+  '| Marca: logotipo, iconos de la PWA, iconos de interfaz y stickers (`brand/`, copiados a `public/`) | Propio | MIT (la del código propio) |',
   '| Iconos de la interfaz del motor | Incluidos en el código de `@excalidraw/excalidraw` | MIT (licencia del paquete) |',
   '',
   '## Paquetes',

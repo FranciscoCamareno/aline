@@ -1,4 +1,4 @@
-# MindNote — núcleo local
+# aline — núcleo local
 
 Sistema personal de mapas mentales y notas conectadas. Esta es la **primera entrega**: el núcleo
 local descrito en [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md). Es una PWA
@@ -6,7 +6,12 @@ con React, TypeScript estricto y Vite, con lienzo Excalidraw, notas Markdown y g
 automático en IndexedDB (Dexie). No necesita cuenta ni servidor; Google Drive y la carpeta
 local son opcionales.
 
-> `mindnote` es un nombre provisional, igual que el esquema `mindnote://` del diseño.
+> El nombre visible es **aline**. Los identificadores internos siguen siendo `mindnote` (base
+> `mindnote-vault`, enlaces `mindnote://`, formato del almacén) para no romper datos existentes.
+
+**Diseño visual:** [docs/DESIGN.md](docs/DESIGN.md). Los recursos de marca (logotipo, iconos,
+stickers, notas adhesivas) están en [brand/](brand/); los tokens de color viven en
+`src/app/styles.css`.
 
 **Documentación de uso:** [guía de uso](docs/guia-de-uso.md) ([English](docs/user-guide.md)),
 [operación, copias y recuperación](docs/operacion.md) ([English](docs/operations.md)),
@@ -53,8 +58,8 @@ sirvan desde el mismo origen y no desde un CDN (diseño §13).
 Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
 `pnpm exec playwright install chromium`.
 
-`node scripts/generate-icons.mjs` regenera los iconos PNG de la PWA a partir de
-`public/icon.svg`.
+Los iconos de la PWA (`public/aline-icon-*.png`, `favicon*`, `apple-touch-icon.png`) se copian
+tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
 
 ## Qué incluye
 
@@ -78,6 +83,16 @@ Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
 - **PWA:** manifiesto, iconos, Service Worker de Workbox con precache del núcleo y actualización
   solo cuando el usuario la acepta.
 - **Idiomas:** español e inglés.
+- **Barra de herramientas propia** (DESIGN.md §7): objetos ilustrados en una bandeja, formas
+  agrupadas con menú, panel secundario (marco, láser, imagen, Mermaid), nota adhesiva (N) y
+  stickers de la marca (B), que se colocan con clic o arrastrándolos al lienzo. Los demás atajos
+  de teclado son los del motor.
+- **Biblioteca y cabecera** (DESIGN.md §6): «Nuevo» con desplegable (lienzo, nota, carpeta,
+  importar), buscador de títulos, pestañas «Todos» y «Recientes», acciones de cada fila en «⋯» y,
+  abajo, papelera, preferencias y ayuda. La cabecera deja a la vista Historial, Enlaces y
+  Exportar; Buscar y Estado y diagnóstico están en «⋯».
+- **Tema:** interruptor claro/oscuro en la cabecera y «Seguir al sistema» en Preferencias
+  (preferencia de este navegador). Fuente Nunito servida desde el propio origen.
 - **Al abrir** se vuelve al último documento abierto en este dispositivo.
 - **Compatibilidad de versiones:** una revisión, un frontmatter, un sidecar o una escena con una
   versión posterior a la soportada (o con contenido inválido) se abre en **solo lectura** con
@@ -185,8 +200,9 @@ Antes de la primera ejecución de `pnpm test:e2e` hay que instalar el navegador:
   - contraste WCAG AA comprobado en los temas claro y oscuro;
   - traducciones es/en completas, con una prueba que lo exige.
 - **Integración continua** en `.github/workflows/ci.yml` (formato, licencias, verify y E2E).
-- Borrador de cabeceras de seguridad para Cloudflare Pages en `public/_headers`. La CSP va en
-  modo informe (`Report-Only`) y **no es la definitiva**.
+- Borrador de cabeceras de seguridad para Cloudflare Pages en `public/_headers`. La CSP completa
+  va en modo informe (`Report-Only`) y **no es la definitiva**; solo es obligatoria una CSP
+  mínima contra la incrustación en marcos (`frame-ancestors 'none'`, `X-Frame-Options: DENY`).
 
 ## Estructura
 
@@ -318,7 +334,9 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
   - tiempo de PBKDF2 (600 000 iteraciones) en el iPad;
   - que Safari conserve en IndexedDB la clave no extraíble;
   - el cambio de modo con un almacén grande y Drive real.
-  - Ni la implementación ni el formato han pasado una auditoría de seguridad externa.
+  - Hubo una auditoría defensiva automatizada el 13/10/2026 (informe fuera del repositorio);
+    sus correcciones están descritas en el diseño §13.1 y en `tests/unit/seguridad.test.ts`.
+    No es una revisión criptográfica especializada.
 
 ## Funciones pendientes
 
@@ -326,22 +344,24 @@ Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes d
 error `not-implemented` en vez de simular un éxito.
 El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
 
-| Área                                                                     | Estado                                                                                                                                                                                   | Dónde                                   |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Google Drive: comprobación con la cuenta real                            | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                                                               | `adapters/drive/`, `public/_headers`    |
-| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                              | —                                       |
-| Poda selectiva de versiones y espacio que ocupan (RF-46)                 | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                        | `features/history/`                     |
-| Enlaces `[[Título]]` escritos a mano en la vista previa                  | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID                                                 | `features/notes/`                       |
-| Biblioteca con miles de documentos                                       | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                 | `features/library/`                     |
-| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                             | `app/importExport.ts`                   |
-| Mensajes técnicos de sincronización en inglés                            | Los textos de la interfaz están traducidos; los mensajes de error que llegan del adaptador (Drive, carpeta) se muestran en español                                                       | `adapters/drive`, `adapters/filesystem` |
-| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                            | —                                       |
-| Sidecar: ramas colapsables y notas incrustadas                           | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                        | `domain/sidecar.ts`                     |
-| Pila de deshacer coordinada para comandos propios                        | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                    | —                                       |
-| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y muestra su propio botón; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6 | `features/canvas/CanvasView.tsx`        |
-| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                     | `application/KnowledgeService.ts`       |
-| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                      | `domain/frontmatter.ts`                 |
-| Desactivar la biblioteca externa de Excalidraw                           | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                                                                 | —                                       |
+| Área                                                                     | Estado                                                                                                                                                                                                               | Dónde                                   |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Google Drive: comprobación con la cuenta real                            | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                                                                                           | `adapters/drive/`, `public/_headers`    |
+| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                          | —                                       |
+| Poda selectiva de versiones y espacio que ocupan (RF-46)                 | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                                                    | `features/history/`                     |
+| Enlaces `[[Título]]` escritos a mano en la vista previa                  | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID                                                                             | `features/notes/`                       |
+| Biblioteca con miles de documentos                                       | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                                             | `features/library/`                     |
+| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                         | `app/importExport.ts`                   |
+| Mensajes técnicos de sincronización en inglés                            | Los textos de la interfaz están traducidos; los mensajes de error que llegan del adaptador (Drive, carpeta) se muestran en español                                                                                   | `adapters/drive`, `adapters/filesystem` |
+| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                        | —                                       |
+| Sidecar: ramas colapsables y notas incrustadas                           | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                                                    | `domain/sidecar.ts`                     |
+| Pila de deshacer coordinada para comandos propios                        | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                                                | —                                       |
+| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6 | `features/canvas/CanvasView.tsx`        |
+| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                 | `application/KnowledgeService.ts`       |
+| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                  | `domain/frontmatter.ts`                 |
+| Paleta del lienzo (DESIGN.md §3.2)                                       | La barra de herramientas propia ya está; falta un selector de color con la paleta del lienzo (la 0.18.1 no deja cambiar la suya)                                                                                     | `features/canvas/CanvasView.tsx`        |
+| Nota adhesiva: color y texto (DESIGN.md §3.5)                            | Se inserta con la barra o con N, siempre en mantequilla; falta elegir el color y que el texto quede arriba a la izquierda (el motor lo centra)                                                                       | `features/canvas/stickyNote.ts`         |
+| Desactivar la biblioteca externa de Excalidraw                           | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                                                                                             | —                                       |
 
 ## Decisiones de implementación
 

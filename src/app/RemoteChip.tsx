@@ -1,5 +1,21 @@
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from './store.ts';
+import type { RemotePhase } from './syncRuntime.ts';
+import { Icon, type IconName } from './ui/Icon.tsx';
+
+const CLOUD_ICON: Record<RemotePhase, IconName> = {
+  idle: 'nube',
+  syncing: 'nube',
+  pending: 'nube',
+  ok: 'nube-ok',
+  'needs-permission': 'nube-off',
+  'needs-auth': 'nube-off',
+  'needs-key': 'nube-off',
+  'needs-confirm': 'nube-off',
+  mismatch: 'nube-off',
+  unavailable: 'nube-off',
+  error: 'nube-off',
+};
 
 /**
  * Estado del destino conectado (diseño §4.1), separado del estado de guardado local: un guardado
@@ -25,7 +41,7 @@ export function RemoteChip({ onOpen }: { onOpen: () => void }) {
       title={t('storage.title')}
       onClick={onOpen}
     >
-      {drive ? '☁️' : '📁'}{' '}
+      <Icon name={drive ? CLOUD_ICON[remote.phase] : 'carpeta'} size={16} />
       {t(`storage.${drive ? 'driveChip' : 'chip'}.${remote.phase}`, {
         count: remote.pending,
         time,

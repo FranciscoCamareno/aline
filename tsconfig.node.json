@@ -5,7 +5,7 @@
     "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
@@ -22,6 +22,7 @@
     "playwright.config.ts",
     "playwright.fase0.config.ts",
     "tests",
-    "scripts"
+    "scripts",
+    "src/app/env.d.ts"
   ]
 }

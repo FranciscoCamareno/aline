@@ -1,7 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+// Nunito, la fuente de la interfaz (DESIGN.md §4), servida desde el propio origen: solo el
+// subconjunto latino y los pesos del sistema (400, 600, 700 y la cursiva de los captions).
+import '@fontsource/nunito/latin-400.css';
+import '@fontsource/nunito/latin-400-italic.css';
+import '@fontsource/nunito/latin-600.css';
+import '@fontsource/nunito/latin-700.css';
 import { App } from './app/App.tsx';
 import './app/i18n.ts';
+import { initTheme } from './app/theme.ts';
 import './app/styles.css';
 
 declare global {
@@ -12,6 +19,8 @@ declare global {
 
 // Fuentes de Excalidraw desde el mismo origen (copiadas a public/fonts), nunca desde un CDN.
 window.EXCALIDRAW_ASSET_PATH = import.meta.env.BASE_URL;
+
+initTheme();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Falta el elemento #root');

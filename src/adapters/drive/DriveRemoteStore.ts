@@ -1,5 +1,9 @@
 import type { DocumentRecord, Revision } from '../../domain/revision.ts';
-import { encryptionFileSchema, type EncryptionFile } from '../../domain/encryption.ts';
+import {
+  encryptionFileSchema,
+  MAX_ENCRYPTION_FILE_BYTES,
+  type EncryptionFile,
+} from '../../domain/encryption.ts';
 import { vaultSchema, type Vault, type VersionPrune } from '../../domain/vault.ts';
 import {
   assetPath,
@@ -136,10 +140,18 @@ export async function readDriveEncryption(
     `${hasProperty('mindnote', 'encryption')} and ${hasProperty('root', rootId)} and ${notTrashed}`,
   );
   if (!file) throw new RemoteError('not-found', 'Falta encryption.json en la carpeta de Drive');
-  const parsed = encryptionFileSchema.safeParse(
-    JSON.parse(utf8Decode(await client.download(file.id))),
-  );
-  if (!parsed.success) throw new RemoteError('not-found', 'encryption.json no es válido');
+  // Se valida antes de derivar ninguna clave: un descriptor manipulado no impone su coste.
+  const bytes = await client.download(file.id);
+  let parsed;
+  try {
+    parsed =
+      bytes.byteLength <= MAX_ENCRYPTION_FILE_BYTES
+        ? encryptionFileSchema.safeParse(JSON.parse(utf8Decode(bytes)))
+        : null;
+  } catch {
+    parsed = null;
+  }
+  if (!parsed?.success) throw new RemoteError('not-found', 'encryption.json no es válido');
   return parsed.data;
 }
 
@@ -167,6 +179,20 @@ export async function markDriveSuperseded(
   newRootId: string,
 ): Promise<void> {
   await client.updateMetadata(oldRootId, { appProperties: { supersededBy: newRootId } });
+}
+
+/**
+ * Carpeta que sustituyó a esta (`supersededBy`), aunque esté en la papelera; null si no fue
+ * sustituida o ya no existe. Al reubicarse se sigue este enlace, no cualquier carpeta con el
+ * mismo id de almacén (auditoría 13/10/2026, H01).
+ */
+export async function driveSuccessor(client: DriveClient, rootId: string): Promise<string | null> {
+  try {
+    return (await client.getFile(rootId)).appProperties?.['supersededBy'] ?? null;
+  } catch (error) {
+    if (error instanceof RemoteError && error.kind === 'not-found') return null;
+    throw error;
+  }
 }
 
 /** Mueve una carpeta a la papelera de Drive (recuperable desde Drive durante un tiempo). */

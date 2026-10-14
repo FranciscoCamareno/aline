@@ -1,39 +1,83 @@
+/*
+ * Sistema de diseño de aline (docs/DESIGN.md). Tokens de la interfaz (§2.1) y semánticos (§2.2):
+ * el tema se aplica con `data-theme` en <html> (app/theme.ts). Los neutros son cálidos en ambos
+ * temas; el amarillo es superficie, nunca texto.
+ */
 :root {
-  --bg: #ffffff;
-  --surface: #f6f6f8;
-  --border: #dcdce2;
-  --text: #1d1d22;
-  --muted: #6b6b76;
-  --accent: #5b57d1;
-  --accent-text: #ffffff;
-  --ok: #2e7d32;
-  --warn: #a15c00;
-  --danger: #b3261e;
+  --bg-canvas: #fffdf4;
+  --bg-panel: #f8f2e1;
+  --bg-popover: #fffdf4;
+  --border-soft: #e8dfc6;
+  --border-ink: #262118;
+  --text-primary: #262118;
+  --text-secondary: #6b6250;
+  --text-accent: #8a5a00;
+  --brand: #ffe380;
+  --brand-hover: #f5c842;
+  --on-brand: #262118;
+  --selection-soft: #fff6cc;
+  --on-selection-soft: #262118;
+  --secondary: #bfdfe2;
+  --secondary-soft: #dceff1;
+  --on-secondary: #24555c;
+  /* Agua profunda, éxito y aviso, oscurecidos un poco para llegar a 4,5:1 (DESIGN.md §2.4). */
+  --focus: #3b7780;
+  --link: #3b7780;
+  --success: #2e7a4d;
+  --success-bg: #e4f2e7;
+  --warning: #ad500a;
+  --warning-bg: #fce9d7;
+  --danger: #b83a26;
+  --danger-bg: #fbe4df;
+  /* Acento de los iconos activos (§7.4). */
+  --icon-accent-on: #ffe380;
+  /* Elevación (§5): en oscuro no hay sombras salvo en los popovers. */
+  --shadow-panel: 0 2px 20px rgb(38 33 24 / 0.06);
+  --shadow-button: 0 1px 2px rgb(38 33 24 / 0.25);
+  --shadow-popover: 0 8px 24px rgb(38 33 24 / 0.1);
+  --backdrop: rgb(38 33 24 / 0.3);
+  /* Borde del botón primario: tinta en claro, sin borde en oscuro (§6). */
+  --primary-border: #262118;
+
   /* Objetivo táctil para iPad (diseño §4.1). */
   --touch: 44px;
   --sidebar-width: 260px;
-  color-scheme: light dark;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  --topbar-height: 53px;
+  --font-ui: Nunito, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  color-scheme: light;
+  font-family: var(--font-ui);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121214;
-    --surface: #1c1c20;
-    --border: #34343b;
-    --text: #ececf1;
-    --muted: #a0a0ab;
-    --accent: #a8a5ff;
-    --accent-text: #121214;
-    --ok: #81c784;
-    --warn: #ffb74d;
-    --danger: #ef9a9a;
-  }
+:root[data-theme='dark'] {
+  --bg-canvas: #16140c;
+  --bg-panel: #24211b;
+  --bg-popover: #2f2b22;
+  --border-soft: #3a3428;
+  --border-ink: #b5ac97;
+  --text-primary: #f3eedf;
+  --text-secondary: #b5ac97;
+  --text-accent: #ffd66b;
+  --selection-soft: #3b3320;
+  --on-selection-soft: #ffe380;
+  --secondary: #284a4f;
+  --secondary-soft: #1f3335;
+  --on-secondary: #bfdfe2;
+  --focus: #7fc4cc;
+  --link: #7fc4cc;
+  --success: #7bc79a;
+  --success-bg: #1f3327;
+  --warning: #f0a35e;
+  --warning-bg: #3a2716;
+  --danger: #f08a78;
+  --danger-bg: #3c211c;
+  --icon-accent-on: #5c4e1e;
+  --shadow-panel: none;
+  --shadow-button: none;
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
+  --backdrop: rgb(0 0 0 / 0.45);
+  --primary-border: #ffe380;
+  color-scheme: dark;
 }
 
 * {
@@ -48,28 +92,100 @@ body,
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-button,
-select,
-input {
+h1,
+h2,
+h3 {
+  letter-spacing: normal;
+}
+
+/* Iconos (§7.4): trazo en currentColor; la capa de acento solo en estados activos. */
+.icon {
+  display: inline-flex;
+  flex: none;
+  --icon-accent: none;
+}
+.icon svg {
+  width: 100%;
+  height: 100%;
+}
+.icon.is-on,
+.active .icon,
+[aria-pressed='true'] .icon {
+  --icon-accent: var(--icon-accent-on);
+}
+:root[data-theme='dark'] .active .icon.is-on,
+:root[data-theme='dark'] [aria-pressed='true'] .icon {
+  color: var(--brand);
+}
+
+/*
+ * Botones (§6): el secundario es el estilo por defecto; el primario lleva `.primary`. Los
+ * estilos base van en :where() (especificidad cero) y excluyen la interfaz del motor, que trae
+ * los suyos: así cualquier clase propia o del motor los sustituye.
+ */
+:where(button, select, input) {
   font: inherit;
   color: inherit;
-  min-height: var(--touch);
-  border-radius: 8px;
 }
 
-button,
-select {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 0 12px;
+:where(button:not(.excalidraw *), select:not(.excalidraw *)) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border-ink);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
 }
+:where(button:not(.excalidraw *), select:not(.excalidraw *)):hover:not(:disabled) {
+  background: var(--selection-soft);
+}
+:where(button:not(.excalidraw *)):disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+:where(select:not(.excalidraw *)) {
+  padding: 0 12px;
+  font-weight: 400;
+  border-width: 1px;
+  border-color: var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-canvas);
+}
 
-/* Foco visible en todo lo que se alcanza con el teclado (RNF-08). */
+button.primary {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--primary-border);
+  box-shadow: var(--shadow-button);
+}
+button.primary:hover:not(:disabled),
+button.primary:active {
+  background: var(--brand-hover);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: currentColor;
+}
+button.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
+
+/* Anillo de foco (§6): en todos los elementos interactivos, nunca se elimina (RNF-08). */
 button:focus-visible,
 select:focus-visible,
 input:focus-visible,
@@ -77,32 +193,64 @@ textarea:focus-visible,
 summary:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
-input {
-  border: 1px solid var(--accent);
-  background: var(--bg);
-  padding: 0 8px;
+/* Input (§6). */
+:where(input:not(.excalidraw *)) {
+  min-height: 36px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-canvas);
+  padding: 0 10px;
   min-width: 0;
 }
+:where(input:not(.excalidraw *), textarea:not(.excalidraw *)):focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 30%, transparent);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary);
+}
+:where(input[type='checkbox'], input[type='radio']):not(.excalidraw *) {
+  min-height: 0;
+  accent-color: var(--focus);
+}
 
+/* Botón de herramienta (§6): 32 × 32, radio 8, sin borde en reposo. */
 .icon-button {
-  min-width: var(--touch);
+  min-width: 32px;
+  min-height: 32px;
   padding: 0;
-  background: transparent;
   border-color: transparent;
+  border-radius: 8px;
+  color: var(--text-primary);
+}
+.topbar .icon-button[aria-expanded='true'],
+.icon-button[aria-pressed='true'] {
+  background: var(--brand);
+  border-color: var(--border-ink);
+  color: var(--on-brand);
 }
 
 .link-button {
+  justify-content: flex-start;
+  min-height: 32px;
   background: transparent;
   border: none;
+  border-radius: 8px;
   padding: 0 4px;
+  font-weight: 400;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+a {
+  color: var(--link);
 }
 
 .shell {
@@ -115,67 +263,395 @@ input {
 
 .shell.library-open {
   grid-template-columns: var(--sidebar-width) 1fr;
-  grid-template-areas: 'top top' 'side main';
+  grid-template-areas: 'side top' 'side main';
 }
 
 .topbar {
   grid-area: top;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  min-height: var(--topbar-height);
   padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-panel);
   min-width: 0;
 }
 
+/* Logotipo (§4): entre 24 y 28 px de alto, con su área de respeto. */
 .brand {
-  font-weight: 600;
+  display: block;
+  height: 24px;
+  width: auto;
+  margin: 0 12px 0 6px;
+  flex: none;
 }
 
 .doc-title {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
+/* Chip de estado (§6): pill con el par texto/fondo semántico. */
 .status {
-  font-size: 0.85rem;
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 .status-saved-local {
-  color: var(--ok);
+  color: var(--success);
+  background: var(--success-bg);
 }
 .status-pending-changes {
-  color: var(--warn);
+  color: var(--warning);
+  background: var(--warning-bg);
 }
 .status-error,
 .status-out-of-space,
 .status-conflict {
   color: var(--danger);
-  font-weight: 600;
+  background: var(--danger-bg);
 }
 
+.topbar-spacer {
+  flex: 1;
+}
+/* Botones de la cabecera con texto (Enlaces, Exportar): secundarios, más compactos. */
+.topbar-button {
+  gap: 6px;
+  padding: 0 14px;
+  min-height: 34px;
+}
+.topbar-button[aria-expanded='true'] {
+  background: var(--selection-soft);
+}
+
+/*
+ * Biblioteca a toda altura (DESIGN.md §6): cabecera con logotipo, «Nuevo», buscador, pestañas,
+ * lista con su propio desplazamiento, cajones de papelera y preferencias, y pie con iconos.
+ */
 .library {
   grid-area: side;
-  border-right: 1px solid var(--border);
-  padding: 8px;
-  overflow-y: auto;
-  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  border-right: 1px solid var(--border-soft);
+  padding: 12px 10px 10px;
+  overflow: hidden;
+  background: var(--bg-panel);
 }
 
-.library h2 {
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin: 4px 4px 8px;
+.library-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 2px;
+}
+.library-head .brand {
+  margin: 0;
 }
 
 .library-actions {
   display: grid;
+  gap: 8px;
+}
+.new-menu > button {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 40px;
+  border-radius: 12px;
+}
+.new-menu-label {
+  flex: 1;
+  text-align: left;
+}
+
+.library-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+}
+.library-search .icon {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+}
+.library-search input {
+  width: 100%;
+  padding-left: 36px;
+  border-radius: 10px;
+}
+
+.library-tabs {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.library-tab {
+  min-height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.library-tab.is-active {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  font-weight: 600;
+}
+
+.library-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+/* Menú «⋯» de cada fila: visible al pasar por encima, con el foco, en la fila activa o abierto. */
+.row-menu {
+  flex: none;
+}
+@media (hover: hover) {
+  .library-list li > .row-menu,
+  .folder-row > .row-menu {
+    opacity: 0;
+  }
+  .library-list li:hover > .row-menu,
+  .library-list li:focus-within > .row-menu,
+  .library-list li.active > .row-menu,
+  .folder-row:hover > .row-menu,
+  .folder-row:focus-within > .row-menu,
+  .row-menu:has([aria-expanded='true']) {
+    opacity: 1;
+  }
+}
+
+.preferences {
+  display: grid;
   gap: 6px;
-  margin-bottom: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+.preferences .section-title {
+  margin: 0 4px 2px;
+}
+.preference-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 6px;
+  color: var(--text-primary);
+}
+.preference-row > span:not(.icon) {
+  flex: 1;
+}
+
+.library-foot {
+  display: grid;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+.foot-button {
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.foot-button[aria-expanded='true'] {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+}
+.foot-count {
+  margin-left: auto;
+}
+
+/* Menús desplegables (§6, popovers). */
+.menu-root {
+  position: relative;
+}
+.menu {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  background: var(--bg-popover);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+}
+.menu-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  justify-content: stretch;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+}
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+}
+.menu-item.danger {
+  color: var(--danger);
+}
+.menu-item.danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.menu-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.menu-separator {
+  margin: 4px 6px;
+  border: none;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* Interruptor de tema: carril de 72 × 36 y pomo de 30 px que se desliza en 200 ms. */
+.theme-switch {
+  flex: none;
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 18px;
+  background: none;
+}
+.theme-switch:hover:not(:disabled) {
+  background: none;
+}
+.theme-switch-track {
+  position: relative;
+  display: block;
+  width: 72px;
+  height: 36px;
+  border-radius: 18px;
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border-ink);
+}
+:root[data-theme='dark'] .theme-switch-track {
+  background: #2f2b22;
+  border-color: var(--border-soft);
+}
+.theme-switch-hint {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  margin-top: -9px;
+  color: var(--text-secondary);
+}
+.theme-switch-hint-sun {
+  left: 8px;
+}
+.theme-switch-hint-moon {
+  right: 8px;
+}
+.theme-switch-knob {
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-canvas);
+  border: 1.5px solid var(--border-ink);
+  color: var(--text-primary);
+  transition: transform 200ms ease-out;
+}
+.theme-switch-knob .icon {
+  --icon-accent: var(--brand);
+}
+:root[data-theme='dark'] .theme-switch-knob {
+  transform: translateX(36px);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+}
+:root[data-theme='dark'] .theme-switch-knob .icon {
+  --icon-accent: #f3eedf;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch-knob {
+    transition: none;
+  }
+}
+
+/* Selector de stickers: encima de su casilla, 16 px por encima de los objetos. */
+.tool-stickers .sticker-picker {
+  position: absolute;
+  bottom: calc(100% + 50px);
+  left: 50%;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 14px;
+  background: var(--bg-popover);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 16px;
+  box-shadow: var(--shadow-popover);
+}
+.sticker-picker-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 62px);
+  gap: 2px;
+}
+.sticker-option {
+  width: 62px;
+  min-width: 0;
+  height: 62px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: grab;
+}
+.sticker-option:hover:not(:disabled),
+.sticker-option:focus-visible {
+  background: var(--selection-soft);
+}
+.sticker-option img {
+  display: block;
+  width: 52px;
+  height: 52px;
+  margin: auto;
 }
 
 .library-list {
@@ -184,22 +660,31 @@ input {
   padding: 0;
 }
 
+/* Ítem de sidebar (§6): 32 px, radio 8; las acciones aparecen al pasar por encima. */
 .library-list li {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 32px;
   border-radius: 8px;
-  padding-left: 6px;
+  padding-left: 8px;
 }
-
+.library-list li:hover {
+  background: color-mix(in srgb, var(--selection-soft) 60%, transparent);
+}
 .library-list li.active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
 }
-
+.library-list li.folder-node:hover {
+  background: none;
+}
+.kind-label {
+  display: inline-flex;
+  flex: none;
+}
 .kind-icon {
-  width: 1.2em;
-  text-align: center;
-  color: var(--muted);
+  color: var(--text-primary);
 }
 
 .renameable {
@@ -223,11 +708,13 @@ input {
 }
 
 .badge {
-  font-size: 0.75rem;
+  display: inline-flex;
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--danger);
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 0 6px;
+  background: var(--danger-bg);
 }
 
 .workspace {
@@ -242,6 +729,33 @@ input {
   inset: 0;
 }
 
+/* Estado vacío (§6): sticker girado, título, una línea y el botón principal. */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.empty-state h2 {
+  margin: 8px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.empty-state p {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+}
+.sticker {
+  transform: rotate(-8deg);
+}
+
 .note-view {
   position: absolute;
   inset: 0;
@@ -252,8 +766,10 @@ input {
 .note-toolbar {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-panel);
 }
 
 .note-panes {
@@ -275,23 +791,102 @@ input {
 .markdown-editor .cm-editor {
   height: 100%;
   font-size: 16px;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}
+.markdown-editor .cm-content {
+  caret-color: var(--text-primary);
+  font-family: var(--font-ui);
+  line-height: 1.6;
+  padding: 16px 24px;
+}
+.markdown-editor .cm-gutters {
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border-soft);
+}
+.markdown-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.markdown-editor .cm-editor .cm-selectionBackground,
+.markdown-editor .cm-editor.cm-focused .cm-selectionBackground,
+.markdown-editor .cm-content ::selection {
+  background: var(--selection-soft);
+}
+.markdown-editor .cm-cursor {
+  border-left-color: var(--text-primary);
+}
+.markdown-editor .cm-activeLine {
+  background: color-mix(in srgb, var(--selection-soft) 40%, transparent);
+}
+.markdown-editor .cm-activeLineGutter {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+}
+.markdown-editor .cm-foldPlaceholder {
+  background: var(--bg-panel);
+  border-color: var(--border-soft);
+  color: var(--text-secondary);
+}
+.markdown-editor .cm-editor .cm-matchingBracket {
+  background: var(--secondary-soft);
+  color: inherit;
+}
+.markdown-editor .cm-tooltip {
+  background: var(--bg-popover);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  color: var(--text-primary);
+}
+.markdown-editor .cm-tooltip-autocomplete ul li[aria-selected] {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
 }
 
 .markdown-preview {
   overflow: auto;
-  padding: 8px 24px;
-  border-left: 1px solid var(--border);
-  line-height: 1.55;
+  padding: 16px 24px;
+  border-left: 1px solid var(--border-soft);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.markdown-preview code,
+.markdown-preview pre {
+  font-family: var(--font-mono);
+  background: var(--bg-panel);
+  border-radius: 8px;
+}
+.markdown-preview code {
+  padding: 1px 4px;
+}
+.markdown-preview pre {
+  padding: 12px;
+  overflow: auto;
+}
+.markdown-preview blockquote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border-soft);
+  color: var(--text-secondary);
 }
 
 .markdown-preview a {
-  color: var(--accent);
+  color: var(--link);
+}
+
+/* Resaltador (§6): el único gradiente permitido. */
+mark,
+.highlight {
+  background: linear-gradient(transparent 45%, var(--brand) 45%);
+  color: inherit;
 }
 
 .notice {
   margin: 0;
   padding: 8px 12px;
-  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  background: var(--warning-bg);
+  color: var(--text-primary);
 }
 
 .toast {
@@ -304,20 +899,20 @@ input {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+  border-radius: 12px;
+  background: var(--bg-popover);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-popover);
   max-width: calc(100vw - 32px);
 }
 
 .view-message {
   padding: 24px;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 /* iPad vertical y pantallas estrechas: la biblioteca se superpone al lienzo. */
@@ -328,12 +923,12 @@ input {
   }
   .library {
     position: fixed;
-    top: 53px;
+    top: 0;
     bottom: 0;
     left: 0;
     width: min(var(--sidebar-width), 85vw);
     z-index: 5;
-    box-shadow: 4px 0 16px rgb(0 0 0 / 0.2);
+    box-shadow: var(--shadow-popover);
   }
   .note-view.with-preview .note-panes {
     grid-template-columns: 1fr;
@@ -341,9 +936,9 @@ input {
   }
   .markdown-preview {
     border-left: none;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-soft);
   }
-  .brand {
+  .topbar .brand {
     display: none;
   }
 }
@@ -351,28 +946,32 @@ input {
 /* Avisos persistentes bajo la barra superior (almacén temporal, cuota, sin espacio). */
 .banner {
   position: fixed;
-  top: 56px;
+  top: calc(var(--topbar-height) + 4px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 9;
   margin: 0;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 12px;
   max-width: calc(100vw - 32px);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
-  background: var(--surface);
+  box-shadow: var(--shadow-popover);
+  background: var(--bg-popover);
   border: 1px solid currentColor;
 }
 .banner-warn {
-  color: var(--warn);
+  color: var(--warning);
+  background: var(--warning-bg);
 }
 .banner-danger {
   color: var(--danger);
+  background: var(--danger-bg);
   font-weight: 600;
 }
 .banner button {
-  color: var(--text);
-  font-weight: normal;
+  min-height: 28px;
+  padding: 0 12px;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .canvas-notice {
@@ -385,7 +984,7 @@ input {
 }
 
 .mono {
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   overflow-wrap: anywhere;
 }
@@ -393,29 +992,37 @@ input {
 /* Panel de estado y diagnóstico. */
 .status-panel {
   position: fixed;
-  top: 53px;
+  top: var(--topbar-height);
   right: 0;
   bottom: 0;
   width: min(420px, 100vw);
   z-index: 8;
   overflow-y: auto;
   padding: 12px 16px 24px;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  box-shadow: -4px 0 16px rgb(0 0 0 / 0.15);
+  background: var(--bg-popover);
+  border-left: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-popover);
 }
-.status-panel header {
+.status-panel header,
+.side-panel header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
-.status-panel h2 {
-  font-size: 1.1rem;
+.status-panel h2,
+.side-panel h2,
+.dialog h2 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
   margin: 0;
 }
-.status-panel h3 {
-  font-size: 0.95rem;
+.status-panel h3,
+.side-panel h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
   margin: 20px 0 8px;
 }
 .status-panel dl {
@@ -425,7 +1032,7 @@ input {
   margin: 0 0 8px;
 }
 .status-panel dt {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 .status-panel dd {
   margin: 0;
@@ -435,21 +1042,21 @@ input {
   list-style: none;
   margin: 8px 0 0;
   padding: 0;
-  font-size: 0.8rem;
+  font-size: 12px;
 }
 .diagnostics-list li {
   padding: 4px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
   overflow-wrap: anywhere;
 }
 .diagnostics-list time {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 .diag-error strong {
   color: var(--danger);
 }
 .diag-warn strong {
-  color: var(--warn);
+  color: var(--warning);
 }
 
 /* FA-01b: almacén inaccesible. */
@@ -459,7 +1066,9 @@ input {
   padding: 0 16px;
 }
 .startup-error h1 {
-  font-size: 1.4rem;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 .startup-actions {
   display: flex;
@@ -474,39 +1083,25 @@ input {
   line-height: 2.2;
 }
 .link-list a {
-  color: var(--accent);
+  color: var(--link);
 }
 
 /* Paneles laterales de historial y conflicto (fase 2). */
 .side-panel {
   position: fixed;
-  top: 53px;
+  top: var(--topbar-height);
   right: 0;
   bottom: 0;
   width: min(460px, 100vw);
   z-index: 8;
   overflow-y: auto;
   padding: 12px 16px 24px;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  box-shadow: -4px 0 16px rgb(0 0 0 / 0.15);
+  background: var(--bg-popover);
+  border-left: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-popover);
 }
 .side-panel.wide {
   width: min(900px, 100vw);
-}
-.side-panel header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.side-panel h2 {
-  font-size: 1.1rem;
-  margin: 0;
-}
-.side-panel h3 {
-  font-size: 0.95rem;
-  margin: 16px 0 8px;
 }
 .history-list {
   list-style: none;
@@ -514,7 +1109,8 @@ input {
   padding: 0;
 }
 .history-list li.selected {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
   border-radius: 8px;
 }
 .history-item {
@@ -525,10 +1121,13 @@ input {
   white-space: normal;
   min-height: var(--touch);
   padding: 4px 8px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 400;
 }
 .revision-preview {
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
   padding: 8px;
   margin: 8px 0;
   max-height: 50vh;
@@ -550,14 +1149,14 @@ input {
 .diff {
   max-height: 30vh;
   overflow: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 8px;
   font-size: 0.85rem;
   white-space: pre-wrap;
 }
 .diff-add {
-  color: var(--ok);
+  color: var(--success);
 }
 .diff-del {
   color: var(--danger);
@@ -566,13 +1165,13 @@ input {
 .merge-editor {
   width: 100%;
   font: inherit;
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 8px;
   margin: 8px 0;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
 }
 .workspace-banners {
   position: absolute;
@@ -590,19 +1189,15 @@ input {
   transform: none;
 }
 
-/* Papelera y almacenes. */
+/* Papelera (cajón sobre el pie de la biblioteca) y almacenes. */
 .trash {
-  margin-top: 16px;
-  border-top: 1px solid var(--border);
+  max-height: 40%;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-soft);
   padding-top: 8px;
 }
 .trash-list li {
-  flex-wrap: wrap;
-  padding: 4px 6px;
-}
-button.danger {
-  color: var(--danger);
-  border-color: currentColor;
+  padding: 2px 2px 2px 6px;
 }
 .vault-list {
   list-style: none;
@@ -617,7 +1212,8 @@ button.danger {
   padding: 4px 0;
 }
 .badge-ok {
-  color: var(--ok);
+  color: var(--success);
+  background: var(--success-bg);
 }
 .inline-form {
   display: flex;
@@ -629,12 +1225,15 @@ button.danger {
 .file-button {
   display: inline-flex;
   align-items: center;
-  min-height: var(--touch);
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border-ink);
+  border-radius: 20px;
+  font-weight: 600;
   cursor: pointer;
+}
+.file-button:hover {
+  background: var(--selection-soft);
 }
 .file-button input {
   position: absolute;
@@ -643,7 +1242,7 @@ button.danger {
   opacity: 0;
 }
 .file-button:focus-within {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 .restore-report {
@@ -651,16 +1250,21 @@ button.danger {
   border-radius: 8px;
 }
 
-/* Fase 3: carpetas, etiquetas, enlaces y búsqueda. */
+/* Encabezado de sección (§6): 12 px 600 en grafito, sin mayúsculas forzadas. */
 .section-title {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin: 12px 4px 4px;
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin: 16px 4px 4px;
+}
+button.section-title {
+  min-height: 24px;
+  margin: 16px 0 4px;
 }
 .small {
-  font-size: 0.8rem;
+  font-size: 12px;
 }
 .library-list.nested {
   margin: 0;
@@ -669,14 +1273,20 @@ button.danger {
   display: flex;
   align-items: center;
   gap: 2px;
+  min-height: 32px;
   border-radius: 8px;
 }
+.folder-row:hover {
+  background: color-mix(in srgb, var(--selection-soft) 60%, transparent);
+}
 .folder-row.selected {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  outline: 1px dashed var(--accent);
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  outline: 1px dashed var(--border-ink);
 }
 .folder-toggle {
-  min-width: 32px;
+  gap: 2px;
+  min-width: 48px;
 }
 .tag-filter {
   display: flex;
@@ -684,20 +1294,26 @@ button.danger {
   gap: 4px;
   margin: 8px 0;
 }
+/* Chips y etiquetas (§6): pill en agua clara. */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  min-height: 32px;
+  min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 0.85rem;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: var(--secondary-soft);
+  color: var(--on-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip:hover:not(:disabled) {
+  background: var(--secondary);
 }
 .chip.selected {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--border-ink);
+  background: var(--secondary);
 }
 .chip-remove {
   min-height: 24px;
@@ -716,11 +1332,17 @@ button.danger {
   align-items: flex-end;
   gap: 6px;
 }
+.canvas-tools button:not(.danger) {
+  background: var(--bg-panel);
+}
+.canvas-tools button.danger {
+  background: var(--danger-bg);
+}
 .dialog-backdrop {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgb(0 0 0 / 0.3);
+  background: var(--backdrop);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -730,18 +1352,14 @@ button.danger {
   width: min(560px, 100%);
   max-height: 80vh;
   overflow: auto;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--bg-popover);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  box-shadow: 0 8px 32px rgb(0 0 0 / 0.25);
-}
-.dialog h2 {
-  font-size: 1.05rem;
-  margin: 0;
+  box-shadow: var(--shadow-popover);
 }
 .picker-list,
 .search-results,
@@ -754,6 +1372,12 @@ button.danger {
 .link-list-panel li button {
   width: 100%;
   min-height: var(--touch);
+  gap: 8px;
+}
+.link-list-panel li > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .link-list-panel li.broken,
 .markdown-preview a.broken-link {
@@ -770,10 +1394,18 @@ button.danger {
   background: transparent;
   text-align: left;
   border-radius: 8px;
+  font-weight: 400;
+}
+.search-hit strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
 }
 .search-hit.selected,
 .search-hit:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
 }
 
 .library-list li.folder-node {
@@ -783,25 +1415,33 @@ button.danger {
 
 /* Fase 4: estado de la carpeta conectada. */
 .remote-chip {
-  font-size: 0.8rem;
-  min-height: 32px;
+  min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
+  color: var(--text-secondary);
+  background: transparent;
 }
 .remote-ok {
-  color: var(--ok);
+  color: var(--success);
+  background: var(--success-bg);
 }
 .remote-pending,
 .remote-syncing {
-  color: var(--warn);
+  color: var(--warning);
+  background: var(--warning-bg);
 }
 .remote-needs-permission,
+.remote-needs-auth,
+.remote-needs-key,
 .remote-mismatch,
 .remote-unavailable,
 .remote-error {
   color: var(--danger);
-  font-weight: 600;
+  background: var(--danger-bg);
 }
 
 /* Elección de modo de Drive y cifrado (diseño §13.1). */
@@ -815,10 +1455,14 @@ button.danger {
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  padding: 8px;
-  border: 1px solid var(--border, #ccc);
-  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
   cursor: pointer;
+}
+.drive-mode-option:has(input:checked) {
+  background: var(--selection-soft);
+  border-color: var(--border-ink);
 }
 
 .drive-mode-option > span {
@@ -839,8 +1483,14 @@ button.danger {
   gap: 2px;
 }
 
+[data-testid='drive-encryption-mode'] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .recovery-code {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 1.1em;
   letter-spacing: 0.05em;
   user-select: all;
@@ -856,12 +1506,336 @@ button.danger {
 }
 
 /*
+ * Lienzo (DESIGN.md §3.3). No se toca `--theme-filter`: la paleta oscura del lienzo se deriva
+ * de la clara. La interfaz del motor no pasa por el filtro y usa los tokens directos: mantequilla
+ * para lo activo, tinta encima. La selección es agua, nunca amarilla.
+ */
+.workspace .excalidraw.excalidraw {
+  --ui-font: var(--font-ui);
+  --color-selection: #3f7f88;
+  --focus-highlight-color: var(--focus);
+  --link-color: var(--link);
+  --default-bg-color: var(--bg-canvas);
+  --input-bg-color: var(--bg-canvas);
+  --island-bg-color: var(--bg-panel);
+  --popup-bg-color: var(--bg-popover);
+  --sidebar-bg-color: var(--bg-panel);
+  --button-gray-1: var(--bg-panel);
+  --button-gray-2: var(--border-soft);
+  --button-gray-3: var(--text-secondary);
+  --color-on-surface: var(--text-primary);
+  --color-surface-high: var(--border-soft);
+  --color-surface-mid: var(--bg-panel);
+  --color-surface-low: var(--bg-panel);
+  --color-surface-lowest: var(--bg-canvas);
+  --color-border-outline: var(--text-secondary);
+  --color-border-outline-variant: var(--border-soft);
+  --color-surface-primary-container: var(--brand);
+  --color-on-primary-container: var(--on-brand);
+  --color-primary: var(--brand);
+  --color-primary-hover: var(--brand-hover);
+  --color-primary-darker: var(--brand-hover);
+  --color-primary-darkest: var(--border-ink);
+  --color-primary-light: var(--selection-soft);
+  --color-primary-light-darker: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-active: var(--border-ink);
+  --color-logo-icon: var(--text-primary);
+  --color-promo: var(--text-accent);
+}
+/* Pre-invertido: el filtro del motor lo muestra como «agua luz» (#7FC4CC). */
+.workspace .excalidraw.excalidraw.theme--dark {
+  --color-selection: #00515a;
+}
+/* Donde el motor usa el color primario como texto o como relleno con texto blanco. */
+.workspace .excalidraw .ExcButton--color-primary.ExcButton--variant-filled,
+.workspace .excalidraw .Dialog__action-button--primary {
+  --text-color: var(--on-brand);
+  color: var(--on-brand);
+}
+.workspace .excalidraw .library-menu-items__no-items__label,
+.workspace .excalidraw .library-menu-items-container__header,
+.workspace .excalidraw .excalidraw-eye-dropper-trigger.selected,
+.workspace .excalidraw .welcome-screen-decor a {
+  --color: var(--text-primary);
+  color: var(--text-primary);
+}
+.workspace .excalidraw .Island {
+  box-shadow: var(--shadow-panel);
+  border: 1px solid var(--border-soft);
+}
+
+/*
+ * Barra de herramientas propia (DESIGN.md §7.1–7.2): objetos de 48 × 64 que asoman de una
+ * bandeja; el labio frontal tapa su base. La barra del motor se oculta sin quitarla del árbol,
+ * para que su texto de ayuda (HintViewer) conserve el ancho y la posición.
+ */
+.workspace .excalidraw .App-toolbar {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.workspace .excalidraw .App-toolbar > .Stack_horizontal,
+.workspace .excalidraw .App-toolbar--mobile,
+.workspace .excalidraw .ToolIcon__penMode {
+  visibility: hidden;
+}
+
+.canvas-host {
+  container-type: inline-size;
+}
+
+.tool-trays {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  pointer-events: none;
+}
+.tool-trays > * {
+  pointer-events: auto;
+}
+
+.tool-tray {
+  position: relative;
+  height: 64px;
+  padding: 0 12px;
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 22px;
+  box-shadow: var(--shadow-panel);
+}
+
+.tool-row {
+  display: flex;
+  gap: 6px;
+  height: 100%;
+}
+
+.tool-cell {
+  position: relative;
+  flex: none;
+  width: 48px;
+}
+
+/* La casilla cubre el objeto que asoma por encima de la bandeja y la parte tapada por el labio. */
+.tool-slot {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  width: 48px;
+  height: calc(100% + 24px);
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 12px 12px 0 0;
+  background: transparent;
+  cursor: pointer;
+}
+.tool-slot:hover:not(:disabled) {
+  background: transparent;
+}
+.tool-slot:focus-visible {
+  outline-offset: -2px;
+}
+
+.tool-object {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  width: 48px;
+  height: 64px;
+  transition: transform 120ms ease-out;
+}
+.tool-object svg {
+  display: block;
+  width: 48px;
+  height: 64px;
+  overflow: visible;
+}
+.tool-slot:hover .tool-object {
+  transform: translateY(-4px);
+}
+.tool-slot.is-active .tool-object,
+.tool-slot.is-raised .tool-object {
+  transform: translateY(-14px);
+}
+/* El candado no sube: es un interruptor. */
+.tool-slot.tool-lock .tool-object {
+  transform: none;
+}
+
+/* Labio frontal: tapa la base de los objetos y lleva el punto y el chevron. */
+.tool-lip {
+  position: absolute;
+  inset: 32px -1.5px -1.5px;
+  z-index: 2;
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 0 0 22px 22px;
+  pointer-events: none;
+}
+
+.tool-dot {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 3;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 1.5px solid var(--border-ink);
+  pointer-events: none;
+}
+:root[data-theme='dark'] .tool-dot {
+  border-color: var(--brand);
+}
+
+.tool-divider {
+  flex: none;
+  align-self: flex-start;
+  width: 1.5px;
+  height: 20px;
+  margin-top: 8px;
+  background: var(--border-soft);
+}
+
+.tool-chevron {
+  position: absolute;
+  bottom: 4px;
+  left: calc(50% + 8px);
+  z-index: 3;
+  width: 22px;
+  min-width: 0;
+  height: 22px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.tool-chevron .tool-glyph {
+  width: 14px;
+  height: 14px;
+}
+.tool-chevron[aria-expanded='true'] .tool-glyph {
+  transform: rotate(180deg);
+}
+
+.tool-glyph {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+.tool-glyph svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Menú de formas (§7.2): encima de la barra, con glifo, nombre y atajo. */
+.tool-menu {
+  position: absolute;
+  bottom: calc(100% + 44px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: grid;
+  gap: 2px;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--bg-popover);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+}
+.tool-menu-item {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  justify-content: stretch;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 400;
+  text-align: left;
+}
+.tool-menu-item[aria-checked='true'] {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  font-weight: 700;
+}
+.tool-menu-item kbd {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* Interruptor «Solo lápiz»: solo aparece cuando el motor detecta un lápiz. */
+.tool-pen {
+  align-self: center;
+  background: var(--bg-panel);
+}
+.tool-pen[aria-pressed='true'] {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+/*
+ * Espacio a los lados: el panel de propiedades del motor ocupa unos 230 px a la izquierda y los
+ * controles del pie unos 240 px en cada esquina. Si las dos bandejas no caben entre ellos, el
+ * panel secundario se coloca encima de la barra principal; si tampoco cabe esta, la bandeja sube
+ * por encima del pie.
+ */
+@container (max-width: 1260px) {
+  .tool-trays {
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 44px;
+  }
+}
+@container (max-width: 980px) {
+  .tool-trays {
+    bottom: max(68px, calc(52px + env(safe-area-inset-bottom)));
+  }
+}
+@media (pointer: coarse) {
+  .tool-chevron {
+    width: 32px;
+    height: 28px;
+    bottom: 1px;
+  }
+}
+
+/* Los avisos flotantes no tapan la bandeja del lienzo. */
+.shell:has(.tool-trays) .toast {
+  bottom: 120px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-object {
+    transition: none;
+  }
+}
+
+/*
  * Uso táctil y con lápiz (plan 5.4, RF-49): objetivos de 44 px, sin zoom por doble toque en
  * los controles y textos de 16 px en los campos (iOS amplía la página al enfocar uno menor).
  * Solo afecta a la interfaz propia; el lienzo usa la interfaz táctil del motor.
  */
 @media (pointer: coarse) {
   .topbar button,
+  .topbar select,
   .library button,
   .library summary,
   .library-list li > button,
@@ -875,6 +1849,10 @@ button.danger {
     min-height: 44px;
     min-width: 44px;
   }
+  .library-list li,
+  .folder-row {
+    min-height: 44px;
+  }
   .library summary,
   .drive-settings > summary {
     display: flex;
@@ -886,10 +1864,14 @@ button.danger {
   .cm-editor {
     font-size: 16px;
   }
+  input {
+    min-height: 44px;
+  }
   input[type='checkbox'],
   input[type='radio'] {
     width: 22px;
     height: 22px;
+    min-height: 0;
   }
 }
 
@@ -920,9 +1902,9 @@ a,
   .library-backdrop {
     display: block;
     position: fixed;
-    inset: 53px 0 0 0;
+    inset: 0;
     z-index: 4;
-    background: rgb(0 0 0 / 0.25);
+    background: var(--backdrop);
   }
   .library {
     animation: slide-in-left 160ms ease-out;

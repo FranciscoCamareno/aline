@@ -1,9 +1,29 @@
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { markdown } from '@codemirror/lang-markdown';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
+import { tags } from '@lezer/highlight';
 import { basicSetup, EditorView } from 'codemirror';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { internalLink } from '../../application/knowledge.ts';
+
+/**
+ * Resaltado del Markdown con los tokens de la interfaz (docs/DESIGN.md §2): sigue al tema sin
+ * recrear el editor. Sustituye al estilo por defecto de CodeMirror, pensado para fondo blanco.
+ */
+const markdownHighlight = HighlightStyle.define([
+  { tag: tags.heading, fontWeight: '700' },
+  { tag: tags.strong, fontWeight: '700' },
+  { tag: tags.emphasis, fontStyle: 'italic' },
+  { tag: tags.strikethrough, textDecoration: 'line-through' },
+  { tag: [tags.link, tags.url], color: 'var(--link)' },
+  { tag: tags.monospace, fontFamily: 'var(--font-mono)', color: 'var(--text-accent)' },
+  { tag: tags.quote, color: 'var(--text-secondary)' },
+  {
+    tag: [tags.processingInstruction, tags.contentSeparator, tags.meta],
+    color: 'var(--text-secondary)',
+  },
+]);
 
 export interface LinkTarget {
   id: string;
@@ -99,6 +119,7 @@ export function MarkdownEditor({
       doc: initialValue,
       extensions: [
         basicSetup,
+        syntaxHighlighting(markdownHighlight),
         markdown(),
         EditorView.lineWrapping,
         EditorView.contentAttributes.of({ 'aria-label': ariaLabel }),

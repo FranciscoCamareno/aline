@@ -16,10 +16,11 @@ _English version: [user-guide.md](user-guide.md)._
 
 ## 2. Lienzos y mapas mentales
 
-- **Lienzo nuevo:** biblioteca (☰) → «+ Nuevo lienzo». Las herramientas, atajos y estilos son los de Excalidraw.
-- **Vincular un elemento** con una nota, otro lienzo o una web: selecciona el elemento y pulsa «🔗 Vincular» (encima del lienzo). El enlace se abre haciendo clic en el icono del elemento.
+- **Lienzo nuevo:** en la biblioteca, «+ Nuevo» → «Lienzo». Las herramientas están en la bandeja de abajo; sus atajos y estilos son los de Excalidraw.
+- **Notas adhesivas y stickers:** la nota de la bandeja (o la tecla N) pone una nota adhesiva en el centro; con doble clic se escribe en ella. La hoja de stickers (o la tecla B) abre los stickers: se colocan con un clic o arrastrándolos al lienzo.
+- **Vincular un elemento** con una nota, otro lienzo o una web: selecciona el elemento y pulsa «Vincular» (encima del lienzo). El enlace se abre haciendo clic en el icono del elemento.
 - **Conectores sueltos:** si una flecha deja de estar unida a una forma, aparece un aviso que permite seleccionar esas flechas.
-- **Exportar** (botón «Exportar…» encima del lienzo, o menú ☰ del lienzo):
+- **Exportar** («Exportar» en la barra superior → «Imagen, PDF o .excalidraw…», o el menú ☰ del lienzo):
   - **PNG o SVG**, con fondo o sin él y a escala 1×, 2× o 3×;
   - **PDF A4**, encajado en una página o repartido en varias;
   - **.excalidraw**, para abrir el lienzo en Excalidraw. El diálogo avisa de lo que no viaja: enlaces internos, backlinks, historial, carpetas y etiquetas.
@@ -27,24 +28,23 @@ _English version: [user-guide.md](user-guide.md)._
 
 ## 3. Notas
 
-- **Nota nueva:** «+ Nueva nota». A la izquierda se escribe en Markdown y a la derecha se ve el resultado.
+- **Nota nueva:** «+ Nuevo» → «Nota». A la izquierda se escribe en Markdown y a la derecha se ve el resultado.
 - **Enlazar otra nota:** escribe `[[` y elige una nota de la lista; si no existe, se puede crear.
-- **Detalles y enlaces** (botón 🔗 de la barra superior): backlinks (quién enlaza a esta nota), enlaces rotos y etiquetas.
-- **Exportar la nota:** «Exportar .md» descarga la nota con su frontmatter (id, título y etiquetas).
+- **Detalles y enlaces** (botón «Enlaces» de la barra superior): backlinks (quién enlaza a esta nota), enlaces rotos y etiquetas.
+- **Exportar la nota:** «Exportar» → «Nota en Markdown (.md)» descarga la nota con su frontmatter (id, título y etiquetas).
 
 ## 4. Organizar y buscar
 
-- **Carpetas:** «+ Nueva carpeta» crea una carpeta. Lo que se crea con una carpeta seleccionada va dentro de ella. Borrar una carpeta nunca borra su contenido: lo que queda sin carpeta aparece en «Recuperación».
+- **Carpetas:** «+ Nuevo» → «Carpeta» crea una carpeta. Lo que se crea con una carpeta seleccionada va dentro de ella. Borrar una carpeta nunca borra su contenido: lo que queda sin carpeta aparece en «Recuperación».
 - **Etiquetas:** se añaden en Detalles. En la biblioteca sirven de filtro.
-- **Buscar** (Ctrl+Mayús+F): busca en títulos, notas y textos de los lienzos. Al abrir un resultado se resalta el texto o el elemento encontrado.
+- **Buscar archivos:** el campo de la biblioteca filtra la lista por título. Las pestañas «Todos» y «Recientes» cambian la vista; las acciones de cada documento (renombrar, papelera) están en su menú «⋯».
+- **Buscar** (Ctrl+Mayús+F, o «⋯» de la barra superior → «Buscar»): busca en títulos, notas y textos de los lienzos. Al abrir un resultado se resalta el texto o el elemento encontrado.
 
 ## 5. Importar y exportar en bloque
 
-En la biblioteca, «Importar y exportar»:
-
-- **Importar archivos:** notas `.md` y lienzos `.excalidraw`.
-- **Importar una carpeta de Markdown:** se recrean las subcarpetas.
-- **Exportar en Markdown (ZIP):** las notas de la carpeta seleccionada o de todo el almacén.
+- **Importar archivos:** «+ Nuevo» → «Importar archivos…» (notas `.md` y lienzos `.excalidraw`).
+- **Importar una carpeta de Markdown:** «+ Nuevo» → «Importar carpeta…»; se recrean las subcarpetas.
+- **Exportar en Markdown (ZIP):** «Exportar» de la barra superior → las notas de la carpeta seleccionada o de todo el almacén.
 
 Al terminar una importación se muestra un informe con lo que no se pudo traer y por qué. Por ejemplo:
 
@@ -56,13 +56,13 @@ Importar siempre crea documentos nuevos; nunca sobrescribe los existentes.
 
 ## 6. Historial, papelera y conflictos
 
-- **Historial:** cada guardado es una versión. Desde «Historial de versiones» (botón 🕘) se ve una versión anterior, se compara y se restaura. Restaurar crea una versión nueva; no se pierde nada.
-- **Papelera:** borrar envía a la papelera, desde donde se puede restaurar. «Eliminar definitivamente» pide confirmación.
+- **Historial:** cada guardado es una versión. Desde «Historial de versiones» (botón del reloj de la barra superior) se ve una versión anterior, se compara y se restaura. Restaurar crea una versión nueva; no se pierde nada.
+- **Papelera:** borrar envía a la papelera («Papelera», abajo en la biblioteca), desde donde se puede restaurar. «Eliminar definitivamente» pide confirmación.
 - **Conflictos:** si dos equipos editan lo mismo sin conexión, se conservan ambas versiones y se avisa. Se resuelve eligiendo una, combinándolas o guardando las dos como documentos separados.
 
 ## 7. Copias y almacenes
 
-En «Estado y diagnóstico» (botón ⓘ):
+En «Estado y diagnóstico» («⋯» de la barra superior):
 
 - **Copia completa (ZIP):** todo el almacén con historial, papelera y adjuntos, en formato abierto. Haz una con regularidad y guárdala fuera del equipo.
 - **Restaurar una copia:** siempre se restaura en un almacén nuevo, nunca encima del actual.

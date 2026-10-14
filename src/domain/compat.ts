@@ -1,4 +1,4 @@
-import { REVISION_SCHEMA_VERSION, revisionSchema } from './revision.ts';
+import { REVISION_SCHEMA_VERSION, revisionEnvelopeSchema, revisionSchema } from './revision.ts';
 import { canvasExtensionsSchema, type CanvasExtensions } from './sidecar.ts';
 
 /**
@@ -27,7 +27,12 @@ function versionOf(value: unknown, key: string): number | null {
 
 export function checkRevision(value: unknown): ReadOnlyReason | null {
   const version = versionOf(value, 'schemaVersion');
-  if (version !== null && version > SUPPORTED.revision) return 'unsupported-version';
+  if (version !== null && version > SUPPORTED.revision) {
+    // Posterior, pero con el sobre que necesitan el motor y el almacén local; si no, inválida.
+    return revisionEnvelopeSchema.safeParse(value).success
+      ? 'unsupported-version'
+      : 'invalid-content';
+  }
   return revisionSchema.safeParse(value).success ? null : 'invalid-content';
 }
 

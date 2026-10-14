@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 64"><g transform="translate(0 0)">
+<rect stroke="#F3EEDF" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="#F3EEDF" x="8.5" y="7" width="31" height="63" rx="4"/>
+<path fill="#F3EEDF" stroke="#F3EEDF" stroke-width="5.5" stroke-dasharray="2.4 2.4" stroke-linecap="round"
+ d="M24 36.5 C14 30.5 9.8 24.5 11.6 19.2 C13.5 13.8 19.8 13 24 17.6 C28.2 13 34.5 13.8 36.4 19.2 C38.2 24.5 34 30.5 24 36.5 Z"/>
+<path stroke="#F3EEDF" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="#F3EEDF" d="M24 32.5 C16.6 27.8 13.4 23.4 14.8 19.6 C16.2 15.8 20.8 15.4 24 19 C27.2 15.4 31.8 15.8 33.2 19.6 C34.6 23.4 31.4 27.8 24 32.5 Z"/>
+<path stroke="#F3EEDF" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="#F3EEDF" d="M18 41 Q19.4 46.6 25 48 Q19.4 49.4 18 55 Q16.6 49.4 11 48 Q16.6 46.6 18 41 Z"/>
+<circle stroke="#F3EEDF" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" fill="#F3EEDF" cx="31" cy="49" r="5"/>
+<rect stroke="#262118" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#FFFDF4" x="8.5" y="7" width="31" height="63" rx="4"/>
+<path fill="none" stroke="#E8DFC6" stroke-width="1.6" stroke-dasharray="2.4 2.4" stroke-linecap="round"
+ d="M24 36.5 C14 30.5 9.8 24.5 11.6 19.2 C13.5 13.8 19.8 13 24 17.6 C28.2 13 34.5 13.8 36.4 19.2 C38.2 24.5 34 30.5 24 36.5 Z"/>
+<path stroke="#262118" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#F7AFCB" d="M24 32.5 C16.6 27.8 13.4 23.4 14.8 19.6 C16.2 15.8 20.8 15.4 24 19 C27.2 15.4 31.8 15.8 33.2 19.6 C34.6 23.4 31.4 27.8 24 32.5 Z"/>
+<path stroke="#262118" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#FFE380" d="M18 41 Q19.4 46.6 25 48 Q19.4 49.4 18 55 Q16.6 49.4 11 48 Q16.6 46.6 18 41 Z"/>
+<circle stroke="#262118" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#BFDFE2" cx="31" cy="49" r="5"/></g></svg>

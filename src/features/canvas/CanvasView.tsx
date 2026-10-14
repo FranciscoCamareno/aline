@@ -4,6 +4,7 @@ import {
   MainMenu,
   newElementWith,
   restoreElements,
+  viewportCoordsToSceneCoords,
 } from '@excalidraw/excalidraw';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
@@ -18,7 +19,9 @@ import {
 } from '../../adapters/excalidraw/sidecar.ts';
 import { excalidrawLangCode } from '../../app/i18n.ts';
 import { logDiagnostic } from '../../app/runtime.ts';
+import { describeError } from '../../ports/Diagnostics.ts';
 import { useUiStore } from '../../app/store.ts';
+import { Icon } from '../../app/ui/Icon.tsx';
 import { useAutosave } from '../../app/useAutosave.ts';
 import { internalLink, parseInternalLink } from '../../application/knowledge.ts';
 import type { EditSession, VaultService } from '../../application/VaultService.ts';
@@ -26,6 +29,8 @@ import type { DocumentRecord } from '../../domain/revision.ts';
 import type { CanvasExtensions } from '../../domain/sidecar.ts';
 import { LinkPicker } from '../knowledge/LinkPicker.tsx';
 import { ExportDialog } from './ExportDialog.tsx';
+import { insertSticker, STICKER_DRAG_TYPE, STICKER_NAMES, type StickerName } from './stickers.ts';
+import { ToolTray } from './ToolTray.tsx';
 
 interface Props {
   documentId: string;
@@ -56,8 +61,9 @@ function isElementLike(value: unknown): value is ExcalidrawElement {
  * Lienzo Excalidraw. La edición interactiva del motor se captura en onChange y se guarda
  * mediante el adaptador (diseño §4). Mientras hay un trazo en curso no se crean revisiones:
  * se guarda un borrador cada segundo y la revisión llega al levantar el puntero (§7.1).
- * El motor activa `penMode` al detectar el lápiz (fase 0). Pendiente: interfaz propia del modo
- * «Solo lápiz» y pila de deshacer coordinada con comandos propios.
+ * El motor activa `penMode` al detectar el lápiz (fase 0); la barra propia muestra entonces el
+ * interruptor «Solo lápiz». Pendiente: interfaz propia de ese modo (fase 6) y pila de deshacer
+ * coordinada con comandos propios.
  */
 export function CanvasView({ documentId, title, service, theme, onCreateNote }: Props) {
   const { t, i18n } = useTranslation();
@@ -75,6 +81,21 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const [exportOpen, setExportOpen] = useState(false);
   const navigate = useUiStore((s) => s.navigate);
   const focus = useUiStore((s) => s.focus);
+  /** Las órdenes anteriores al montaje no se ejecutan. */
+  const handledCommand = useRef(useUiStore.getState().viewCommand?.seq ?? 0);
+
+  // Órdenes de la cabecera: exportar (diálogo propio) y ayuda de atajos del motor.
+  useEffect(
+    () =>
+      useUiStore.subscribe(({ viewCommand }) => {
+        if (!api || !viewCommand || viewCommand.documentId !== documentId) return;
+        if (viewCommand.seq <= handledCommand.current) return;
+        handledCommand.current = viewCommand.seq;
+        if (viewCommand.kind === 'export') setExportOpen(true);
+        else api.updateScene({ appState: { openDialog: { name: 'help' } } });
+      }),
+    [api, documentId],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -235,7 +256,32 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   if (!loaded) return <div className="view-message" aria-busy="true" />;
 
   return (
-    <div className="canvas-host" data-testid="canvas-host">
+    <div
+      className="canvas-host"
+      data-testid="canvas-host"
+      // Un sticker arrastrado desde el selector se suelta donde cae (antes de que el motor
+      // intente leerlo como archivo).
+      onDragOverCapture={(e) => {
+        if (api && e.dataTransfer.types.includes(STICKER_DRAG_TYPE)) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'copy';
+        }
+      }}
+      onDropCapture={(e) => {
+        const name = e.dataTransfer.getData(STICKER_DRAG_TYPE) as StickerName;
+        if (!api || !STICKER_NAMES.includes(name) || loaded.session.readOnly) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const at = viewportCoordsToSceneCoords(
+          { clientX: e.clientX, clientY: e.clientY },
+          api.getAppState(),
+        );
+        insertSticker(api, name, at).catch((error: unknown) =>
+          logDiagnostic('error', 'sticker-insert', describeError(error)),
+        );
+      }}
+    >
       {loaded.recoveredDraft && (
         <p className="notice canvas-notice" role="status" data-testid="draft-recovered">
           {t('canvas.draftRecovered')}
@@ -246,18 +292,13 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           {t(`readOnly.${loaded.session.readOnly}`)}
         </p>
       )}
+      {/* Barra propia (DESIGN.md §7); la del motor queda oculta por CSS. */}
+      {api && !loaded.session.readOnly && <ToolTray api={api} theme={theme} />}
       <div className="canvas-tools">
-        <button
-          type="button"
-          data-testid="canvas-export"
-          disabled={!api}
-          onClick={() => setExportOpen(true)}
-        >
-          {t('export.open')}
-        </button>
         {selection && !loaded.session.readOnly && (
           <button type="button" data-testid="link-element" onClick={() => setPickerOpen(true)}>
-            🔗 {selection.link ? t('links.editLink') : t('links.linkElement')}
+            <Icon name="enlace" size={18} />
+            {selection.link ? t('links.editLink') : t('links.linkElement')}
           </button>
         )}
         {dangling.length > 0 && (
@@ -296,6 +337,9 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           navigate({ documentId: target.documentId, elementId: target.elementId });
         }}
         initialData={loaded.scene}
+        // Sin herramienta web ni incrustaciones (diseño §13): un elemento incrustable que llegue
+        // en una escena sincronizada o importada se muestra sin cargar la página externa.
+        validateEmbeddable={false}
         viewModeEnabled={loaded.session.readOnly !== null}
         onChange={onChange}
         onPointerUp={onPointerUp}

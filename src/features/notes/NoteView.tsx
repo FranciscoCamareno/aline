@@ -30,6 +30,8 @@ export function NoteView({ documentId, title, service, onCreateNote }: Props) {
   const documents = useUiStore((s) => s.documents);
   const navigate = useUiStore((s) => s.navigate);
   const focus = useUiStore((s) => s.focus);
+  /** Las órdenes anteriores al montaje no se ejecutan. */
+  const handledCommand = useRef(useUiStore.getState().viewCommand?.seq ?? 0);
   const [view, setView] = useState<EditorView | null>(null);
   const documentsRef = useRef(documents);
   useEffect(() => {
@@ -58,6 +60,23 @@ export function NoteView({ documentId, title, service, onCreateNote }: Props) {
     if (!session) return Promise.reject(new Error('Nota no cargada'));
     return service.saveNote(session, value);
   });
+
+  // «Exportar → Markdown» de la cabecera. Lo escrito y aún no guardado se guarda antes: se
+  // exporta la versión vigente.
+  useEffect(
+    () =>
+      useUiStore.subscribe(({ viewCommand }) => {
+        if (viewCommand?.documentId !== documentId || viewCommand.kind !== 'export') return;
+        if (viewCommand.seq <= handledCommand.current) return;
+        handledCommand.current = viewCommand.seq;
+        void (autosave.pending ? autosave.flush() : Promise.resolve())
+          .then(() => service.exportNoteMarkdown(documentId))
+          .then((markdown) =>
+            downloadText(safeFilename(title, 'md'), markdown, 'text/markdown;charset=utf-8'),
+          );
+      }),
+    [autosave, documentId, service, title],
+  );
 
   const previewHtml = useMemo(() => renderMarkdownPreview(body), [body]);
 
@@ -128,20 +147,6 @@ export function NoteView({ documentId, title, service, onCreateNote }: Props) {
       <div className="note-toolbar">
         <button type="button" onClick={() => setShowPreview((v) => !v)} aria-pressed={showPreview}>
           {showPreview ? t('notes.hidePreview') : t('notes.showPreview')}
-        </button>
-        <button
-          type="button"
-          data-testid="note-export"
-          onClick={() =>
-            // Lo escrito y aún no guardado se guarda antes: se exporta la versión vigente.
-            void (autosave.pending ? autosave.flush() : Promise.resolve())
-              .then(() => service.exportNoteMarkdown(documentId))
-              .then((markdown) =>
-                downloadText(safeFilename(title, 'md'), markdown, 'text/markdown;charset=utf-8'),
-              )
-          }
-        >
-          {t('export.markdown')}
         </button>
       </div>
       <div className="note-panes">

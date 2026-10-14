@@ -51,8 +51,8 @@ async function fakeGis(page: Page, token: string) {
             };
             return client;
           },
-          revoke(_token: string, done?: () => void) {
-            done?.();
+          revoke(_token: string, done?: (r: { successful: boolean }) => void) {
+            done?.({ successful: true });
           },
           hasGrantedAllScopes: () => true,
         },
@@ -89,6 +89,7 @@ async function routeDrive(page: Page, drive: FakeDrive) {
 }
 
 async function newNote(page: Page, text: string): Promise<string> {
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   const editor = page.locator('.cm-content');
   await expect(editor).toBeVisible();
@@ -115,6 +116,7 @@ test('el aviso RN-12 aparece antes de todo y cancelarlo no contacta con Google (
     (route) => route.abort(),
   );
   await freshStart(page);
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByTestId('connect-drive').click();
   // Elegir modo es obligatorio: ninguna opción viene marcada y se explican ambas.
@@ -143,6 +145,7 @@ test('conectar Drive, sincronizar y abrir el almacén desde otro «equipo» (pla
   await freshStart(page);
   const noteId = await newNote(page, 'escrito en el equipo A');
 
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-plain').check();
@@ -158,10 +161,12 @@ test('conectar Drive, sincronizar y abrir el almacén desde otro «equipo» (pla
   await expect(page.getByTestId('remote-status')).toContainText('Necesita autorización');
 
   // «Otro equipo»: almacén nuevo; Drive tiene otro almacén y se ofrece abrirlo aquí.
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByPlaceholder('Nombre del almacén nuevo').fill('Equipo B');
   await page.getByRole('button', { name: 'Crear y abrir' }).click();
   await expect(page.locator('.excalidraw')).toBeVisible();
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-plain').check();
@@ -202,6 +207,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   const noteId = await newNote(page, 'nota confidencial del equipo A');
 
   // Equipo A: elige cifrar, crea la contraseña y guarda el código de recuperación.
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-encrypted').check();
@@ -233,6 +239,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await page.getByPlaceholder('Nombre del almacén nuevo').fill('Equipo B');
   await page.getByRole('button', { name: 'Crear y abrir' }).click();
   await expect(page.locator('.excalidraw')).toBeVisible();
+  await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-plain').check();
@@ -270,7 +277,8 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   expect(allText()).toContain('nota confidencial del equipo A'); // copia legible en Drive
   expect(drive.byProperty('mindnote', 'vault').filter((f) => !f.trashed)).toHaveLength(1);
 
-  // A vuelve: su carpeta cifrada ya no existe y pasa sola a la nueva, sin cifrar.
+  // A vuelve: su carpeta cifrada ya no existe, pero la nueva NO está cifrada. No sube nada a
+  // ella hasta que el propietario lo acepte (auditoría 13/10/2026, H01).
   await page
     .getByTestId('vault-item')
     .filter({ hasText: 'Mi almacén' })
@@ -280,6 +288,10 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await page.getByTestId('remote-status').click();
   await page.getByTestId('drive-reconnect').click();
   await page.getByTestId('drive-authorize').click();
+  await expect(page.getByTestId('drive-relocate-plain')).toBeVisible();
+  await expect(page.getByTestId('drive-encryption-mode')).toContainText('Cifrado');
+  await page.getByTestId('drive-relocate-accept').click();
+  await expect(page.getByTestId('drive-relocate-plain')).toBeHidden();
   await expect(page.getByTestId('drive-encryption-mode')).toContainText('Sin cifrar');
   await expect(page.getByTestId('storage-phase')).toHaveText('sincronizado');
 });

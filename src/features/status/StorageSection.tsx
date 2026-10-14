@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../../app/ui/Icon.tsx';
 import type { AppServices } from '../../app/services.ts';
 import { useUiStore } from '../../app/store.ts';
 import {
@@ -28,7 +29,11 @@ type DriveStep =
   | { step: 'loading' }
   | { step: 'ready'; choice: DriveEncryptionChoice | null }
   | { step: 'choose'; choices: DriveVaultChoice[]; choice: DriveEncryptionChoice }
-  | { step: 'switch'; target: DriveEncryptionChoice['mode'] };
+  /** Se eligió cifrar y Drive ya tiene este almacén sin cifrar: nada se ha publicado aún. */
+  | { step: 'existing-plain'; existing: DriveVaultChoice; choice: DriveEncryptionChoice }
+  | { step: 'switch'; target: DriveEncryptionChoice['mode'] }
+  /** Fase needs-confirm: volver a cifrar en una carpeta nueva en lugar de aceptar la sin cifrar. */
+  | { step: 'reencrypt' };
 
 /**
  * «Dónde se guarda» (plan 4.1, 4.4, RF-41, CA-33): el almacén empieza en el navegador y después
@@ -92,8 +97,12 @@ export function StorageSection({ services, sync, onError }: Props) {
         setDrive({ step: 'choose', choices: result.choices, choice });
         return;
       }
+      if ('existingPlain' in result) {
+        setDrive({ step: 'existing-plain', existing: result.existingPlain, choice });
+        return;
+      }
       setDrive(null);
-      if (result.notice) setNotice(t(`storage.enc.${result.notice}`));
+      setNotice(result.notice ? t(`storage.enc.${result.notice}`) : null);
     });
 
   const time = (iso: string | null) =>
@@ -102,7 +111,10 @@ export function StorageSection({ services, sync, onError }: Props) {
       : '—';
   const phases = remote?.kind === 'drive' ? 'drivePhase' : 'phase';
   const driveActive =
-    remote?.kind === 'drive' && remote.phase !== 'needs-auth' && remote.phase !== 'needs-key';
+    remote?.kind === 'drive' &&
+    remote.phase !== 'needs-auth' &&
+    remote.phase !== 'needs-key' &&
+    remote.phase !== 'needs-confirm';
 
   return (
     <section data-testid="storage-section">
@@ -122,6 +134,7 @@ export function StorageSection({ services, sync, onError }: Props) {
           </p>
           {remote.kind === 'drive' && (
             <p className="small" data-testid="drive-encryption-mode">
+              {remote.encrypted && <Icon name="candado" size={16} />}
               {remote.encrypted ? t('storage.enc.modeEncrypted') : t('storage.enc.modePlain')}
             </p>
           )}
@@ -175,10 +188,46 @@ export function StorageSection({ services, sync, onError }: Props) {
                 {t('storage.syncNow')}
               </button>
             ) : null}
-            <button type="button" disabled={busy} onClick={() => void run(() => sync.disconnect())}>
+            <button
+              type="button"
+              disabled={busy}
+              data-testid="storage-disconnect"
+              onClick={() =>
+                void run(async () => {
+                  const result = await sync.disconnect();
+                  setDrive(null);
+                  // Desvincular no retira el permiso en la cuenta si Google no lo confirma.
+                  setNotice(result && !result.revoked ? t('storage.revokeUnconfirmed') : null);
+                })
+              }
+            >
               {t('storage.disconnect')}
             </button>
           </div>
+
+          {remote.phase === 'needs-confirm' && drive?.step !== 'reencrypt' && (
+            <div className="notice small" role="alertdialog" data-testid="drive-relocate-plain">
+              <p>{t('storage.enc.relocatePlain')}</p>
+              <div className="startup-actions">
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid="drive-relocate-reencrypt"
+                  onClick={() => setDrive({ step: 'reencrypt' })}
+                >
+                  {t('storage.enc.relocateReencrypt')}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid="drive-relocate-accept"
+                  onClick={() => void run(() => sync.acceptPlainRelocation())}
+                >
+                  {t('storage.enc.relocateAccept')}
+                </button>
+              </div>
+            </div>
+          )}
 
           {remote.kind === 'drive' && remote.previousFolder && (
             <div className="notice small" data-testid="drive-previous">
@@ -226,6 +275,12 @@ export function StorageSection({ services, sync, onError }: Props) {
             </details>
           )}
         </div>
+      )}
+
+      {!remote && notice && (
+        <p className="notice small" data-testid="storage-notice">
+          {notice}
+        </p>
       )}
 
       {!remote && !drive && (
@@ -282,6 +337,58 @@ export function StorageSection({ services, sync, onError }: Props) {
           }
           onCancel={() => setDrive(null)}
         />
+      )}
+
+      {drive?.step === 'reencrypt' && (
+        <DriveModeChooser
+          only="encrypted"
+          connecting={false}
+          busy={busy}
+          onConfirm={(choice) =>
+            void run(async () => {
+              await sync.reencryptAfterPlainRelocation(choice);
+              setDrive(null);
+            })
+          }
+          onCancel={() => setDrive(null)}
+        />
+      )}
+
+      {drive?.step === 'existing-plain' && (
+        <div className="notice" role="alertdialog" data-testid="drive-existing-plain">
+          <p>{t('storage.enc.existingPlain')}</p>
+          <div className="startup-actions">
+            <button
+              type="button"
+              disabled={busy}
+              data-testid="drive-existing-plain-encrypt"
+              onClick={() =>
+                void run(async () => {
+                  await sync.createDriveVault(drive.choice, drive.existing.folderId);
+                  setDrive(null);
+                })
+              }
+            >
+              {t('storage.enc.existingPlainEncrypt')}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              data-testid="drive-existing-plain-use"
+              onClick={() =>
+                void run(async () => {
+                  await sync.useExistingPlainDrive(drive.existing);
+                  setDrive(null);
+                })
+              }
+            >
+              {t('storage.enc.existingPlainUse')}
+            </button>
+            <button type="button" onClick={() => setDrive(null)}>
+              {t('title.cancel')}
+            </button>
+          </div>
+        </div>
       )}
 
       {drive?.step === 'loading' && <p className="muted small">{t('storage.driveLoading')}</p>}

@@ -12,6 +12,7 @@ test('sin Drive solo se contacta el origen de la aplicación', async ({ page, ba
   });
   await page.goto('/');
   await expect(page.locator('.excalidraw')).toBeVisible();
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.cm-content')).toBeVisible();
   await page.waitForLoadState('networkidle');
@@ -34,6 +35,7 @@ test('tras instalar el Service Worker, la app abre sin conexión', async ({ page
   await context.setOffline(true);
   await page.reload();
   await expect(page.locator('.excalidraw')).toBeVisible();
+  await page.getByTestId('new-menu').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.cm-content')).toBeVisible();
   await context.setOffline(false);

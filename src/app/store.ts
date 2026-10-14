@@ -18,6 +18,16 @@ export interface FocusTarget {
   text?: string | null;
 }
 
+/**
+ * Orden de la cabecera para la vista abierta, que es quien tiene el motor o el editor: exportar
+ * el documento o abrir la ayuda de atajos del lienzo. `seq` distingue dos órdenes iguales.
+ */
+export interface ViewCommand {
+  seq: number;
+  documentId: string;
+  kind: 'export' | 'help';
+}
+
 interface UiState {
   documents: DocumentRecord[];
   activeId: string | null;
@@ -31,6 +41,11 @@ interface UiState {
   indexing: { done: number; total: number } | null;
   /** Destino conectado (carpeta) y su estado; null si el almacén solo está en el navegador. */
   remote: RemoteStatus | null;
+  /** Carpeta elegida en la biblioteca: destino de lo nuevo y de la exportación de Markdown. */
+  selectedFolder: string | null;
+  setSelectedFolder: (id: string | null) => void;
+  viewCommand: ViewCommand | null;
+  sendViewCommand: (documentId: string, kind: ViewCommand['kind']) => void;
   setRemote: (remote: RemoteStatus | null) => void;
   setDocuments: (documents: DocumentRecord[]) => void;
   upsertDocument: (document: DocumentRecord) => void;
@@ -55,6 +70,11 @@ export const useUiStore = create<UiState>()((set, get) => ({
   knowledgeVersion: 0,
   indexing: null,
   remote: null,
+  selectedFolder: null,
+  setSelectedFolder: (selectedFolder) => set({ selectedFolder }),
+  viewCommand: null,
+  sendViewCommand: (documentId, kind) =>
+    set((state) => ({ viewCommand: { seq: (state.viewCommand?.seq ?? 0) + 1, documentId, kind } })),
   setRemote: (remote) => set({ remote }),
   setDocuments: (documents) => set({ documents }),
   upsertDocument: (document) =>
