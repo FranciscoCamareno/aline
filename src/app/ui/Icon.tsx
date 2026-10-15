@@ -1,3 +1,5 @@
+import type { RevisionKind } from '../../domain/revision.ts';
+
 /**
  * Iconos de interfaz del sistema de diseño (docs/DESIGN.md §7.4). Los SVG viven en
  * `brand/icons/ui/` y se incrustan en línea para que el trazo tome `currentColor`
@@ -23,7 +25,13 @@ const ICONS = index(ui);
 
 export type IconName =
   | 'ajustes'
+  | 'biblioteca'
+  | 'calendario'
+  | 'calendario-hoy'
+  | 'evento-mas'
+  | 'repetir'
   | 'ayuda'
+  | 'usuario'
   | 'chevron-izq'
   | 'mas-opciones'
   | 'panel-lateral'
@@ -93,10 +101,18 @@ export function KindIcon({
   size = 16,
   on = false,
 }: {
-  kind: 'canvas' | 'note' | 'folder';
+  kind: RevisionKind;
   size?: number;
   on?: boolean;
 }) {
-  const name = kind === 'canvas' ? 'lienzo' : kind === 'note' ? 'nota' : 'carpeta';
+  const name: IconName = KIND_ICONS[kind];
   return <Icon name={name} size={size} on={on} className={`kind-icon kind-${kind}`} />;
 }
+
+const KIND_ICONS: Record<RevisionKind, IconName> = {
+  canvas: 'lienzo',
+  note: 'nota',
+  folder: 'carpeta',
+  calendar: 'calendario',
+  template: 'biblioteca',
+};

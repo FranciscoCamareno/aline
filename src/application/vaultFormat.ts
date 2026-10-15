@@ -1,8 +1,9 @@
 import { checkRevision } from '../domain/compat.ts';
 import { catalogSchema, headsFileSchema } from '../domain/format.ts';
-import type { DocumentRecord, Revision } from '../domain/revision.ts';
+import type { DocumentRecord, Revision, RevisionKind } from '../domain/revision.ts';
 import { vaultSchema, versionPruneSchema, type VersionPrune } from '../domain/vault.ts';
 import { sha256Hex, utf8Decode, utf8Encode } from '../shared/hash.ts';
+import type { ObjectRole } from '../ports/RemoteStore.ts';
 import type { StoredBlob, VaultContent } from '../ports/VaultRepository.ts';
 
 /**
@@ -76,9 +77,27 @@ function json(value: unknown): Uint8Array {
 }
 
 /** Ruta de un objeto según su papel (diseño §6). La comparten la copia ZIP, la carpeta y Drive. */
-export function objectPath(hash: string, role: 'note' | 'canvas' | 'extensions'): string {
+export function objectPath(hash: string, role: Exclude<ObjectRole, 'asset'>): string {
   const ext = role === 'note' ? 'md' : role === 'canvas' ? 'excalidraw' : 'json';
   return `objects/${hash}.${ext}`;
+}
+
+/**
+ * Papel del cuerpo de una revisión: Markdown en notas, escena .excalidraw en lienzos y
+ * plantillas, JSON en calendarios. Las carpetas no tienen cuerpo.
+ */
+export function bodyRole(kind: RevisionKind): Exclude<ObjectRole, 'asset' | 'extensions'> | null {
+  switch (kind) {
+    case 'note':
+      return 'note';
+    case 'canvas':
+    case 'template':
+      return 'canvas';
+    case 'calendar':
+      return 'data';
+    case 'folder':
+      return null;
+  }
 }
 
 export function assetPath(blob: Pick<StoredBlob, 'hash' | 'mimeType'>): string {
@@ -93,7 +112,8 @@ docs/formato-almacen.md en el repositorio de la aplicación.
 
 - vault.json: identidad y versión del formato.
 - revisions/<id>.json: cada versión de cada documento (inmutable).
-- objects/<sha256>.md | .excalidraw | .json: contenido de notas, escenas y extensiones.
+- objects/<sha256>.md | .excalidraw | .json: contenido de notas, escenas (lienzos y plantillas),
+  extensiones y calendarios.
 - assets/<sha256>.<ext>: imágenes y adjuntos.
 - readable/<documento>/<revisión>.md: copia legible de cada versión de nota.
 - heads/ y catalog.json: índices de ayuda; nunca deciden qué versión gana.
@@ -117,12 +137,12 @@ export function vaultToFiles(
   for (const rev of content.revisions) {
     files.set(`revisions/${rev.id}.json`, json(rev));
     const { body, extensions, assets } = rev.contentRefs;
-    const kind = rev.metadata.kind === 'note' ? 'note' : 'canvas';
-    if (body && rev.metadata.kind !== 'folder') {
+    const role = bodyRole(rev.metadata.kind);
+    if (body && role) {
       const blob = content.blobs.get(body);
       if (blob) {
-        files.set(objectPath(body, kind), blob.bytes);
-        if (kind === 'note') files.set(`readable/${rev.documentId}/${rev.id}.md`, blob.bytes);
+        files.set(objectPath(body, role), blob.bytes);
+        if (role === 'note') files.set(`readable/${rev.documentId}/${rev.id}.md`, blob.bytes);
       }
     }
     if (extensions) {

@@ -17,7 +17,8 @@ export interface RemoteChangePage {
 }
 
 /** Papel de un objeto en el formato abierto; decide su ruta y extensión. */
-export type ObjectRole = 'note' | 'canvas' | 'extensions' | 'asset';
+/** `data`: cuerpo JSON de un calendario (objects/<sha256>.json, como las extensiones). */
+export type ObjectRole = 'note' | 'canvas' | 'extensions' | 'data' | 'asset';
 
 export interface RemoteObject {
   hash: string;

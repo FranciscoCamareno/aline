@@ -7,8 +7,18 @@ export const REVISION_SCHEMA_VERSION = 1 as const;
 export const documentKindSchema = z.enum(['note', 'canvas']);
 export type DocumentKind = z.infer<typeof documentKindSchema>;
 
-export const revisionKindSchema = z.enum(['note', 'canvas', 'folder']);
+/**
+ * Tipos de documento del almacén. `calendar` (eventos, JSON) y `template` (plantilla del lienzo,
+ * una escena .excalidraw con sus imágenes) se añadieron el 14/10/2026: ver el registro de
+ * cambios de arquitectura en el diseño técnico.
+ */
+export const revisionKindSchema = z.enum(['note', 'canvas', 'folder', 'calendar', 'template']);
 export type RevisionKind = z.infer<typeof revisionKindSchema>;
+
+/** Notas y lienzos: lo que se abre y se organiza en la biblioteca. */
+export function isContentKind(kind: RevisionKind): kind is DocumentKind {
+  return kind === 'note' || kind === 'canvas';
+}
 
 export const revisionOperationSchema = z.enum(['save', 'delete', 'restore', 'resolve', 'external']);
 export type RevisionOperation = z.infer<typeof revisionOperationSchema>;
@@ -72,7 +82,10 @@ export type ContentRefs = Revision['contentRefs'];
 /** Proyección del documento: título y cabezas vigentes. Dos cabezas indican conflicto. */
 export interface DocumentRecord {
   id: Uuid;
-  /** Documento de contenido (nota o lienzo) o carpeta; las carpetas también son revisionadas (§5). */
+  /**
+   * Nota, lienzo, carpeta, calendario o plantilla; todos son revisionados (§5). Solo notas y
+   * lienzos se abren en la biblioteca (`isContentKind`).
+   */
   kind: RevisionKind;
   title: string;
   folderId: Uuid | null;

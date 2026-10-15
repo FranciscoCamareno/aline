@@ -38,6 +38,9 @@
   --backdrop: rgb(38 33 24 / 0.3);
   /* Borde del botón primario: tinta en claro, sin borde en oscuro (§6). */
   --primary-border: #262118;
+  /* Calendario (§8): tinte del fin de semana y línea de «ahora» (el rojo del lienzo). */
+  --weekend: #fbf7ea;
+  --now-line: #b83a26;
 
   /* Objetivo táctil para iPad (diseño §4.1). */
   --touch: 44px;
@@ -77,6 +80,8 @@
   --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
   --backdrop: rgb(0 0 0 / 0.45);
   --primary-border: #ffe380;
+  --weekend: #1b1912;
+  --now-line: #f08a78;
   color-scheme: dark;
 }
 
@@ -418,6 +423,26 @@ a {
   overflow-y: auto;
   margin: 0 -4px;
   padding: 0 4px;
+}
+
+/* Arrastrar lienzos y notas entre carpetas: la fila que se arrastra se atenúa y el destino se
+   marca con el anillo de foco discontinuo. */
+.library-list li[draggable='true'] {
+  -webkit-user-drag: element;
+}
+.library-list li.dragging {
+  opacity: 0.5;
+}
+.folder-row.drop-target {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  outline: 2px dashed var(--focus);
+  outline-offset: -2px;
+}
+.library-scroll.drop-target {
+  outline: 2px dashed var(--focus);
+  outline-offset: -2px;
+  border-radius: 8px;
 }
 
 /* Menú «⋯» de cada fila: visible al pasar por encima, con el foco, en la fila activa o abierto. */
@@ -1324,7 +1349,8 @@ button.section-title {
 }
 .canvas-tools {
   position: absolute;
-  top: 64px;
+  /* Arriba a la derecha, donde estaba el botón «Biblioteca» del motor. */
+  top: 16px;
   right: 16px;
   z-index: 4;
   display: flex;
@@ -1332,10 +1358,10 @@ button.section-title {
   align-items: flex-end;
   gap: 6px;
 }
-.canvas-tools button:not(.danger) {
+.canvas-tools > button:not(.danger) {
   background: var(--bg-panel);
 }
-.canvas-tools button.danger {
+.canvas-tools > button.danger {
   background: var(--danger-bg);
 }
 .dialog-backdrop {
@@ -1509,8 +1535,11 @@ button.section-title {
  * Lienzo (DESIGN.md §3.3). No se toca `--theme-filter`: la paleta oscura del lienzo se deriva
  * de la clara. La interfaz del motor no pasa por el filtro y usa los tokens directos: mantequilla
  * para lo activo, tinta encima. La selección es agua, nunca amarilla.
+ *
+ * Los selectores no cuelgan de `.workspace`: los diálogos del motor (ayuda, exportar, Mermaid) se
+ * montan en <body>, fuera del área de trabajo, y llevan su propia clase `.excalidraw`.
  */
-.workspace .excalidraw.excalidraw {
+.excalidraw.excalidraw {
   --ui-font: var(--font-ui);
   --color-selection: #3f7f88;
   --focus-highlight-color: var(--focus);
@@ -1542,47 +1571,154 @@ button.section-title {
   --color-brand-active: var(--border-ink);
   --color-logo-icon: var(--text-primary);
   --color-promo: var(--text-accent);
+  --dialog-border-color: var(--border-soft);
+  --modal-shadow: var(--shadow-popover);
+  --border-radius-lg: 12px;
 }
 /* Pre-invertido: el filtro del motor lo muestra como «agua luz» (#7FC4CC). */
-.workspace .excalidraw.excalidraw.theme--dark {
+.excalidraw.excalidraw.theme--dark {
   --color-selection: #00515a;
 }
 /* Donde el motor usa el color primario como texto o como relleno con texto blanco. */
-.workspace .excalidraw .ExcButton--color-primary.ExcButton--variant-filled,
-.workspace .excalidraw .Dialog__action-button--primary {
+.excalidraw .ExcButton--color-primary.ExcButton--variant-filled,
+.excalidraw .Dialog__action-button--primary {
   --text-color: var(--on-brand);
   color: var(--on-brand);
 }
-.workspace .excalidraw .library-menu-items__no-items__label,
-.workspace .excalidraw .library-menu-items-container__header,
-.workspace .excalidraw .excalidraw-eye-dropper-trigger.selected,
-.workspace .excalidraw .welcome-screen-decor a {
+.excalidraw .library-menu-items__no-items__label,
+.excalidraw .library-menu-items-container__header,
+.excalidraw .excalidraw-eye-dropper-trigger.selected,
+.excalidraw .welcome-screen-decor a {
   --color: var(--text-primary);
   color: var(--text-primary);
 }
-.workspace .excalidraw .Island {
+.excalidraw .Island {
   box-shadow: var(--shadow-panel);
   border: 1px solid var(--border-soft);
 }
 
 /*
- * Barra de herramientas propia (DESIGN.md §7.1–7.2): objetos de 48 × 64 que asoman de una
- * bandeja; el labio frontal tapa su base. La barra del motor se oculta sin quitarla del árbol,
- * para que su texto de ayuda (HintViewer) conserve el ancho y la posición.
+ * Ayuda: el botón «?» del motor, abajo a la derecha y solo con un lienzo abierto (es su sitio
+ * original; la biblioteca ya no tiene botón de ayuda). Se ocultan los textos de ayuda que el
+ * motor muestra bajo su barra («Para mover el lienzo…», «Haz clic y arrastra…»).
  */
-.workspace .excalidraw .App-toolbar {
+.excalidraw .HintViewer {
+  display: none;
+}
+.excalidraw .help-icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1.5px solid var(--border-ink);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+.excalidraw .help-icon:hover {
+  background: var(--selection-soft);
+  border-color: var(--border-ink);
+  color: var(--on-selection-soft);
+}
+.excalidraw .help-icon:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.excalidraw .help-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/*
+ * Diálogo de ayuda y demás modales del motor, con los tokens de la interfaz. Sus enlaces
+ * externos se retiran del DOM (engineDialogs.ts), no aquí.
+ */
+.excalidraw .Modal__background {
+  background-color: var(--backdrop);
+}
+.excalidraw .Modal__content {
+  background: var(--bg-popover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+}
+.excalidraw .Modal__close,
+.excalidraw .Dialog__close {
+  color: var(--text-secondary);
+  border-radius: 8px;
+}
+.excalidraw .Modal__close:hover,
+.excalidraw .Dialog__close:hover {
+  color: var(--text-primary);
+  background: var(--selection-soft);
+}
+.excalidraw .Dialog__title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-soft);
+}
+.excalidraw .HelpDialog h3 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.excalidraw .HelpDialog__island h4 {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.excalidraw .HelpDialog__island-content {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-canvas);
+}
+.excalidraw .HelpDialog__shortcut {
+  min-height: 36px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.excalidraw .HelpDialog__key {
+  padding: 5px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/*
+ * Barra de herramientas propia (DESIGN.md §7.1–7.2): objetos de 48 × 64 que asoman de una
+ * bandeja; el labio frontal tapa su base. La barra del motor se oculta sin quitarla del árbol.
+ */
+.excalidraw .App-toolbar {
   background: none;
   border: none;
   box-shadow: none;
 }
-.workspace .excalidraw .App-toolbar > .Stack_horizontal,
-.workspace .excalidraw .App-toolbar--mobile,
-.workspace .excalidraw .ToolIcon__penMode {
+.excalidraw .App-toolbar > .Stack_horizontal,
+.excalidraw .App-toolbar--mobile,
+.excalidraw .ToolIcon__penMode {
   visibility: hidden;
 }
 
 .canvas-host {
   container-type: inline-size;
+}
+
+/* Capa de stickers (stickerLayer.ts): sobre el canvas estático y sin el filtro del tema oscuro. */
+.excalidraw .excalidraw__canvas.sticker-layer,
+.excalidraw.theme--dark canvas.sticker-layer {
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  filter: none;
 }
 
 .tool-trays {
@@ -1931,4 +2067,654 @@ a,
   .side-panel {
     animation: none;
   }
+}
+
+/*
+ * Calendario (DESIGN.md §8). Cifras tabulares para que las columnas de números no bailen.
+ * Los colores de evento son los de las notas adhesivas; en oscuro, el mismo valor que produce
+ * el filtro del lienzo, con texto crema (§8.3).
+ */
+.event-mantequilla {
+  --event-bg: #ffe380;
+  --event-fg: #262118;
+}
+.event-agua {
+  --event-bg: #bfdfe2;
+  --event-fg: #262118;
+}
+.event-rosa {
+  --event-bg: #f7afcb;
+  --event-fg: #262118;
+}
+.event-brote {
+  --event-bg: #a8d5a2;
+  --event-fg: #262118;
+}
+.event-durazno {
+  --event-bg: #ffc9a8;
+  --event-fg: #262118;
+}
+.event-lavanda {
+  --event-bg: #d8ccf0;
+  --event-fg: #262118;
+}
+:root[data-theme='dark'] .event-mantequilla {
+  --event-bg: #442c00;
+  --event-fg: #f3eedf;
+}
+:root[data-theme='dark'] .event-agua {
+  --event-bg: #1d393b;
+  --event-fg: #f3eedf;
+}
+:root[data-theme='dark'] .event-rosa {
+  --event-bg: #773951;
+  --event-fg: #f3eedf;
+}
+:root[data-theme='dark'] .event-brote {
+  --event-bg: #264d21;
+  --event-fg: #f3eedf;
+}
+:root[data-theme='dark'] .event-durazno {
+  --event-bg: #5f3114;
+  --event-fg: #f3eedf;
+}
+:root[data-theme='dark'] .event-lavanda {
+  --event-bg: #3f3554;
+  --event-fg: #f3eedf;
+}
+
+.calendar-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--bg-canvas);
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.calendar-title {
+  margin: 0 8px 0 0;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.calendar-year {
+  margin-left: 6px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.calendar-round {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+}
+
+/* Selector Día · Semana · Mes (segmentado, activo en mantequilla). */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  background: var(--bg-panel);
+}
+.segmented-option {
+  min-height: 30px;
+  padding: 0 16px;
+  border: 1.5px solid transparent;
+  border-radius: 16px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.segmented-option.is-active {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--primary-border);
+  font-weight: 600;
+}
+
+/* Vista de mes: tarjeta de 7 × 6 con líneas suaves. */
+.month-grid {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  overflow: hidden auto;
+}
+.month-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--border-soft);
+}
+.month-weekdays span {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.month-weekdays .weekend {
+  background: var(--weekend);
+}
+.month-week {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: 34px repeat(3, 22px) minmax(0, 1fr);
+  row-gap: 3px;
+  /* Alto de las filas fijas (34 + 3 × 22 + 4 huecos): si no cupieran, las celdas se saldrían de
+     su semana y el marco del día seleccionado quedaría cortado o más grande que la celda. */
+  min-height: 118px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.month-week:last-child {
+  border-bottom: none;
+}
+.month-day {
+  position: relative;
+  grid-row: 1 / -1;
+  padding: 4px 6px;
+  border-right: 1px solid var(--border-soft);
+}
+.month-day:nth-child(7) {
+  border-right: none;
+}
+.month-day.weekend {
+  background: var(--weekend);
+}
+/* Día seleccionado: contorno de 2 px agua profunda con radio 10, dentro de su celda y por
+   encima de las vecinas y de las barras (no es un box-shadow del propio fondo). */
+.month-day.selected::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: 3;
+  box-sizing: border-box;
+  border: 2px solid var(--focus);
+  border-radius: 10px;
+  pointer-events: none;
+}
+.day-number {
+  justify-content: flex-start;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 6px;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+}
+.month-day.other-month .day-number {
+  color: var(--text-secondary);
+}
+/* Hoy: círculo mantequilla de 28 px con borde tinta (la pastilla del interruptor). */
+.day-number.today,
+.week-day-number.today {
+  justify-content: center;
+  width: 28px;
+  padding: 0;
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--primary-border);
+}
+
+/* Chip de evento: 22 px, radio 6, sin borde; los de varios días son una barra continua. */
+.event-chip {
+  z-index: 1;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 0;
+  height: 22px;
+  min-height: 22px;
+  margin: 0;
+  padding: 0 8px;
+  border: none;
+  border-radius: 0;
+  background: var(--event-bg);
+  color: var(--event-fg);
+  font-size: 12px;
+  font-weight: 400;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.event-chip:hover:not(:disabled) {
+  background: var(--event-bg);
+  filter: brightness(0.96);
+}
+.event-chip.all-day {
+  font-weight: 600;
+}
+.event-chip.starts {
+  margin-left: 6px;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+.event-chip.ends {
+  margin-right: 6px;
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+.event-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-more {
+  z-index: 1;
+  justify-content: flex-start;
+  height: 22px;
+  min-height: 22px;
+  margin: 0 6px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Vista de semana: bloques con hora y línea de «ahora». */
+.week-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.week-head,
+.week-all-day {
+  display: grid;
+  grid-template-columns: 56px repeat(var(--cols, 7), minmax(0, 1fr));
+  border-bottom: 1px solid var(--border-soft);
+}
+.week-head {
+  padding: 8px 0;
+}
+.week-day-head {
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  padding: 2px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+}
+.week-day-head.selected {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+.week-day-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.week-day-number {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.week-all-day {
+  grid-auto-rows: 22px;
+  row-gap: 3px;
+  padding: 4px 0;
+}
+.week-all-day-label {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.week-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.week-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 56px repeat(var(--cols, 7), minmax(0, 1fr));
+  height: calc(var(--hour) * 24);
+}
+.week-hours {
+  position: relative;
+}
+.week-hours span {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+/* Una línea por hora (líneas duras, no un degradado visible). */
+.week-column {
+  position: relative;
+  border-left: 1px solid var(--border-soft);
+  background-image: linear-gradient(to bottom, var(--border-soft) 1px, transparent 1px);
+  background-size: 100% var(--hour);
+}
+.event-block {
+  position: absolute;
+  z-index: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  min-height: 0;
+  padding: 4px 8px;
+  border: 1.5px solid var(--border-ink);
+  border-radius: 8px;
+  background: var(--event-bg);
+  color: var(--event-fg);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  overflow: hidden;
+}
+.event-block:hover:not(:disabled) {
+  background: var(--event-bg);
+  filter: brightness(0.96);
+}
+:root[data-theme='dark'] .event-block {
+  border-color: transparent;
+}
+.event-block .event-name {
+  font-weight: 700;
+}
+.event-range {
+  font-size: 11px;
+}
+.now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 2px;
+  background: var(--now-line);
+  pointer-events: none;
+}
+.now-line::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--now-line);
+}
+
+/* Secciones de la biblioteca: Biblioteca y Calendario (la activa con una marca a la izquierda). */
+.library-sections {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.section-tab {
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 400;
+}
+.section-tab.is-active {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  box-shadow: inset 3px 0 0 var(--brand-hover);
+  font-weight: 600;
+}
+
+.calendar-sidebar {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.new-event {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 40px;
+  border-radius: 12px;
+}
+.calendar-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.calendar-list-head .section-title {
+  margin: 0 4px;
+}
+.calendar-check {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  cursor: pointer;
+}
+.calendar-check input {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.calendar-check-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--text-secondary);
+  border-radius: 5px;
+}
+.calendar-check:has(input:checked) .calendar-check-box {
+  background: var(--event-bg);
+  border-color: var(--border-ink);
+  color: var(--event-fg);
+}
+.calendar-check:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+
+/* Diálogo de evento. */
+.event-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.field {
+  display: grid;
+  gap: 4px;
+}
+.field > span,
+.color-choice legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.color-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.color-choice legend {
+  margin-bottom: 6px;
+}
+.color-swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--event-bg);
+  cursor: pointer;
+}
+.color-swatch input {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.color-swatch:has(input:checked) {
+  border-color: var(--border-ink);
+  box-shadow:
+    0 0 0 2px var(--bg-popover),
+    0 0 0 4px var(--focus);
+}
+.color-swatch:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.field-problem {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+}
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/*
+ * Plantillas del lienzo: sustituyen a la biblioteca del motor, que no admite imágenes y no se
+ * guardaba. El botón «Biblioteca» del motor queda oculto.
+ */
+.excalidraw .default-sidebar-trigger {
+  display: none;
+}
+.canvas-tools .canvas-templates-button {
+  background: var(--bg-panel);
+}
+.canvas-tools .canvas-templates-button[aria-expanded='true'] {
+  background: var(--selection-soft);
+}
+.templates-panel {
+  display: grid;
+  gap: 8px;
+  width: min(300px, calc(100vw - 32px));
+  max-height: min(70vh, 560px);
+  padding: 12px;
+  overflow-y: auto;
+  background: var(--bg-popover);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+}
+.templates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.templates-head .section-title {
+  margin: 0 4px;
+}
+.templates-list li {
+  cursor: grab;
+}
+
+/* Vista previa de un calendario en un conflicto o en el historial. */
+.calendar-preview-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.calendar-preview-list li {
+  display: grid;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--event-bg);
+  color: var(--event-fg);
+  font-size: 12px;
+}
+.calendar-preview-list .event-name {
+  font-weight: 700;
+}
+
+/* Miniatura de una plantilla: papel claro fijo, también en oscuro. */
+.template-thumb {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 36px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: #fffdf4;
+  overflow: hidden;
+}
+.template-thumb svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Perfil: modal de conexión con Drive o carpeta (los avisos de cifrado viven dentro). */
+.dialog-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dialog-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.profile-dialog {
+  width: min(640px, 100%);
+  gap: 12px;
 }

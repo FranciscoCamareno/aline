@@ -58,7 +58,8 @@
     "noResults": "No title matches.",
     "trashShort": "Trash",
     "importFiles": "Import files…",
-    "importFolder": "Import folder…"
+    "importFolder": "Import folder…",
+    "sections": "Sections"
   },
   "title": {
     "edit": "Edit title",
@@ -201,7 +202,10 @@
     "merge": "Merge by hand",
     "diff": "Differences between versions",
     "mergeEditor": "Merged text",
-    "mergeAction": "Save merge"
+    "mergeAction": "Save merge",
+    "mergeEvents": "Merge events",
+    "mergeEventsHint": "Combines the events of all versions. If an event is in several, the most recent version wins; one deleted in a version comes back if another keeps it.",
+    "mergeEventsAction": "Merge events"
   },
   "vaults": {
     "title": "Vaults in this browser",
@@ -450,10 +454,6 @@
     "title": "Preferences",
     "followSystem": "Follow the system"
   },
-  "help": {
-    "title": "Help",
-    "onlyCanvas": "Shortcut help is available with a canvas open"
-  },
   "nav": {
     "links": "Links",
     "export": "Export",
@@ -477,5 +477,69 @@
     "flecha": "Arrow",
     "garabato": "Squiggle",
     "corona": "Crown"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "defaultCalendar": "Personal",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "today": "Today",
+    "view": "View",
+    "day": "Day",
+    "week": "Week",
+    "month": "Month",
+    "newEvent": "New event",
+    "untitled": "Untitled",
+    "more_one": "+{{count}} more",
+    "more_other": "+{{count}} more",
+    "allDay": "All day",
+    "now": "Now",
+    "editEvent": "Edit event",
+    "readOnly": "This calendar comes from a newer version of the app or could not be read: it is shown but cannot be changed.",
+    "eventTitle": "Title",
+    "calendarField": "Calendar",
+    "startDate": "Starts",
+    "startTime": "Start time",
+    "endDate": "Ends",
+    "endTime": "End time",
+    "color": "Colour",
+    "colors": {
+      "mantequilla": "Butter",
+      "agua": "Water",
+      "rosa": "Pink",
+      "brote": "Sprout",
+      "durazno": "Peach",
+      "lavanda": "Lavender"
+    },
+    "badTime": "The end time is before the start time.",
+    "badRange": "The event ends before it starts.",
+    "deleteConfirm": "Delete the event “{{title}}”? It stays in the calendar history.",
+    "delete": "Delete",
+    "save": "Save",
+    "myCalendars": "My calendars",
+    "newCalendar": "New calendar",
+    "calendarName": "Calendar name",
+    "show": "Show {{name}}",
+    "prevDay": "Previous day",
+    "nextDay": "Next day",
+    "noEvents": "No events.",
+    "conflict": "The calendar “{{names}}” was edited in two places at once. No version has been lost."
+  },
+  "templates": {
+    "title": "Templates",
+    "failed": "The template action could not be completed.",
+    "selectFirst": "Select canvas elements first",
+    "defaultName": "Template {{count}}",
+    "saveSelection": "Save selection",
+    "name": "Template name",
+    "empty": "No templates yet. Select canvas elements (images and stickers too) and save them here.",
+    "hint": "Click a template to insert it in the centre, or drag it onto the canvas."
+  },
+  "profile": {
+    "title": "Profile",
+    "lead": "Your vault starts in this browser. Here you can also keep it in Google Drive or in a folder on your computer. Nothing leaves this device until you confirm.",
+    "unavailable": "Not available: this vault is temporary or sync is not active."
   }
 }

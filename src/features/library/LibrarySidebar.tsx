@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, setLanguage, type AppLanguage } from '../../app/i18n.ts';
 import { useUiStore } from '../../app/store.ts';
@@ -7,8 +7,9 @@ import { Icon, KindIcon } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
 import { effectiveFolder, RECOVERY_FOLDER } from '../../domain/folders.ts';
 import type { DocumentKind, DocumentRecord } from '../../domain/revision.ts';
-import { hasConflict } from '../../domain/revision.ts';
+import { hasConflict, isContentKind } from '../../domain/revision.ts';
 import { tagKey } from '../../domain/tags.ts';
+import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
 import { RenameableTitle } from './RenameableTitle.tsx';
 import logoDark from '../../../brand/aline-logo-dark.svg?url';
 import logoLight from '../../../brand/aline-logo.svg?url';
@@ -22,9 +23,18 @@ interface Props {
   onPurge: (documentId: string) => Promise<void>;
   /** RF-34, RF-35: archivos sueltos o una carpeta, dentro de la carpeta seleccionada. */
   onImport: (files: File[], folderId: string | null) => Promise<void>;
+  /** Mover un lienzo o una nota a una carpeta (o a la raíz con null), arrastrándolo. */
+  onMove: (documentId: string, folderId: string | null) => Promise<void>;
+  onCreateCalendar: (title: string) => Promise<void>;
+  /** Abre el perfil: conexión con Google Drive y estado del almacenamiento. */
+  onOpenProfile: () => void;
 }
 
 const RECENT_COUNT = 5;
+/** Tipo del arrastre de un documento dentro de la biblioteca. */
+const DOCUMENT_DRAG_TYPE = 'application/x-aline-document';
+/** Destino del arrastre: el id de una carpeta o la raíz. */
+type DropTarget = string | 'root';
 
 /**
  * Biblioteca (diseño §4.1, RF-25): carpetas, etiquetas, recientes y papelera. Las carpetas no
@@ -42,6 +52,9 @@ export function LibrarySidebar({
   onRestoreFromTrash,
   onPurge,
   onImport,
+  onMove,
+  onCreateCalendar,
+  onOpenProfile,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -53,7 +66,8 @@ export function LibrarySidebar({
   const toggleLibrary = useUiStore((s) => s.toggleLibrary);
   const selectedFolder = useUiStore((s) => s.selectedFolder);
   const setSelectedFolder = useUiStore((s) => s.setSelectedFolder);
-  const sendViewCommand = useUiStore((s) => s.sendViewCommand);
+  const section = useUiStore((s) => s.section);
+  const setSection = useUiStore((s) => s.setSection);
   /** En pantallas estrechas la biblioteca tapa el lienzo: abrir un documento la cierra. */
   const closeIfNarrow = () => {
     if (window.matchMedia('(max-width: 820px)').matches) toggleLibrary();
@@ -79,10 +93,9 @@ export function LibrarySidebar({
     () => new Map(documents.filter((d) => d.kind === 'folder').map((d) => [d.id, d])),
     [documents],
   );
-  const content = useMemo(() => live.filter((d) => d.kind !== 'folder'), [live]);
+  const content = useMemo(() => live.filter((d) => isContentKind(d.kind)), [live]);
   const trashed = documents.filter((d) => d.deleted);
   const recent = content.slice(0, RECENT_COUNT);
-  const active = documents.find((d) => d.id === activeId);
 
   const tags = useMemo(() => {
     const byKey = new Map<string, string>();
@@ -102,6 +115,49 @@ export function LibrarySidebar({
     selectedFolder && folders.get(selectedFolder) && !folders.get(selectedFolder)!.deleted
       ? selectedFolder
       : null;
+
+  // Arrastrar lienzos y notas entre carpetas (y fuera de ellas). La alternativa sin arrastre es
+  // «Carpeta» en el panel de Detalles.
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  /** Fila con su título en edición: mientras tanto no se arrastra (el ratón selecciona texto). */
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const endDrag = () => {
+    setDragging(null);
+    setDropTarget(null);
+  };
+
+  const moveTo = (documentId: string, folderId: string | null) => {
+    const doc = documents.find((d) => d.id === documentId);
+    if (!doc || doc.kind === 'folder' || doc.folderId === folderId) return;
+    if (folderId) setExpanded((prev) => new Set(prev).add(folderId));
+    void onMove(documentId, folderId);
+  };
+
+  /** Propiedades de un destino: una carpeta (su fila y su contenido) o la raíz. */
+  const dropZone = (target: DropTarget) => ({
+    onDragOver: (e: DragEvent) => {
+      if (!e.dataTransfer.types.includes(DOCUMENT_DRAG_TYPE)) return;
+      e.preventDefault();
+      // La carpeta más interior gana: el evento no sube a la carpeta padre ni a la raíz.
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      if (dropTarget !== target) setDropTarget(target);
+    },
+    onDragLeave: (e: DragEvent) => {
+      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+      setDropTarget((current) => (current === target ? null : current));
+    },
+    onDrop: (e: DragEvent) => {
+      const id = e.dataTransfer.getData(DOCUMENT_DRAG_TYPE);
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      endDrag();
+      moveTo(id, target === 'root' ? null : target);
+    },
+  });
 
   const kindIcon = (kind: DocumentRecord['kind'], isActive = false) => (
     <span
@@ -149,10 +205,23 @@ export function LibrarySidebar({
   const docItem = (doc: DocumentRecord, depth: number) => (
     <li
       key={doc.id}
-      className={doc.id === activeId ? 'active' : ''}
+      className={`${doc.id === activeId ? 'active' : ''}${dragging === doc.id ? ' dragging' : ''}`}
       data-testid="library-item"
       data-document-id={doc.id}
       style={{ paddingLeft: 8 + depth * 14 }}
+      draggable={editingId !== doc.id}
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DOCUMENT_DRAG_TYPE, doc.id);
+        e.dataTransfer.effectAllowed = 'move';
+        setDragging(doc.id);
+      }}
+      onDragEnd={endDrag}
+      onFocus={(e) => {
+        if (e.target instanceof HTMLInputElement) setEditingId(doc.id);
+      }}
+      onBlur={(e) => {
+        if (e.target instanceof HTMLInputElement) setEditingId(null);
+      }}
     >
       {kindIcon(doc.kind, doc.id === activeId)}
       <RenameableTitle
@@ -177,9 +246,12 @@ export function LibrarySidebar({
         className="folder-node"
         data-testid="folder-item"
         data-folder-id={folder.id}
+        {...dropZone(folder.id)}
       >
         <div
-          className={`folder-row ${selected === folder.id ? 'selected' : ''}`}
+          className={`folder-row ${selected === folder.id ? 'selected' : ''}${
+            dropTarget === folder.id ? ' drop-target' : ''
+          }`}
           style={{ paddingLeft: 4 + depth * 14 }}
         >
           <button
@@ -347,158 +419,193 @@ export function LibrarySidebar({
         </button>
       </div>
 
-      <div className="library-actions">
-        {/* La única acción principal de la vista (DESIGN.md §6). */}
-        <Menu
-          className="new-menu"
-          trigger={
-            <>
-              <Icon name="mas" size={18} />
-              <span className="new-menu-label">{t('library.new')}</span>
-              <Icon name="chevron-abajo" size={16} />
-            </>
-          }
-          label={t('library.new')}
-          triggerClassName="primary"
-          testId="new-menu"
-          items={[
-            {
-              id: 'new-canvas',
-              label: t('library.kindCanvas'),
-              icon: 'lienzo',
-              onSelect: () => create('canvas'),
-            },
-            {
-              id: 'new-note',
-              label: t('library.kindNote'),
-              icon: 'nota',
-              onSelect: () => create('note'),
-            },
-            {
-              id: 'new-folder',
-              label: t('library.kindFolder'),
-              icon: 'carpeta',
-              onSelect: () => setNewFolder(''),
-            },
-            {
-              id: 'import-files',
-              label: t('library.importFiles'),
-              icon: 'subir',
-              separated: true,
-              onSelect: () => fileInput.current?.click(),
-            },
-            {
-              id: 'import-folder',
-              label: t('library.importFolder'),
-              icon: 'carpeta-abierta',
-              onSelect: () => folderInput.current?.click(),
-            },
-          ]}
-        />
-        {newFolder !== null && (
-          <form
-            className="inline-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const title = newFolder.trim();
-              setNewFolder(null);
-              if (title) void onCreateFolder(title, selected);
-            }}
+      {/* Secciones: documentos (lienzos y notas) y calendario. */}
+      <div className="library-sections" role="tablist" aria-label={t('library.sections')}>
+        {(['library', 'calendar'] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={section === key}
+            data-testid={`section-${key}`}
+            className={`section-tab${section === key ? ' is-active' : ''}`}
+            onClick={() => setSection(key)}
           >
-            <input
-              autoFocus
-              value={newFolder}
-              placeholder={t('library.folderName')}
-              aria-label={t('library.folderName')}
-              data-testid="new-folder-input"
-              onChange={(e) => setNewFolder(e.target.value)}
-              onKeyDown={(e) => e.key === 'Escape' && setNewFolder(null)}
+            <Icon
+              name={key === 'library' ? 'biblioteca' : 'calendario'}
+              size={18}
+              on={section === key}
             />
-            <button type="submit" className="icon-button" aria-label={t('library.newFolder')}>
-              <Icon name="check" size={18} />
-            </button>
-          </form>
-        )}
-        <input
-          ref={fileInput}
-          type="file"
-          hidden
-          multiple
-          accept=".md,.markdown,.txt,.excalidraw,.json,text/markdown,text/plain,application/json"
-          data-testid="import-files-input"
-          onChange={(e) => {
-            const files = [...(e.target.files ?? [])];
-            e.target.value = '';
-            if (files.length) void onImport(files, selected);
-          }}
-        />
-        <input
-          ref={folderInput}
-          type="file"
-          hidden
-          multiple
-          {...{ webkitdirectory: '' }}
-          data-testid="import-folder-input"
-          onChange={(e) => {
-            const files = [...(e.target.files ?? [])];
-            e.target.value = '';
-            if (files.length) void onImport(files, selected);
-          }}
-        />
-        {selected && (
-          <p className="muted small" data-testid="selected-folder">
-            {t('library.createInside', { folder: folders.get(selected)?.title })}
-          </p>
-        )}
+            {key === 'library' ? t('library.title') : t('calendar.title')}
+          </button>
+        ))}
       </div>
 
-      <label className="library-search">
-        <Icon name="buscar" size={18} />
-        <input
-          type="search"
-          value={query}
-          placeholder={t('library.searchPlaceholder')}
-          aria-label={t('library.searchPlaceholder')}
-          data-testid="library-search"
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+      {section === 'calendar' ? (
+        <CalendarSidebar
+          onCreateCalendar={onCreateCalendar}
+          onRename={onRename}
+          onTrash={onTrash}
         />
-      </label>
-
-      {results ? (
-        <div className="library-scroll">
-          <ul className="library-list" data-testid="library-results">
-            {results.map((d) => docItem(d, 0))}
-          </ul>
-          {results.length === 0 && <p className="muted">{t('library.noResults')}</p>}
-        </div>
       ) : (
         <>
-          <div className="library-tabs" role="tablist" aria-label={t('library.title')}>
-            {(['all', 'recent'] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                id={`library-tab-${key}`}
-                aria-selected={tab === key}
-                aria-controls="library-tabpanel"
-                data-testid={`library-tab-${key}`}
-                className={`library-tab${tab === key ? ' is-active' : ''}`}
-                onClick={() => setTab(key)}
+          <div className="library-actions">
+            {/* La única acción principal de la vista (DESIGN.md §6). */}
+            <Menu
+              className="new-menu"
+              trigger={
+                <>
+                  <Icon name="mas" size={18} />
+                  <span className="new-menu-label">{t('library.new')}</span>
+                  <Icon name="chevron-abajo" size={16} />
+                </>
+              }
+              label={t('library.new')}
+              triggerClassName="primary"
+              testId="new-menu"
+              items={[
+                {
+                  id: 'new-canvas',
+                  label: t('library.kindCanvas'),
+                  icon: 'lienzo',
+                  onSelect: () => create('canvas'),
+                },
+                {
+                  id: 'new-note',
+                  label: t('library.kindNote'),
+                  icon: 'nota',
+                  onSelect: () => create('note'),
+                },
+                {
+                  id: 'new-folder',
+                  label: t('library.kindFolder'),
+                  icon: 'carpeta',
+                  onSelect: () => setNewFolder(''),
+                },
+                {
+                  id: 'import-files',
+                  label: t('library.importFiles'),
+                  icon: 'subir',
+                  separated: true,
+                  onSelect: () => fileInput.current?.click(),
+                },
+                {
+                  id: 'import-folder',
+                  label: t('library.importFolder'),
+                  icon: 'carpeta-abierta',
+                  onSelect: () => folderInput.current?.click(),
+                },
+              ]}
+            />
+            {newFolder !== null && (
+              <form
+                className="inline-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const title = newFolder.trim();
+                  setNewFolder(null);
+                  if (title) void onCreateFolder(title, selected);
+                }}
               >
-                {key === 'all' ? t('library.all') : t('library.recent')}
-              </button>
-            ))}
+                <input
+                  autoFocus
+                  value={newFolder}
+                  placeholder={t('library.folderName')}
+                  aria-label={t('library.folderName')}
+                  data-testid="new-folder-input"
+                  onChange={(e) => setNewFolder(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && setNewFolder(null)}
+                />
+                <button type="submit" className="icon-button" aria-label={t('library.newFolder')}>
+                  <Icon name="check" size={18} />
+                </button>
+              </form>
+            )}
+            <input
+              ref={fileInput}
+              type="file"
+              hidden
+              multiple
+              accept=".md,.markdown,.txt,.excalidraw,.json,text/markdown,text/plain,application/json"
+              data-testid="import-files-input"
+              onChange={(e) => {
+                const files = [...(e.target.files ?? [])];
+                e.target.value = '';
+                if (files.length) void onImport(files, selected);
+              }}
+            />
+            <input
+              ref={folderInput}
+              type="file"
+              hidden
+              multiple
+              {...{ webkitdirectory: '' }}
+              data-testid="import-folder-input"
+              onChange={(e) => {
+                const files = [...(e.target.files ?? [])];
+                e.target.value = '';
+                if (files.length) void onImport(files, selected);
+              }}
+            />
+            {selected && (
+              <p className="muted small" data-testid="selected-folder">
+                {t('library.createInside', { folder: folders.get(selected)?.title })}
+              </p>
+            )}
           </div>
-          <div
-            className="library-scroll"
-            role="tabpanel"
-            id="library-tabpanel"
-            aria-labelledby={`library-tab-${tab}`}
-          >
-            {tab === 'all' ? allPanel : recentPanel}
-          </div>
+
+          <label className="library-search">
+            <Icon name="buscar" size={18} />
+            <input
+              type="search"
+              value={query}
+              placeholder={t('library.searchPlaceholder')}
+              aria-label={t('library.searchPlaceholder')}
+              data-testid="library-search"
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+            />
+          </label>
+
+          {results ? (
+            <div className="library-scroll">
+              <ul className="library-list" data-testid="library-results">
+                {results.map((d) => docItem(d, 0))}
+              </ul>
+              {results.length === 0 && <p className="muted">{t('library.noResults')}</p>}
+            </div>
+          ) : (
+            <>
+              <div className="library-tabs" role="tablist" aria-label={t('library.title')}>
+                {(['all', 'recent'] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    id={`library-tab-${key}`}
+                    aria-selected={tab === key}
+                    aria-controls="library-tabpanel"
+                    data-testid={`library-tab-${key}`}
+                    className={`library-tab${tab === key ? ' is-active' : ''}`}
+                    onClick={() => setTab(key)}
+                  >
+                    {key === 'all' ? t('library.all') : t('library.recent')}
+                  </button>
+                ))}
+              </div>
+              <div
+                className={`library-scroll${dropTarget === 'root' ? ' drop-target' : ''}`}
+                role="tabpanel"
+                id="library-tabpanel"
+                aria-labelledby={`library-tab-${tab}`}
+                data-testid="library-drop-root"
+                // Soltar fuera de cualquier carpeta saca el documento a la raíz.
+                {...(tab === 'all' && !tagFilter ? dropZone('root') : {})}
+              >
+                {tab === 'all' ? allPanel : recentPanel}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -598,17 +705,15 @@ export function LibrarySidebar({
           <Icon name="ajustes" size={18} />
           <span>{t('preferences.title')}</span>
         </button>
-        {/* Ayuda de atajos del motor: solo existe con un lienzo abierto. */}
+        {/* Perfil: cuenta y copia en Google Drive (el panel de estado y almacenamiento). */}
         <button
           type="button"
           className="foot-button"
-          data-testid="open-help"
-          disabled={active?.kind !== 'canvas'}
-          title={active?.kind === 'canvas' ? t('help.title') : t('help.onlyCanvas')}
-          onClick={() => active && sendViewCommand(active.id, 'help')}
+          data-testid="open-profile"
+          onClick={onOpenProfile}
         >
-          <Icon name="ayuda" size={18} />
-          <span>{t('help.title')}</span>
+          <Icon name="usuario" size={18} />
+          <span>{t('profile.title')}</span>
         </button>
       </div>
     </nav>

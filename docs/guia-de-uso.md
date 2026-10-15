@@ -18,6 +18,7 @@ _English version: [user-guide.md](user-guide.md)._
 
 - **Lienzo nuevo:** en la biblioteca, «+ Nuevo» → «Lienzo». Las herramientas están en la bandeja de abajo; sus atajos y estilos son los de Excalidraw.
 - **Notas adhesivas y stickers:** la nota de la bandeja (o la tecla N) pone una nota adhesiva en el centro; con doble clic se escribe en ella. La hoja de stickers (o la tecla B) abre los stickers: se colocan con un clic o arrastrándolos al lienzo.
+- **Plantillas:** selecciona elementos (también imágenes y stickers), pulsa «Plantillas» (arriba a la derecha) → «Guardar selección» y ponle un nombre. Cada plantilla muestra una miniatura. Para usarla, púlsala en el panel o arrástrala al lienzo: se inserta una copia.
 - **Vincular un elemento** con una nota, otro lienzo o una web: selecciona el elemento y pulsa «Vincular» (encima del lienzo). El enlace se abre haciendo clic en el icono del elemento.
 - **Conectores sueltos:** si una flecha deja de estar unida a una forma, aparece un aviso que permite seleccionar esas flechas.
 - **Exportar** («Exportar» en la barra superior → «Imagen, PDF o .excalidraw…», o el menú ☰ del lienzo):
@@ -33,9 +34,18 @@ _English version: [user-guide.md](user-guide.md)._
 - **Detalles y enlaces** (botón «Enlaces» de la barra superior): backlinks (quién enlaza a esta nota), enlaces rotos y etiquetas.
 - **Exportar la nota:** «Exportar» → «Nota en Markdown (.md)» descarga la nota con su frontmatter (id, título y etiquetas).
 
+## 3 bis. Calendario
+
+- En la biblioteca, la pestaña **Calendario** abre el mes; **Semana** y **Día** muestran los eventos con hora como bloques y una línea roja en la hora actual.
+- **Nuevo evento** (o doble clic en un día o en una hora): título, calendario, todo el día o con hora, fechas de inicio y fin y un color (los de las notas adhesivas).
+- Pulsa un evento para editarlo, moverlo a otro calendario o eliminarlo.
+- **Mis calendarios:** «+» crea otro calendario; la casilla lo muestra u oculta en la vista. Cada calendario tiene historial y entra en las copias y la sincronización como cualquier documento.
+- Si un calendario se editó en dos sitios a la vez, aparece un aviso con **Resolver**: conserva una versión, ambas o **combina los eventos** (se juntan los de las dos).
+- Antes de usar el calendario o las plantillas, actualiza la aplicación en todos tus dispositivos: una versión anterior no los reconoce.
+
 ## 4. Organizar y buscar
 
-- **Carpetas:** «+ Nuevo» → «Carpeta» crea una carpeta. Lo que se crea con una carpeta seleccionada va dentro de ella. Borrar una carpeta nunca borra su contenido: lo que queda sin carpeta aparece en «Recuperación».
+- **Carpetas:** «+ Nuevo» → «Carpeta» crea una carpeta. Para mover un lienzo o una nota, arrástralo sobre una carpeta, o al espacio libre de «Todos» para sacarlo; también se puede cambiar en Detalles. Lo que se crea con una carpeta seleccionada va dentro de ella. Borrar una carpeta nunca borra su contenido: lo que queda sin carpeta aparece en «Recuperación».
 - **Etiquetas:** se añaden en Detalles. En la biblioteca sirven de filtro.
 - **Buscar archivos:** el campo de la biblioteca filtra la lista por título. Las pestañas «Todos» y «Recientes» cambian la vista; las acciones de cada documento (renombrar, papelera) están en su menú «⋯».
 - **Buscar** (Ctrl+Mayús+F, o «⋯» de la barra superior → «Buscar»): busca en títulos, notas y textos de los lienzos. Al abrir un resultado se resalta el texto o el elemento encontrado.

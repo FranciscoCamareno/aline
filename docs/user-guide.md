@@ -18,6 +18,7 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 
 - **New canvas:** in the library, "+ New" → "Canvas". The tools are in the tray at the bottom; their shortcuts and styles are Excalidraw's.
 - **Sticky notes and stickers:** the note in the tray (or the N key) puts a sticky note in the middle of the view; double-click it to write. The sticker sheet (or the B key) opens the stickers: click one or drag it onto the canvas.
+- **Templates:** select elements (images and stickers too), press "Templates" (top right) → "Save selection" and give it a name. Each template shows a thumbnail. To use it, click it in the panel or drag it onto the canvas: a copy is inserted.
 - **Linking an element** to a note, another canvas or a web page: select the element and press "Link" (above the canvas). The link opens from the element's icon.
 - **Loose connectors:** if an arrow becomes detached from a shape, a notice lets you select those arrows.
 - **Export** ("Export" in the top bar → "Image, PDF or .excalidraw…", or the canvas ☰ menu):
@@ -33,9 +34,18 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 - **Details and links** ("Links" button in the top bar): backlinks (what links here), broken links and tags.
 - **Exporting the note:** "Export" → "Note as Markdown (.md)" downloads the note with its frontmatter (id, title and tags).
 
+## 3 bis. Calendar
+
+- In the library, the **Calendar** tab opens the month; **Week** and **Day** show timed events as blocks and a red line at the current time.
+- If a calendar was edited in two places at once, a notice with **Resolve** appears: keep one version, both, or **merge the events** (both sets are combined).
+- **New event** (or double-click a day or an hour): title, calendar, all day or timed, start and end dates and a colour (the sticky-note colours).
+- Click an event to edit it, move it to another calendar or delete it.
+- **My calendars:** "+" creates another calendar; its checkbox shows or hides it. Each calendar has history and is included in backups and sync like any document.
+- Before using the calendar or templates, update the app on all your devices: an older version does not recognise them.
+
 ## 4. Organising and searching
 
-- **Folders:** "+ New" → "Folder" creates a folder. Anything created while a folder is selected goes inside it. Deleting a folder never deletes its content: anything left without a folder appears in "Recovery".
+- **Folders:** "+ New" → "Folder" creates a folder. To move a canvas or a note, drag it onto a folder, or onto the empty space of "All" to take it out; it can also be changed in Details. Anything created while a folder is selected goes inside it. Deleting a folder never deletes its content: anything left without a folder appears in "Recovery".
 - **Tags:** added in Details. In the library they work as a filter.
 - **Search files:** the library field filters the list by title. The "All" and "Recent" tabs switch the view; each document's actions (rename, trash) are in its "⋯" menu.
 - **Search** (Ctrl+Shift+F, or "⋯" in the top bar → "Search"): searches titles, notes and canvas texts. Opening a result highlights the matching text or element.

@@ -30,6 +30,10 @@ import type { CanvasExtensions } from '../../domain/sidecar.ts';
 import { LinkPicker } from '../knowledge/LinkPicker.tsx';
 import { ExportDialog } from './ExportDialog.tsx';
 import { insertSticker, STICKER_DRAG_TYPE, STICKER_NAMES, type StickerName } from './stickers.ts';
+import { removeExternalLinksFromEngineDialogs } from './engineDialogs.ts';
+import { attachStickerLayer } from './stickerLayer.ts';
+import { TemplatesPanel } from './TemplatesPanel.tsx';
+import { insertTemplate, TEMPLATE_DRAG_TYPE } from './templates.ts';
 import { ToolTray } from './ToolTray.tsx';
 
 interface Props {
@@ -76,11 +80,36 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const bindingsRef = useRef<ArrowBindings>(new Map());
   const [dangling, setDangling] = useState<string[]>([]);
   const [selection, setSelection] = useState<ExcalidrawElement | null>(null);
+  /** Hay al menos un elemento seleccionado (para «Guardar selección» en Plantillas). */
+  const [anySelected, setAnySelected] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const selectionKey = useRef('');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const navigate = useUiStore((s) => s.navigate);
   const focus = useUiStore((s) => s.focus);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const stickerLayer = useRef<ReturnType<typeof attachStickerLayer> | null>(null);
+
+  // Stickers sin filtro de tema en oscuro (ver stickerLayer.ts).
+  useEffect(() => {
+    if (!api || !hostRef.current) return;
+    const layer = attachStickerLayer(api, hostRef.current);
+    stickerLayer.current = layer;
+    layer.setDark(theme === 'dark');
+    return () => {
+      layer.dispose();
+      stickerLayer.current = null;
+    };
+    // El tema se aplica en el efecto siguiente; aquí solo cuenta el motor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
+  useEffect(() => {
+    stickerLayer.current?.setDark(theme === 'dark');
+  }, [theme]);
+
+  // Sin los enlaces externos del diálogo de ayuda del motor (ver engineDialogs.ts).
+  useEffect(() => removeExternalLinksFromEngineDialogs(), []);
   /** Las órdenes anteriores al montaje no se ejecutan. */
   const handledCommand = useRef(useUiStore.getState().viewCommand?.seq ?? 0);
 
@@ -92,7 +121,6 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         if (viewCommand.seq <= handledCommand.current) return;
         handledCommand.current = viewCommand.seq;
         if (viewCommand.kind === 'export') setExportOpen(true);
-        else api.updateScene({ appState: { openDialog: { name: 'help' } } });
       }),
     [api, documentId],
   );
@@ -178,6 +206,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       if (key !== selectionKey.current) {
         selectionKey.current = key;
         setSelection(ids.length === 1 ? (elements.find((e) => e.id === ids[0]) ?? null) : null);
+        setAnySelected(ids.length > 0);
       }
       if (session?.readOnly) return;
       // Trazo en curso: borrador periódico en lugar de revisiones (diseño §7.1).
@@ -257,18 +286,33 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
 
   return (
     <div
+      ref={hostRef}
       className="canvas-host"
       data-testid="canvas-host"
       // Un sticker arrastrado desde el selector se suelta donde cae (antes de que el motor
       // intente leerlo como archivo).
       onDragOverCapture={(e) => {
-        if (api && e.dataTransfer.types.includes(STICKER_DRAG_TYPE)) {
+        const types = e.dataTransfer.types;
+        if (api && (types.includes(STICKER_DRAG_TYPE) || types.includes(TEMPLATE_DRAG_TYPE))) {
           e.preventDefault();
           e.stopPropagation();
           e.dataTransfer.dropEffect = 'copy';
         }
       }}
       onDropCapture={(e) => {
+        const templateId = e.dataTransfer.getData(TEMPLATE_DRAG_TYPE);
+        if (api && templateId && !loaded.session.readOnly) {
+          e.preventDefault();
+          e.stopPropagation();
+          const at = viewportCoordsToSceneCoords(
+            { clientX: e.clientX, clientY: e.clientY },
+            api.getAppState(),
+          );
+          insertTemplate(api, service, templateId, at).catch((error: unknown) =>
+            logDiagnostic('error', 'template-insert', describeError(error)),
+          );
+          return;
+        }
         const name = e.dataTransfer.getData(STICKER_DRAG_TYPE) as StickerName;
         if (!api || !STICKER_NAMES.includes(name) || loaded.session.readOnly) return;
         e.preventDefault();
@@ -295,6 +339,26 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       {/* Barra propia (DESIGN.md §7); la del motor queda oculta por CSS. */}
       {api && !loaded.session.readOnly && <ToolTray api={api} theme={theme} />}
       <div className="canvas-tools">
+        {/* Plantillas propias en lugar de la biblioteca del motor (que queda oculta). */}
+        <button
+          type="button"
+          className="canvas-templates-button"
+          aria-expanded={templatesOpen}
+          data-testid="open-templates"
+          disabled={!api}
+          onClick={() => setTemplatesOpen((v) => !v)}
+        >
+          <Icon name="biblioteca" size={18} />
+          {t('templates.title')}
+        </button>
+        {templatesOpen && api && (
+          <TemplatesPanel
+            api={api}
+            service={service}
+            selectionActive={anySelected && !loaded.session.readOnly}
+            onClose={() => setTemplatesOpen(false)}
+          />
+        )}
         {selection && !loaded.session.readOnly && (
           <button type="button" data-testid="link-element" onClick={() => setPickerOpen(true)}>
             <Icon name="enlace" size={18} />
@@ -358,7 +422,6 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           {/* Exportación propia: PNG, SVG, PDF y .excalidraw con avisos (diseño §12.1). */}
           <MainMenu.Item onSelect={() => setExportOpen(true)}>{t('export.open')}</MainMenu.Item>
           <MainMenu.DefaultItems.SearchMenu />
-          <MainMenu.DefaultItems.Help />
           <MainMenu.DefaultItems.ClearCanvas />
           <MainMenu.Separator />
           <MainMenu.DefaultItems.ChangeCanvasBackground />

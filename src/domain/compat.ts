@@ -15,6 +15,7 @@ export const SUPPORTED = {
   revision: REVISION_SCHEMA_VERSION,
   noteFrontmatter: 1,
   canvasExtensions: 1,
+  calendar: 1,
   /** Versión del formato de escena .excalidraw que entiende el motor fijado (0.18). */
   excalidrawScene: 2,
 } as const;

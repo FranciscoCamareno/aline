@@ -53,7 +53,9 @@
           "enum": [
             "note",
             "canvas",
-            "folder"
+            "folder",
+            "calendar",
+            "template"
           ]
         },
         "title": {

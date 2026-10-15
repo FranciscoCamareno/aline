@@ -79,8 +79,7 @@ async function newNote(page: Page, text: string): Promise<string> {
 }
 
 async function connectFolder(page: Page) {
-  await page.getByTestId('more-menu').click();
-  await page.getByTestId('open-status').click();
+  await page.getByTestId('open-profile').click();
   await page.getByTestId('connect-folder').click();
 }
 
@@ -118,6 +117,9 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
   await expect(page.getByTestId('folder-mismatch')).toBeVisible();
   await page.getByTestId('open-folder-vault').click();
   await expect(page.getByTestId('remote-status')).toContainText('Carpeta al día');
+  if (await page.getByTestId('profile-close').isVisible()) {
+    await page.getByTestId('profile-close').click();
+  }
   const item = page.locator(`[data-testid="library-item"][data-document-id="${noteId}"]`);
   await expect(item).toBeVisible();
   await item.getByTestId('library-title-text').click();
@@ -133,8 +135,11 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
   await page.getByTestId('remote-status').click();
   await page.getByTestId('folder-sync').click();
   await expect(page.getByTestId('storage-phase')).toHaveText('al día');
+  await page.getByTestId('profile-close').click();
 
   // De vuelta en el «equipo A»: al abrir se sincroniza y aparece el cambio.
+  await page.getByTestId('more-menu').click();
+  await page.getByTestId('open-status').click();
   await page
     .getByTestId('vault-item')
     .filter({ hasText: 'Mi almacén' })
@@ -142,6 +147,9 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
     .getByRole('button', { name: 'Abrir' })
     .click();
   await expect(page.getByTestId('remote-status')).toContainText('Carpeta al día');
+  if (await page.getByTestId('status-panel').isVisible()) {
+    await page.getByTestId('status-panel').getByRole('button', { name: 'Cerrar' }).click();
+  }
   await page
     .locator(`[data-testid="library-item"][data-document-id="${noteId}"]`)
     .getByTestId('library-title-text')
@@ -191,7 +199,7 @@ test('una edición hecha fuera de la aplicación se importa como versión nueva 
   await page.getByTestId('folder-sync').click();
   // Sin cambios pendientes en el editor, la nota abierta se recarga sola con la versión nueva.
   await expect(page.locator('.cm-content')).toContainText('editado con un editor externo');
-  await page.getByTestId('status-panel').getByRole('button', { name: 'Cerrar' }).click();
+  await page.getByTestId('profile-close').click();
   await page.getByTestId('open-history').click();
   await expect(page.getByTestId('history-item').first()).toContainText('Cambio externo');
 });

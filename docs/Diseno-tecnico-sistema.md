@@ -1,8 +1,10 @@
 # Diseño técnico del sistema personal de mapas mentales y notas conectadas
 
-Versión 1.1 | 13 de octubre de 2026 | Base: documento de requerimientos de 34 páginas
+Versión 1.2 | 14 de octubre de 2026 | Base: documento de requerimientos de 34 páginas
 
 > **Cambio de arquitectura registrado (13/10/2026): cifrado opcional en Google Drive.** A petición del propietario se revisa DP-07. El almacén sigue sin cifrar en el equipo y en la carpeta local. La copia en Google Drive puede ir sin cifrar (como hasta ahora, con el aviso RN-12) o cifrada de extremo a extremo; el propietario lo elige al conectar Drive y puede cambiarlo después. Afecta a §1.1, §2, §6 (formato en Drive), §13 (nueva §13.1) y §16 (RF-43, RF-44, RNF-15). El modelo de revisiones y el protocolo de sincronización no cambian: el cifrado es una capa del adaptador de Drive.
+
+> **Cambio de arquitectura registrado (14/10/2026): calendario y plantillas del lienzo.** A petición del propietario, el almacén admite dos tipos de documento más: `calendar` (un calendario con sus eventos, cuerpo JSON en `objects/<hash>.json`) y `template` (una plantilla del lienzo: escena `.excalidraw` con sus imágenes como assets, cuerpo en `objects/<hash>.excalidraw`). Los dos son documentos revisionados como notas y lienzos: historial, papelera, copias completas y sincronización sin cambios de protocolo. El formato sigue siendo la v1 (`formatVersion: 1`); `metadata.kind` amplía su enumeración y aparece el esquema `calendar.schema.json`. Afecta a §5, §6 y al documento del formato (`docs/formato-almacen.md`). **Compatibilidad hacia atrás:** una versión de la aplicación anterior a este cambio no reconoce esos tipos y trata sus revisiones como contenido inválido (solo lectura); hay que actualizar todos los dispositivos antes de usar el calendario o las plantillas. Las plantillas sustituyen a la biblioteca del motor, que no admite imágenes y no se guardaba.
 
 Este diseño convierte los requisitos en decisiones de implementación. Es una especificación para comenzar a construir; no certifica que las pruebas de hardware, rendimiento o integración ya hayan pasado. Se distinguen los requisitos heredados, las decisiones técnicas propuestas y las verificaciones pendientes.
 
@@ -120,7 +122,7 @@ Estados visibles separados: «Cambios pendientes», «Guardado en este dispositi
 | Entidad | Campos esenciales | Regla |
 | --- | --- | --- |
 | Vault | id, formatVersion, name, createdAt | Almacén independiente; UUID generado localmente |
-| Document | id, kind, title, folderId, tags, headRevisionIds | kind: note o canvas; dos cabezas indican conflicto |
+| Document | id, kind, title, folderId, tags, headRevisionIds | kind: note, canvas, folder, calendar o template (los dos últimos desde el 14/10/2026); solo notas y lienzos van en carpetas; dos cabezas indican conflicto |
 | Revision | id, documentId, parentIds, deviceId, createdAt, operation, metadata, contentRefs | Instantánea inmutable; fechas informativas |
 | Asset | sha256, mimeType, byteLength, blob | Contenido direccionado por hash, deduplicado |
 | Folder | id, parentId, title | Entidad revisionada; sin ciclos |

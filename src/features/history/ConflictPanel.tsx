@@ -117,6 +117,21 @@ export function ConflictPanel({ document, service, onResolve, onClose }: Props) 
             </section>
           )}
 
+          {document.kind === 'calendar' && (
+            <section>
+              <h3>{t('conflict.mergeEvents')}</h3>
+              <p className="muted">{t('conflict.mergeEventsHint')}</p>
+              <button
+                type="button"
+                disabled={busy}
+                data-testid="conflict-merge-events"
+                onClick={() => resolve({ kind: 'merge-events' })}
+              >
+                {t('conflict.mergeEventsAction')}
+              </button>
+            </section>
+          )}
+
           {document.kind === 'note' && (
             <section>
               <h3>{t('conflict.merge')}</h3>

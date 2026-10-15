@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { DomainError } from '../domain/errors.ts';
 import type { ConflictChoice } from '../application/VaultService.ts';
-import { hasConflict, type DocumentKind } from '../domain/revision.ts';
+import { hasConflict, isContentKind, type DocumentKind } from '../domain/revision.ts';
 import { ConflictPanel } from '../features/history/ConflictPanel.tsx';
 import { DetailsPanel } from '../features/knowledge/DetailsPanel.tsx';
 import { SearchPalette } from '../features/knowledge/SearchPalette.tsx';
@@ -15,6 +15,7 @@ import { CanvasView } from '../features/canvas/CanvasView.tsx';
 import { LibrarySidebar } from '../features/library/LibrarySidebar.tsx';
 import { RenameableTitle } from '../features/library/RenameableTitle.tsx';
 import { NoteView } from '../features/notes/NoteView.tsx';
+import { ProfileDialog } from '../features/status/ProfileDialog.tsx';
 import { QUOTA_WARNING_RATIO, quotaRatio, StatusPanel } from '../features/status/StatusPanel.tsx';
 import { describeError } from '../ports/Diagnostics.ts';
 import { runEmergencyExport } from './emergency.ts';
@@ -24,6 +25,9 @@ import { PwaPrompt } from './PwaPrompt.tsx';
 import { flushAllWrites, logDiagnostic } from './runtime.ts';
 import { bootstrap, type AppServices } from './services.ts';
 import { StartupError } from './StartupError.tsx';
+import { EVENT_COLORS } from '../domain/calendar.ts';
+import { CalendarView } from '../features/calendar/CalendarView.tsx';
+import { useCalendarStore } from '../features/calendar/calendarStore.ts';
 import { useUiStore } from './store.ts';
 import { useTheme } from './theme.ts';
 import { Icon } from './ui/Icon.tsx';
@@ -38,7 +42,7 @@ async function loadApp(firstCanvasTitle: string, temporary: boolean) {
   const app = await bootstrap(firstCanvasTitle, { temporary });
   const docs = await app.service.listDocuments();
   const lastId = await app.service.lastOpenedDocumentId();
-  const visible = docs.filter((d) => !d.deleted && d.kind !== 'folder');
+  const visible = docs.filter((d) => !d.deleted && isContentKind(d.kind));
   return {
     app,
     docs,
@@ -53,7 +57,9 @@ export function App() {
   const [startupError, setStartupError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
-  const [panel, setPanel] = useState<'status' | 'history' | 'conflict' | 'details' | null>(null);
+  const [panel, setPanel] = useState<
+    'status' | 'profile' | 'history' | 'conflict' | 'details' | null
+  >(null);
   const [searchOpen, setSearchOpen] = useState(false);
   /** Índices de enlaces y búsqueda del almacén abierto. */
   const [runtime, setRuntime] = useState<KnowledgeRuntime | null>(null);
@@ -64,13 +70,14 @@ export function App() {
   /** Documento abierto que otra pestaña acaba de modificar. */
   const [changedElsewhere, setChangedElsewhere] = useState<string | null>(null);
   const [quotaHigh, setQuotaHigh] = useState(false);
-  const { documents, activeId, saveStatus, libraryOpen, selectedFolder } = useUiStore(
+  const { documents, activeId, saveStatus, libraryOpen, selectedFolder, section } = useUiStore(
     useShallow((s) => ({
       documents: s.documents,
       activeId: s.activeId,
       saveStatus: s.saveStatus,
       libraryOpen: s.libraryOpen,
       selectedFolder: s.selectedFolder,
+      section: s.section,
     })),
   );
   const {
@@ -404,7 +411,9 @@ export function App() {
   }
   if (!services) return <div className="view-message">{t('app.loading')}</div>;
 
-  const active = documents.find((d) => d.id === activeId) ?? null;
+  const inCalendar = section === 'calendar';
+  // En el calendario no hay documento abierto: la cabecera solo deja lo general.
+  const active = inCalendar ? null : (documents.find((d) => d.id === activeId) ?? null);
   /** Carpeta elegida en la biblioteca, si sigue viva: la exportación de Markdown se limita a ella. */
   const exportFolder =
     selectedFolder && documents.some((d) => d.id === selectedFolder && !d.deleted)
@@ -436,6 +445,7 @@ export function App() {
             />
           </>
         )}
+        {inCalendar && <span className="doc-title">{t('calendar.title')}</span>}
         {active && (
           <RenameableTitle
             key={active.id}
@@ -448,7 +458,7 @@ export function App() {
         <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
           {t(`status.${saveStatus}`)}
         </span>
-        <RemoteChip onOpen={() => setPanel('status')} />
+        <RemoteChip onOpen={() => setPanel('profile')} />
         <span className="topbar-spacer" />
         {active && (
           <button
@@ -596,6 +606,21 @@ export function App() {
           onRestoreFromTrash={restoreFromTrash}
           onPurge={purgeDocument}
           onImport={importDocuments}
+          onMove={moveDocument}
+          onOpenProfile={() => setPanel((p) => (p === 'profile' ? null : 'profile'))}
+          onCreateCalendar={(title) =>
+            useCalendarStore
+              .getState()
+              .createCalendar(
+                services.service,
+                title,
+                // Cada calendario nuevo con el siguiente color de la paleta.
+                EVENT_COLORS[
+                  documents.filter((d) => d.kind === 'calendar').length % EVENT_COLORS.length
+                ]!,
+              )
+              .catch(reportError)
+          }
         />
       )}
 
@@ -628,7 +653,8 @@ export function App() {
             </p>
           )}
         </div>
-        {!active && (
+        {inCalendar && <CalendarView service={services.service} />}
+        {!active && !inCalendar && (
           // Estado vacío (DESIGN.md §6): una invitación con el personaje de la marca.
           <div className="empty-state" data-testid="empty-state">
             <img className="sticker" src={stickerA} alt="" width={120} height={120} />
@@ -664,7 +690,10 @@ export function App() {
         )}
       </main>
       {statusOpen && (
-        <StatusPanel
+        <StatusPanel services={services} onClose={() => setPanel(null)} onError={reportError} />
+      )}
+      {panel === 'profile' && (
+        <ProfileDialog
           services={services}
           sync={sync}
           onClose={() => setPanel(null)}

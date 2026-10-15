@@ -2,6 +2,7 @@ import { checkRevision } from '../domain/compat.ts';
 import type { Revision } from '../domain/revision.ts';
 import { versionPruneSchema, type Vault, type VersionPrune } from '../domain/vault.ts';
 import { sha256Hex } from '../shared/hash.ts';
+import { bodyRole } from './vaultFormat.ts';
 import {
   RemoteError,
   type ObjectRole,
@@ -51,7 +52,8 @@ const MAX_ATTEMPTS = 4;
 function refsWithRole(rev: Revision): Array<[string, ObjectRole]> {
   const out: Array<[string, ObjectRole]> = [];
   const { body, extensions, assets } = rev.contentRefs;
-  if (body && rev.metadata.kind !== 'folder') out.push([body, rev.metadata.kind]);
+  const role = bodyRole(rev.metadata.kind);
+  if (body && role) out.push([body, role]);
   if (extensions) out.push([extensions, 'extensions']);
   for (const hash of assets) out.push([hash, 'asset']);
   return out;

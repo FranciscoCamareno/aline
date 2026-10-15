@@ -8,7 +8,7 @@ import { parseInternalLink } from '../../application/knowledge.ts';
 import { safeFilename } from '../../application/portability.ts';
 import { normalizeForSearch } from '../../application/searchIndex.ts';
 import type { OpenedNote, VaultService } from '../../application/VaultService.ts';
-import type { DocumentRecord } from '../../domain/revision.ts';
+import { isContentKind, type DocumentRecord } from '../../domain/revision.ts';
 import { MarkdownEditor, type LinkTarget } from './MarkdownEditor.tsx';
 import { renderMarkdownPreview } from './markdown.ts';
 
@@ -118,7 +118,7 @@ export function NoteView({ documentId, title, service, onCreateNote }: Props) {
   const findTargets = (query: string): LinkTarget[] => {
     const q = normalizeForSearch(query.trim());
     return documentsRef.current
-      .filter((d) => !d.deleted && d.kind !== 'folder' && d.id !== documentId)
+      .filter((d) => !d.deleted && isContentKind(d.kind) && d.id !== documentId)
       .filter((d) => !q || normalizeForSearch(d.title).includes(q))
       .slice(0, 20)
       .map((d) => ({ id: d.id, title: d.title, kind: d.kind === 'canvas' ? 'canvas' : 'note' }));

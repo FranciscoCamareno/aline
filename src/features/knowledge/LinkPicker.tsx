@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../app/store.ts';
 import { KindIcon } from '../../app/ui/Icon.tsx';
-import type { DocumentRecord } from '../../domain/revision.ts';
+import { isContentKind, type DocumentRecord } from '../../domain/revision.ts';
 import { normalizeForSearch } from '../../application/searchIndex.ts';
 
 interface Props {
@@ -45,7 +45,7 @@ export function LinkPicker({
   const candidates = useMemo(() => {
     const q = normalizeForSearch(query.trim());
     return documents
-      .filter((d) => !d.deleted && d.kind !== 'folder' && d.id !== sourceId)
+      .filter((d) => !d.deleted && isContentKind(d.kind) && d.id !== sourceId)
       .filter((d) => !q || normalizeForSearch(d.title).includes(q))
       .slice(0, 30);
   }, [documents, query, sourceId]);

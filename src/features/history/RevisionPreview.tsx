@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { excalidrawCanvasAdapter } from '../../adapters/excalidraw/sceneCodec.ts';
 import type { RevisionPreview as Preview, VaultService } from '../../application/VaultService.ts';
+import { compareEvents } from '../../domain/calendar.ts';
 import { renderMarkdownPreview } from '../notes/markdown.ts';
 
 interface Props {
@@ -77,6 +78,29 @@ export function RevisionPreview({ revisionId, service, onLoaded }: Props) {
         // HTML saneado con rehype-sanitize; HTML crudo desactivado en el parser.
         dangerouslySetInnerHTML={{ __html: html }}
       />
+    );
+  }
+  if (preview.kind === 'calendar') {
+    const events = [...preview.calendar.events].sort(compareEvents);
+    return (
+      <div className="revision-preview" data-testid="revision-preview">
+        {events.length === 0 ? (
+          <p className="muted">{t('calendar.noEvents')}</p>
+        ) : (
+          <ul className="calendar-preview-list">
+            {events.map((e) => (
+              <li key={e.id} className={`event-${e.color}`}>
+                <span className="event-name">{e.title || t('calendar.untitled')}</span>
+                <span className="event-range">
+                  {e.date}
+                  {e.endDate !== e.date ? ` → ${e.endDate}` : ''}
+                  {e.start ? ` · ${e.start} – ${e.end}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     );
   }
   return (

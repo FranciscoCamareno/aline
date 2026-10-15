@@ -55,12 +55,12 @@ Una revisión es una instantánea inmutable de un documento:
   "deviceId": "UUID del dispositivo",
   "createdAt": "ISO 8601 UTC (informativa, no decide precedencia)",
   "operation": "save | delete | restore | resolve | external",
-  "metadata": { "kind": "note | canvas | folder", "title": "…", "folderId": null, "tags": [], "deleted": false },
+  "metadata": { "kind": "note | canvas | folder | calendar | template", "title": "…", "folderId": null, "tags": [], "deleted": false },
   "contentRefs": { "body": "sha256 | null", "extensions": "sha256 | null", "assets": ["sha256"] }
 }
 ```
 
-- `body` es una nota (`objects/<hash>.md`) o una escena (`objects/<hash>.excalidraw`), según `metadata.kind`.
+- `body` depende de `metadata.kind`: una nota (`objects/<hash>.md`), una escena de lienzo o de plantilla (`objects/<hash>.excalidraw`) o un calendario (`objects/<hash>.json`). Las carpetas no tienen cuerpo.
 - `extensions` es el sidecar del lienzo (`objects/<hash>.json`).
 - `assets` son los archivos de `assets/`.
 - `operation: "delete"` envía el documento a la papelera y conserva el contenido.
@@ -102,6 +102,30 @@ La aplicación lo vuelve a derivar en cada guardado del lienzo:
 - `mindMap` y `noteEmbeds` se conservan tal cual.
 
 Las carpetas son revisiones con `metadata.kind: "folder"` y sin contenido (`contentRefs.body: null`). Un documento las referencia con `metadata.folderId`.
+
+### 2.5.1 Calendarios (`objects/<hash>.json`) — [esquema](formato/schemas/v1/calendar.schema.json)
+
+Desde el 14/10/2026. Un documento `calendar` por calendario; su cuerpo guarda el calendario entero y cada cambio es una revisión nueva.
+
+```json
+{
+  "schemaVersion": 1,
+  "color": "mantequilla",
+  "events": [
+    { "id": "UUID", "title": "Escena de lluvia", "date": "2026-10-13", "endDate": "2026-10-13",
+      "start": "09:00", "end": "10:30", "color": "mantequilla" }
+  ]
+}
+```
+
+- Las fechas (`AAAA-MM-DD`) y horas (`HH:MM`) son **locales y sin zona horaria**, como en una agenda de papel.
+- `endDate` es el último día, incluido. `start` y `end` son ambos `null` en un evento de todo el día.
+- `color` es uno de los colores de las notas adhesivas: `mantequilla`, `agua`, `rosa`, `brote`, `durazno` o `lavanda`.
+- Las claves desconocidas se conservan. Un `schemaVersion` posterior se abre en solo lectura.
+
+### 2.5.2 Plantillas del lienzo (`objects/<hash>.excalidraw`)
+
+Desde el 14/10/2026. Un documento `template` guarda una selección del lienzo como una escena `.excalidraw` (mismo formato que §2.4, con `mindnote-asset:<sha256>` en lugar de cada imagen) y sus imágenes en `contentRefs.assets`. No lleva sidecar ni va en carpetas. Al insertarla, la aplicación copia los elementos con identidades nuevas.
 
 El `customData` del motor no es una fuente fiable: el motor lo copia al duplicar y al pegar (fase 0, prueba 0.3).
 

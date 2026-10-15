@@ -13,7 +13,15 @@ import {
   type ParsedNote,
 } from '../domain/frontmatter.ts';
 import { newId, type Uuid } from '../domain/ids.ts';
-import type { DocumentKind, DocumentRecord, Revision } from '../domain/revision.ts';
+import {
+  emptyCalendar,
+  mergeCalendars,
+  parseCalendar,
+  validateEvent,
+  type CalendarData,
+  type EventColor,
+} from '../domain/calendar.ts';
+import type { DocumentKind, DocumentRecord, Revision, RevisionKind } from '../domain/revision.ts';
 import { emptyCanvasExtensions, type CanvasExtensions } from '../domain/sidecar.ts';
 import { wouldCreateCycle } from '../domain/folders.ts';
 import { dedupeTags } from '../domain/tags.ts';
@@ -35,6 +43,7 @@ export const MIME = {
   markdown: 'text/markdown; charset=utf-8',
   excalidraw: 'application/vnd.excalidraw+json',
   extensions: 'application/json',
+  calendar: 'application/json',
 } as const;
 
 /** Cabezas conocidas al abrir o al guardar por última vez; se pasan al siguiente commit. */
@@ -63,7 +72,8 @@ const LAST_OPENED_KEY = 'lastOpenedDocumentId';
 /** Contenido legible de una revisión, para vistas previas del historial y de conflictos. */
 export type RevisionPreview =
   | { kind: 'note'; revision: Revision; body: string }
-  | { kind: 'canvas'; revision: Revision; sceneJson: string | null };
+  | { kind: 'canvas'; revision: Revision; sceneJson: string | null }
+  | { kind: 'calendar'; revision: Revision; calendar: CalendarData };
 
 /** Decisión del propietario ante dos o más cabezas (diseño §8.1). */
 export type ConflictChoice =
@@ -71,6 +81,8 @@ export type ConflictChoice =
   | { kind: 'keep'; revisionId: Uuid }
   /** Notas: texto combinado a mano. */
   | { kind: 'merge'; body: string }
+  /** Calendarios: la unión de los eventos de todas las cabezas. */
+  | { kind: 'merge-events' }
   /** Conservar una cabeza aquí y copiar otra a un documento nuevo (UUID nuevo). */
   | { kind: 'duplicate'; keepRevisionId: Uuid; copyRevisionId: Uuid; copyTitle: string };
 
@@ -96,6 +108,20 @@ export interface OpenedCanvas {
   session: EditSession;
   sceneJson: string | null;
   extensions: CanvasExtensions;
+  readOnly: ReadOnlyReason | null;
+}
+
+export interface OpenedCalendar {
+  document: DocumentRecord;
+  session: EditSession;
+  calendar: CalendarData;
+  readOnly: ReadOnlyReason | null;
+}
+
+export interface OpenedTemplate {
+  document: DocumentRecord;
+  /** Escena .excalidraw con `mindnote-asset:<sha256>` en lugar de cada imagen. */
+  sceneJson: string;
   readOnly: ReadOnlyReason | null;
 }
 
@@ -249,6 +275,120 @@ export class VaultService {
     });
     for (const listener of this.listeners) listener(result);
     return result.document;
+  }
+
+  /**
+   * CreateCalendar (DESIGN.md §8): documento `calendar` con sus eventos en JSON. Vive fuera de las
+   * carpetas de la biblioteca (folderId null).
+   */
+  async createCalendar(title: string, color: EventColor): Promise<DocumentRecord> {
+    const cleanTitle = validateTitle(title);
+    const body = await toBlob(utf8Encode(JSON.stringify(emptyCalendar(color))), MIME.calendar);
+    const result = await this.repo.commit({
+      documentId: newId(),
+      kind: 'calendar',
+      operation: 'save',
+      knownHeads: [],
+      metadata: { kind: 'calendar', title: cleanTitle, folderId: null, tags: [], deleted: false },
+      contentRefs: { body: body.hash, extensions: null, assets: [] },
+      blobs: [body],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  async openCalendar(documentId: Uuid): Promise<OpenedCalendar> {
+    await this.pendingWrites(documentId);
+    const { document, head } = await this.loadHead(documentId, 'calendar');
+    let parsed: ReturnType<typeof parseCalendar>;
+    try {
+      parsed = parseCalendar(
+        JSON.parse(head.contentRefs.body ? await this.readText(head.contentRefs.body) : '{}'),
+      );
+    } catch {
+      parsed = { calendar: emptyCalendar(), readOnly: 'invalid-content' };
+    }
+    const readOnly = firstReason(checkRevision(head), parsed.readOnly);
+    return {
+      document,
+      session: this.openSession(documentId, head, readOnly),
+      calendar: parsed.calendar,
+      readOnly,
+    };
+  }
+
+  /** SaveCalendar: el calendario entero en una revisión nueva (los eventos se validan antes). */
+  saveCalendar(session: EditSession, calendar: CalendarData): Promise<CommitResult> {
+    return this.serialized(session.documentId, async () => {
+      assertWritable(session);
+      const checked: CalendarData = { ...calendar, events: calendar.events.map(validateEvent) };
+      const head = await this.currentHead(session);
+      const body = await toBlob(utf8Encode(JSON.stringify(checked)), MIME.calendar);
+      if (body.hash === head.contentRefs.body) return this.unchanged(session, head);
+      const { title, tags, folderId } = head.metadata;
+      return this.commitAndAdvance(session, {
+        documentId: session.documentId,
+        kind: 'calendar',
+        operation: 'save',
+        knownHeads: session.knownHeads,
+        metadata: { kind: 'calendar', title, tags, folderId, deleted: false },
+        contentRefs: { body: body.hash, extensions: null, assets: [] },
+        blobs: [body],
+      });
+    });
+  }
+
+  /**
+   * CreateTemplate: plantilla del lienzo a partir de una selección ya serializada por el
+   * adaptador (escena .excalidraw y sus imágenes como assets). Es inmutable en su contenido: se
+   * renombra o se envía a la papelera como cualquier documento.
+   */
+  async createTemplate(input: {
+    title: string;
+    canvas: SerializedCanvas;
+  }): Promise<DocumentRecord> {
+    const title = validateTitle(input.title);
+    for (const asset of input.canvas.assets) {
+      if ((await sha256Hex(asset.bytes)) !== asset.hash) {
+        throw new DomainError(
+          'invalid-content',
+          'Un adjunto de la plantilla no coincide con su hash',
+        );
+      }
+    }
+    const scene = await toBlob(utf8Encode(input.canvas.sceneJson), MIME.excalidraw);
+    const assets: StoredBlob[] = input.canvas.assets.map((a) => ({
+      hash: a.hash,
+      mimeType: a.mimeType,
+      byteLength: a.bytes.byteLength,
+      bytes: a.bytes,
+    }));
+    const result = await this.repo.commit({
+      documentId: newId(),
+      kind: 'template',
+      operation: 'save',
+      knownHeads: [],
+      metadata: { kind: 'template', title, folderId: null, tags: [], deleted: false },
+      contentRefs: {
+        body: scene.hash,
+        extensions: null,
+        assets: [...new Set(assets.map((a) => a.hash))].sort(),
+      },
+      blobs: [scene, ...assets],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  async openTemplate(documentId: Uuid): Promise<OpenedTemplate> {
+    await this.pendingWrites(documentId);
+    const { document, head } = await this.loadHead(documentId, 'template');
+    const sceneJson = head.contentRefs.body ? await this.readText(head.contentRefs.body) : '{}';
+    return {
+      document,
+      sceneJson,
+      readOnly: firstReason(checkRevision(head), checkSceneVersion(sceneJson)),
+    };
   }
 
   /**
@@ -591,9 +731,19 @@ export class VaultService {
     const revision = await this.repo.getRevision(revisionId);
     if (!revision) throw new DomainError('not-found', 'Revisión no encontrada');
     const text = revision.contentRefs.body ? await this.readText(revision.contentRefs.body) : null;
-    return revision.metadata.kind === 'note'
-      ? { kind: 'note', revision, body: parseNoteMarkdown(text ?? '').body }
-      : { kind: 'canvas', revision, sceneJson: text };
+    if (revision.metadata.kind === 'note') {
+      return { kind: 'note', revision, body: parseNoteMarkdown(text ?? '').body };
+    }
+    if (revision.metadata.kind === 'calendar') {
+      let calendar: CalendarData;
+      try {
+        calendar = parseCalendar(JSON.parse(text ?? '{}')).calendar;
+      } catch {
+        calendar = emptyCalendar();
+      }
+      return { kind: 'calendar', revision, calendar };
+    }
+    return { kind: 'canvas', revision, sceneJson: text };
   }
 
   /**
@@ -649,7 +799,38 @@ export class VaultService {
 
       let input: CommitInput;
       let duplicate: DocumentRecord | null = null;
-      if (choice.kind === 'merge') {
+      if (choice.kind === 'merge-events') {
+        if (doc.kind !== 'calendar')
+          throw new DomainError('not-found', 'Solo se fusionan calendarios');
+        const versions: CalendarData[] = [];
+        let latest: Revision | null = null;
+        for (const head of await this.conflictHeads(documentId)) {
+          const parsed = parseCalendar(
+            JSON.parse(head.contentRefs.body ? await this.readText(head.contentRefs.body) : '{}'),
+          );
+          // Una versión que esta aplicación no puede leer no se toca ni se mezcla.
+          if (parsed.readOnly) {
+            throw new DomainError(
+              'unsupported-version',
+              'Una versión del calendario no es legible',
+            );
+          }
+          versions.push(parsed.calendar);
+          latest = head;
+        }
+        const merged: CalendarData = mergeCalendars(versions);
+        merged.events = merged.events.map(validateEvent);
+        const body = await toBlob(utf8Encode(JSON.stringify(merged)), MIME.calendar);
+        input = {
+          documentId,
+          kind: 'calendar',
+          operation: 'resolve',
+          knownHeads: heads,
+          metadata: { ...latest!.metadata, deleted: false },
+          contentRefs: { body: body.hash, extensions: null, assets: [] },
+          blobs: [body],
+        };
+      } else if (choice.kind === 'merge') {
         if (doc.kind !== 'note') throw new DomainError('not-found', 'Solo se combinan notas');
         const base = (await this.conflictHeads(documentId)).at(-1)!;
         const markdown = await toBlob(
@@ -720,7 +901,10 @@ export class VaultService {
         blobs.push(ext);
       }
     }
-    const kind = source.metadata.kind === 'note' ? 'note' : 'canvas';
+    const kind =
+      source.metadata.kind === 'note' || source.metadata.kind === 'calendar'
+        ? source.metadata.kind
+        : 'canvas';
     const result = await this.repo.commit({
       documentId,
       kind,
@@ -912,7 +1096,7 @@ export class VaultService {
 
   private async loadHead(
     documentId: Uuid,
-    kind?: DocumentKind,
+    kind?: RevisionKind,
   ): Promise<{ document: DocumentRecord; head: Revision }> {
     const document = await this.requireDocument(documentId);
     if (kind && document.kind !== kind)

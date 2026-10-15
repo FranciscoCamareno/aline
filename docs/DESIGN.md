@@ -310,8 +310,10 @@ Ocupa toda la altura, a la izquierda de la cabecera. De arriba abajo:
 2. **Nuevo**: el único botón primario, con un desplegable: Lienzo, Nota, Carpeta │ Importar archivos…, Importar carpeta….
 3. Buscador de títulos ("Buscar archivos…"), con el icono `buscar` dentro del campo.
 4. Pestañas **Todos** (carpetas, etiquetas y "Recuperación") y **Recientes**. La activa lleva `--selection-soft`.
-5. La lista, con su propio desplazamiento.
-6. Pie con iconos y texto en `--text-secondary`: **Papelera** (con su recuento; abre un cajón encima del pie, sin ocultar la lista), **Preferencias** (idioma y "Seguir al sistema") y **Ayuda** (los atajos del lienzo; deshabilitada si no hay un lienzo abierto).
+5. La lista, con su propio desplazamiento. Los lienzos y las notas se arrastran a una carpeta (su fila o su contenido) o al espacio libre de «Todos» para sacarlos a la raíz; el destino se marca con el anillo de foco discontinuo y la fila arrastrada se atenúa. Sin arrastre, la carpeta se cambia en el panel de Detalles.
+6. Pie con iconos y texto en `--text-secondary`: **Papelera** (con su recuento; abre un cajón encima del pie, sin ocultar la lista), **Preferencias** (idioma y "Seguir al sistema") y **Perfil** (abre un modal con «Dónde se guarda»: conectar Google Drive o una carpeta, con el aviso y la elección de cifrado dentro; no se cierra con un clic fuera para no perder una contraseña a medio escribir). «Estado y diagnóstico» sigue en el menú «⋯» de la cabecera. La **ayuda** de atajos es el botón «?» del motor, abajo a la derecha del lienzo, en el estilo de la aplicación (40 px, borde tinta, radio 12) y solo con un lienzo abierto. La entrada «Ayuda» del menú del lienzo y los textos de ayuda que el motor pone bajo su barra («Para mover el lienzo…») no se muestran. El atajo «?» también abre el diálogo.
+
+El diálogo de ayuda usa los tokens de la interfaz (fondo `--bg-popover`, teclas en `--selection-soft`) y no trae los cuatro enlaces externos del motor (documentación, blog, GitHub, YouTube): la aplicación no ofrece salidas a la red sin que el usuario las pida (diseño §13).
 
 ### Cabecera
 Título del documento, chip de guardado y chip del destino conectado a la izquierda. A la derecha, solo: Historial (icono), **Enlaces** y **Exportar ▾** (botones secundarios con texto), el menú **⋯** (Buscar, Estado y diagnóstico) y el interruptor de tema. Exportar ofrece el documento abierto (lienzo: imagen, PDF o `.excalidraw`; nota: `.md`) y, tras un divisor, las notas en Markdown (.zip) de la carpeta elegida o de todo el almacén.
@@ -403,7 +405,8 @@ Popover que se abre sobre la casilla de stickers, centrado en ella y a 16px por 
 - Cuadrícula de 5 columnas con celdas de 62px; cada sticker a 52px. Hover y foco: fondo `--selection-soft`, radio 10px.
 - Orden: primero los personajes (a, nube, corazón, nota, lápiz, estallido) y después los acentos (rayo, chispas, bocadillo, exclamación, flecha, garabato, corona).
 - Clic o arrastre: el sticker se coloca en el lienzo como imagen, a 120px y con un giro aleatorio entre −10° y 10°. Con clic va al centro de la vista; arrastrado, donde se suelta. Queda seleccionado y se deshace con Ctrl+Z. El giro se puede quitar con la rotación normal.
-- **Verificado en la 0.18.1:** el motor contrarresta su filtro oscuro en las imágenes de mapa de bits, pero no en las SVG. Por eso el selector muestra los SVG y en el lienzo se insertan los PNG de 512px (`brand/stickers/sticker-*-512.png`), que se ven igual en ambos temas. Se guardan como cualquier imagen del lienzo.
+- **Verificado en la 0.18.1 (color en oscuro):** el filtro del tema oscuro (`invert(93%) hue-rotate(180deg)`) no puede mostrar un amarillo saturado, por mucho que se compense la imagen antes: el mantequilla necesitaría un azul negativo. Insertar PNG en vez de SVG (el motor contrarresta su filtro en los mapas de bits, no en los SVG) deja los rosas, verdes y corales casi exactos, pero el amarillo se veía melocotón. Por eso, en oscuro, los stickers se dibujan en una capa propia sin filtro (`src/features/canvas/stickerLayer.ts`). Se inserta el PNG de 512px (`brand/stickers/sticker-*-512.png`) y se guarda como cualquier imagen del lienzo; el selector muestra los SVG.
+- **Límites de esa capa (solo en oscuro):** los stickers se ven por encima del resto de elementos aunque estén detrás en el orden de capas; no respetan el recorte de un marco; y la exportación en oscuro (PNG, SVG, PDF) sigue pasando por el filtro del motor, así que ahí el amarillo se ve más apagado. Las notas adhesivas y las formas no cambian.
 - Accesibilidad: la casilla tiene `aria-haspopup="dialog"` y `aria-expanded`; el selector es un `dialog` con nombre "Stickers", cada sticker un botón con su nombre, y Escape lo cierra devolviendo el foco a la casilla.
 
 ### 7.2 Estados de la barra
@@ -452,7 +455,67 @@ Sustituye al desplegable de tema de la cabecera. Referencia: `brand/icons/theme/
 - Accesibilidad: `role="switch"`, `aria-checked` (oscuro = true) y `aria-label="Tema oscuro"`; se activa con Espacio o Enter. En pantallas táctiles el área pulsable mide 44px de alto, aunque el carril se vea de 36.
 - **Seguir al sistema:** es una opción de Preferencias (glifo `tema-sistema`), no del interruptor. Si está activa, el interruptor refleja el tema resuelto y, al tocarlo, se pasa a modo manual.
 
-## 8. Hacer y no hacer
+## 8. Calendario
+
+Archivos: `brand/calendar/` (vistas en PNG y SVG, hoja de "hoy") y los iconos `calendario`, `calendario-hoy`, `evento-mas` y `repetir` en `brand/icons/ui/`, más el objeto `calendario` en `icons/tools/`.
+
+### 8.1 Números y letras
+
+- **Todo en Nunito con cifras tabulares** (`font-variant-numeric: tabular-nums`), para que las columnas de números no bailen. Cherry Bomb One sigue reservada al logotipo.
+- Iniciales de los días: **L M X J V S D**, con X para miércoles, que es la convención en español para no repetir la M. En vista de mes: Lun, Mar, Mié, Jue, Vie, Sáb, Dom.
+- Meses en minúscula ("octubre"), salvo en el título de la vista ("Octubre 2026").
+- La semana empieza el lunes por defecto, configurable.
+
+| Rol | Tamaño | Peso |
+|---|---|---|
+| Título del mes | 32px; el año en `--text-secondary` y peso 400 | 700 |
+| Número de día en la celda | 14px | 600 |
+| Número de día en la semana | 15px | 700 |
+| Días de la semana (encabezado) | 12px | 700 |
+| Hora | 11px | 400 |
+| Chip de evento | 12px | 600 (todo el día) / 400 (con hora) |
+| Hoja de "hoy" | 68px | 700 |
+
+### 8.2 Vista de mes
+
+- Cabecera: título, anterior y siguiente (círculos de 34px con borde suave), "Hoy" (botón secundario), selector Día, Semana y Mes (segmentado, activo en mantequilla) y "Nuevo evento" (botón primario, el único de la vista).
+- Cuadrícula de 7×6 en una tarjeta con radio 14px y líneas de 1px `--border-soft`. El fin de semana lleva un tinte apenas más cálido (`#FBF7EA` / `#1B1912`).
+- **Hoy:** el número en un círculo mantequilla de 28px con borde tinta, la misma pastilla que el pomo del interruptor y el estado activo de la barra.
+- **Día seleccionado:** contorno de 2px `--focus` con radio 10px.
+- Días de otro mes: `--text-secondary` (en vez de un `--text-muted` más claro, que no llegaría a 4,5:1). El día 1 de cada mes lleva la abreviatura ("1 oct").
+- Máximo 2 chips y "+N más" si hay más de 3 eventos.
+
+### 8.3 Eventos
+
+- **Los colores son los mismos de las notas adhesivas** (mantequilla, agua, rosa, brote, durazno y lavanda), de modo que un color significa lo mismo en el lienzo y en el calendario.
+- En oscuro se usa el mismo valor que produce el filtro del lienzo (`#442C00`, `#1D393B`, `#773951`, `#264D21`, `#5F3114`, `#3F3554`) con texto crema, así una nota y su evento se ven iguales.
+- Chip: 22px de alto, radio 6px, sin borde. Con hora: "10:00 Título" en peso regular. Todo el día: título en negrita. Varios días: una barra continua que cruza las celdas, con las esquinas redondeadas solo en los extremos.
+- Vista de semana: bloques con radio 8px, borde tinta de 1.5px en claro (sin borde en oscuro), título en negrita y horario debajo. La línea de "ahora" es roja (`#B83A26` / `#F08A78`) con un punto al inicio.
+
+### 8.4 Selector de fechas
+
+Popover de 296px. Hoy: anillo de 1.5px. Inicio y fin de rango: círculos mantequilla con borde tinta. Días intermedios: banda `--selection-soft`. Días con eventos: un punto de 4px bajo el número.
+
+### 8.5 Hoja de "hoy"
+
+Taco de calendario ilustrado (cabecera mantequilla, anillas, día de la semana, número grande y mes) para la sidebar, el estado vacío del calendario o la pantalla de inicio. Es un objeto ilustrado, como los de la barra: no cambia en oscuro.
+
+### 8.6 Implementado (14/10/2026)
+
+- **Estructura:** la biblioteca tiene dos secciones, **Biblioteca** (lienzos y notas) y **Calendario**, como pestañas bajo el logotipo; la activa lleva `--selection-soft` y una marca yema a la izquierda. En Calendario, la biblioteca muestra **Nuevo evento** (el botón principal) y **Mis calendarios**, con una casilla del color de cada calendario para mostrarlo u ocultarlo (preferencia de este navegador) y su menú ⋯ (renombrar, enviar a la papelera; el último no se puede borrar). El primer calendario, «Personal», se crea solo.
+- **Cabecera de la vista:** título, anterior y siguiente, Hoy y el selector **Día · Semana · Mes**. «Nuevo evento» aparece aquí solo con la biblioteca plegada, para no repetir el botón principal.
+- **Mes y semana** según §8.2–8.3. Una celda muestra hasta 3 eventos; si tiene más, 2 y «+N más», que abre esa semana. Las barras de varios días se cortan donde su carril no cabe. Doble clic en un día (o en una hora de la semana) crea un evento allí.
+- **Datos:** cada calendario es un documento `calendar` del almacén con revisiones, historial, papelera, copias y sincronización (`docs/formato-almacen.md` §2.5.1). Las fechas son locales, sin zona horaria.
+- **Vista de día:** la misma retícula de horas con una sola columna (fila de «todo el día», bloques, línea de «ahora»); anterior/siguiente avanzan un día.
+- **Marco del día seleccionado:** un contorno de 2 px dentro de su celda (pseudoelemento por encima de las vecinas). Cada semana del mes tiene un alto mínimo (118 px) para que las celdas nunca se salgan de su fila; si la ventana es baja, el mes se desplaza.
+- **Conflictos:** si un calendario tiene varias cabezas, la vista muestra un aviso y el panel de resolución: conservar una versión, conservar ambas (la otra pasa a un calendario nuevo) o **combinar eventos** (unión por `id`; si un evento está en varias, vale el de la versión más reciente; uno borrado en una versión reaparece si otra lo conserva).
+- **Pendiente:** selector de fechas propio (§8.4; hoy se usan los controles del navegador), hoja de «hoy» (§8.5), eventos repetidos (icono `repetir`), semana que empiece en domingo (el dominio ya lo admite) y buscar eventos.
+
+## 9. Plantillas del lienzo
+
+Sustituyen a la biblioteca de Excalidraw, que no admite imágenes ni se guardaba. Botón **Plantillas** arriba a la derecha del lienzo, donde estaba «Biblioteca»; abre un panel con **Guardar selección** (pide un nombre) y la lista de plantillas. Un clic inserta la plantilla en el centro de la vista; también se puede arrastrar al lienzo. Cada inserción es una copia con identidades nuevas (textos ligados, flechas unidas y grupos incluidos), seleccionada y deshacible. Las plantillas son documentos `template` del almacén (§2.5.2 del formato) y admiten imágenes y stickers. Cada plantilla muestra una miniatura de su escena (papel claro fijo, también en oscuro).
+
+## 10. Hacer y no hacer
 
 **Hacer**
 - Usar mantequilla como superficie (primario, activo, resaltador) y tinta como texto encima.
@@ -471,7 +534,7 @@ Sustituye al desplegable de tema de la cabecera. Referencia: `brand/icons/theme/
 
 ---
 
-## 9. Pendientes
+## 11. Pendientes
 
 - [x] Inventariar las variables `--color-primary*` de Excalidraw 0.18.1 y asignarles tokens (§3.3).
 - [x] Barra de herramientas de objetos (§7.1–7.2) y panel secundario (`src/features/canvas/ToolTray.tsx`). La barra del motor sigue en el árbol, oculta, para conservar su texto de ayuda. «Incrustar web» se quitó: el diseño técnico descarta el contenido web incrustado por privacidad (§13, RNF-05); el objeto sigue en `brand/`. Cuando el motor detecta un lápiz, la bandeja muestra el interruptor «Solo lápiz», que antes estaba en la barra del motor. Sin espacio a los lados, el panel secundario se coloca encima de la barra principal.
@@ -486,3 +549,10 @@ Sustituye al desplegable de tema de la cabecera. Referencia: `brand/icons/theme/
 - [x] Corregir en la implementación el fondo del lienzo (`#F5FAFF` → `#FFFDF4`) y las notas adhesivas según §3.5. En el código actual, los lienzos nuevos empiezan en `#FFFDF4` y las notas llevan relleno, banda, doblez y trazo tinta. Los lienzos ya existentes conservan su fondo; se cambia desde el menú del lienzo ("Fondo del lienzo").
 - [x] Atajo de stickers: B (Mayús+S y S ya los usa Excalidraw).
 - [x] Selector de stickers, interruptor de tema y nueva estructura de la sidebar y la cabecera (§6, §7).
+- [x] Stickers con su color en oscuro (capa sin filtro) y diálogo de ayuda en el estilo de la aplicación; el botón «?» vuelve al pie del lienzo y la biblioteca tiene «Perfil» en su lugar.
+- [ ] Stickers en oscuro: respetar el orden de capas con las formas y el recorte de los marcos, y que la exportación en oscuro los muestre con su color.
+- [x] Calendario básico (§8.6): secciones en la biblioteca, vistas de mes y semana, eventos con los colores de las notas adhesivas, varios calendarios.
+- [x] Plantillas del lienzo (§9) en lugar de la biblioteca del motor.
+- [x] Calendario: vista de día y resolución de conflictos (§8.6).
+- [x] Plantillas: miniaturas en el panel.
+- [ ] Calendario: selector de fechas propio, hoja de «hoy» y eventos repetidos (§8.6).

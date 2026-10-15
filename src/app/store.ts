@@ -20,15 +20,20 @@ export interface FocusTarget {
 
 /**
  * Orden de la cabecera para la vista abierta, que es quien tiene el motor o el editor: exportar
- * el documento o abrir la ayuda de atajos del lienzo. `seq` distingue dos órdenes iguales.
+ * el documento. `seq` distingue dos órdenes iguales.
  */
 export interface ViewCommand {
   seq: number;
   documentId: string;
-  kind: 'export' | 'help';
+  kind: 'export';
 }
 
+/** Sección de la biblioteca: documentos (lienzos y notas) o calendario. */
+export type Section = 'library' | 'calendar';
+
 interface UiState {
+  section: Section;
+  setSection: (section: Section) => void;
   documents: DocumentRecord[];
   activeId: string | null;
   saveStatus: UiSaveStatus;
@@ -61,6 +66,8 @@ interface UiState {
 }
 
 export const useUiStore = create<UiState>()((set, get) => ({
+  section: 'library',
+  setSection: (section) => set({ section }),
   documents: [],
   activeId: null,
   saveStatus: 'idle',
@@ -86,8 +93,9 @@ export const useUiStore = create<UiState>()((set, get) => ({
       documents: state.documents.filter((d) => d.id !== id),
       activeId: state.activeId === id ? null : state.activeId,
     })),
-  setActive: (activeId) => set({ activeId }),
-  navigate: (focus) => set({ activeId: focus.documentId, focus }),
+  // Abrir un documento siempre lleva a la sección de documentos.
+  setActive: (activeId) => set(activeId ? { activeId, section: 'library' } : { activeId }),
+  navigate: (focus) => set({ activeId: focus.documentId, focus, section: 'library' }),
   consumeFocus: (documentId) => {
     const focus = get().focus;
     if (focus?.documentId !== documentId) return null;

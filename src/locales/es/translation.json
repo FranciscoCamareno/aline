@@ -58,7 +58,8 @@
     "noResults": "Ningún título coincide.",
     "trashShort": "Papelera",
     "importFiles": "Importar archivos…",
-    "importFolder": "Importar carpeta…"
+    "importFolder": "Importar carpeta…",
+    "sections": "Secciones"
   },
   "title": {
     "edit": "Editar título",
@@ -201,7 +202,10 @@
     "merge": "Combinar a mano",
     "diff": "Diferencias entre las versiones",
     "mergeEditor": "Texto combinado",
-    "mergeAction": "Guardar combinación"
+    "mergeAction": "Guardar combinación",
+    "mergeEvents": "Combinar eventos",
+    "mergeEventsHint": "Junta los eventos de todas las versiones. Si un evento está en varias, vale el de la versión más reciente; uno borrado en una versión reaparece si otra lo conserva.",
+    "mergeEventsAction": "Combinar eventos"
   },
   "vaults": {
     "title": "Almacenes de este navegador",
@@ -450,10 +454,6 @@
     "title": "Preferencias",
     "followSystem": "Seguir al sistema"
   },
-  "help": {
-    "title": "Ayuda",
-    "onlyCanvas": "La ayuda de atajos está disponible con un lienzo abierto"
-  },
   "nav": {
     "links": "Enlaces",
     "export": "Exportar",
@@ -477,5 +477,69 @@
     "flecha": "Flecha",
     "garabato": "Garabato",
     "corona": "Corona"
+  },
+  "calendar": {
+    "title": "Calendario",
+    "defaultCalendar": "Personal",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "prevWeek": "Semana anterior",
+    "nextWeek": "Semana siguiente",
+    "today": "Hoy",
+    "view": "Vista",
+    "day": "Día",
+    "week": "Semana",
+    "month": "Mes",
+    "newEvent": "Nuevo evento",
+    "untitled": "Sin título",
+    "more_one": "+{{count}} más",
+    "more_other": "+{{count}} más",
+    "allDay": "Todo el día",
+    "now": "Ahora",
+    "editEvent": "Editar evento",
+    "readOnly": "Este calendario es de una versión más nueva de la aplicación o no se pudo leer: se muestra, pero no se puede cambiar.",
+    "eventTitle": "Título",
+    "calendarField": "Calendario",
+    "startDate": "Empieza",
+    "startTime": "Hora de inicio",
+    "endDate": "Termina",
+    "endTime": "Hora de fin",
+    "color": "Color",
+    "colors": {
+      "mantequilla": "Mantequilla",
+      "agua": "Agua",
+      "rosa": "Rosa",
+      "brote": "Brote",
+      "durazno": "Durazno",
+      "lavanda": "Lavanda"
+    },
+    "badTime": "La hora de fin es anterior a la de inicio.",
+    "badRange": "El evento termina antes de empezar.",
+    "deleteConfirm": "¿Eliminar el evento «{{title}}»? Seguirá en el historial del calendario.",
+    "delete": "Eliminar",
+    "save": "Guardar",
+    "myCalendars": "Mis calendarios",
+    "newCalendar": "Nuevo calendario",
+    "calendarName": "Nombre del calendario",
+    "show": "Mostrar {{name}}",
+    "prevDay": "Día anterior",
+    "nextDay": "Día siguiente",
+    "noEvents": "Sin eventos.",
+    "conflict": "El calendario «{{names}}» se editó en dos sitios a la vez. Ninguna versión se ha perdido."
+  },
+  "templates": {
+    "title": "Plantillas",
+    "failed": "No se pudo completar la acción con la plantilla.",
+    "selectFirst": "Selecciona primero elementos del lienzo",
+    "defaultName": "Plantilla {{count}}",
+    "saveSelection": "Guardar selección",
+    "name": "Nombre de la plantilla",
+    "empty": "Aún no hay plantillas. Selecciona elementos del lienzo (también imágenes y stickers) y guárdalos aquí.",
+    "hint": "Pulsa una plantilla para insertarla en el centro, o arrástrala al lienzo."
+  },
+  "profile": {
+    "title": "Perfil",
+    "lead": "Tu almacén empieza en este navegador. Aquí puedes guardarlo además en Google Drive o en una carpeta de tu equipo. Nada sale de este dispositivo hasta que lo confirmes.",
+    "unavailable": "No disponible: este almacén es temporal o la sincronización no está activa."
   }
 }

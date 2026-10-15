@@ -1,6 +1,7 @@
 import { CaptureUpdateAction, restoreElements } from '@excalidraw/excalidraw';
 import type { ExcalidrawElement, FileId } from '@excalidraw/excalidraw/element/types';
 import type { DataURL, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
+import { bytesToBase64 } from '../../shared/base64.ts';
 import { sha256Hex } from '../../shared/hash.ts';
 
 /**
@@ -50,17 +51,37 @@ const MAX_TILT = (10 * Math.PI) / 180;
 /** Tipo del arrastre desde el selector hasta el lienzo. */
 export const STICKER_DRAG_TYPE = 'application/x-aline-sticker';
 
+const stickerBytes = new Map<StickerName, Promise<Uint8Array>>();
+function bytesOf(name: StickerName): Promise<Uint8Array> {
+  let bytes = stickerBytes.get(name);
+  if (!bytes) {
+    bytes = fetch(stickerImageUrl(name))
+      .then((response) => response.arrayBuffer())
+      .then((buffer) => new Uint8Array(buffer));
+    // Un fallo de red no se queda en la caché: el siguiente intento vuelve a pedirlo.
+    bytes.catch(() => stickerBytes.delete(name));
+    stickerBytes.set(name, bytes);
+  }
+  return bytes;
+}
+
+/**
+ * Misma construcción que al rehidratar una escena (`sceneCodec`): así el `src` de la imagen del
+ * motor coincide, carácter por carácter, con el de los stickers de la marca y la capa de stickers
+ * puede reconocerlos.
+ */
+const toDataUrl = (bytes: Uint8Array) => `data:image/png;base64,${bytesToBase64(bytes)}`;
+
+/** Las imágenes de todos los stickers de la marca, tal como las recibe el motor. */
+export async function allStickerDataUrls(): Promise<Set<string>> {
+  const all = await Promise.all(STICKER_NAMES.map(async (name) => toDataUrl(await bytesOf(name))));
+  return new Set(all);
+}
+
 async function loadSticker(name: StickerName): Promise<{ id: FileId; dataURL: DataURL }> {
-  const bytes = new Uint8Array(await (await fetch(stickerImageUrl(name))).arrayBuffer());
-  const hash = await sha256Hex(bytes);
-  const dataURL = await new Promise<DataURL>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as DataURL);
-    reader.onerror = () => reject(reader.error ?? new Error('No se pudo leer el sticker'));
-    reader.readAsDataURL(new Blob([bytes], { type: 'image/png' }));
-  });
+  const bytes = await bytesOf(name);
   // Mismo contenido, mismo id: el mismo sticker repetido comparte el archivo.
-  return { id: hash as FileId, dataURL };
+  return { id: (await sha256Hex(bytes)) as FileId, dataURL: toDataUrl(bytes) as DataURL };
 }
 
 /**
