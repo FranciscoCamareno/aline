@@ -60,8 +60,7 @@ export function ExportDialog({
     };
     // Una instantánea al abrir el diálogo (el fondo guardado se lee entonces).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api]
-  );
+  }, [api]);
   const hasSelection = Object.values(scene.appState.selectedElementIds ?? {}).some(Boolean);
   const visibleCount = scene.elements.filter((e) => !e.isDeleted).length;
   const options = { background, scale, onlySelected: onlySelected && hasSelection };

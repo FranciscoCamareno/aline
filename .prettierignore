@@ -7,3 +7,6 @@ playwright-report
 test-results
 docs
 auditoria-*
+
+# Fuente de los esquemas de color, generada fuera del repositorio (no se edita a mano).
+brand/themes/

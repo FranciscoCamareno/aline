@@ -14,7 +14,7 @@ pnpm 12.11.2 is pinned in `packageManager`. If `pnpm` isn't on PATH, use `npx -y
 
 - `pnpm dev` — Vite dev server. Runs `pnpm assets` first: copies Excalidraw fonts to `public/fonts` (Liberation excluded) and generates `public/THIRD-PARTY-NOTICES.txt` + `public/LICENSE.txt` (all gitignored)
 - `pnpm build` — copy fonts + `tsc -b` + `vite build` (generates the Workbox SW)
-- `pnpm verify` — typecheck + lint + unit tests + build; run before declaring work done
+- `pnpm verify` — format check + typecheck + lint + unit tests + build; run before declaring work done (CI runs the same plus `licenses:check` and the e2e suite)
 - `pnpm test` — Vitest unit tests (`tests/unit`, node env, `fake-indexeddb`)
 - Single unit test: `pnpm exec vitest run tests/unit/vault.test.ts -t "renombrar"`
 - `pnpm test:e2e` — Playwright/Chromium against `pnpm build && pnpm preview` on port 4173. First time: `pnpm exec playwright install chromium`. `pnpm test:e2e:all` also runs Microsoft Edge when installed
