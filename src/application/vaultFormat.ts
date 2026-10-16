@@ -84,7 +84,7 @@ export function objectPath(hash: string, role: Exclude<ObjectRole, 'asset'>): st
 
 /**
  * Papel del cuerpo de una revisión: Markdown en notas, escena .excalidraw en lienzos y
- * plantillas, JSON en calendarios. Las carpetas no tienen cuerpo.
+ * plantillas, JSON en calendarios y documentos. Las carpetas no tienen cuerpo.
  */
 export function bodyRole(kind: RevisionKind): Exclude<ObjectRole, 'asset' | 'extensions'> | null {
   switch (kind) {
@@ -94,6 +94,7 @@ export function bodyRole(kind: RevisionKind): Exclude<ObjectRole, 'asset' | 'ext
     case 'template':
       return 'canvas';
     case 'calendar':
+    case 'doc':
       return 'data';
     case 'folder':
       return null;
@@ -113,7 +114,7 @@ docs/formato-almacen.md en el repositorio de la aplicación.
 - vault.json: identidad y versión del formato.
 - revisions/<id>.json: cada versión de cada documento (inmutable).
 - objects/<sha256>.md | .excalidraw | .json: contenido de notas, escenas (lienzos y plantillas),
-  extensiones y calendarios.
+  extensiones, calendarios y documentos de texto.
 - assets/<sha256>.<ext>: imágenes y adjuntos.
 - readable/<documento>/<revisión>.md: copia legible de cada versión de nota.
 - heads/ y catalog.json: índices de ayuda; nunca deciden qué versión gana.

@@ -55,12 +55,12 @@ Una revisión es una instantánea inmutable de un documento:
   "deviceId": "UUID del dispositivo",
   "createdAt": "ISO 8601 UTC (informativa, no decide precedencia)",
   "operation": "save | delete | restore | resolve | external",
-  "metadata": { "kind": "note | canvas | folder | calendar | template", "title": "…", "folderId": null, "tags": [], "deleted": false },
+  "metadata": { "kind": "note | canvas | folder | calendar | template | doc", "title": "…", "folderId": null, "tags": [], "deleted": false },
   "contentRefs": { "body": "sha256 | null", "extensions": "sha256 | null", "assets": ["sha256"] }
 }
 ```
 
-- `body` depende de `metadata.kind`: una nota (`objects/<hash>.md`), una escena de lienzo o de plantilla (`objects/<hash>.excalidraw`) o un calendario (`objects/<hash>.json`). Las carpetas no tienen cuerpo.
+- `body` depende de `metadata.kind`: una nota (`objects/<hash>.md`), una escena de lienzo o de plantilla (`objects/<hash>.excalidraw`) o un calendario o un documento de texto (`objects/<hash>.json`). Las carpetas no tienen cuerpo.
 - `extensions` es el sidecar del lienzo (`objects/<hash>.json`).
 - `assets` son los archivos de `assets/`.
 - `operation: "delete"` envía el documento a la papelera y conserva el contenido.
@@ -128,6 +128,31 @@ Desde el 14/10/2026. Un documento `calendar` por calendario; su cuerpo guarda el
 Desde el 14/10/2026. Un documento `template` guarda una selección del lienzo como una escena `.excalidraw` (mismo formato que §2.4, con `mindnote-asset:<sha256>` en lugar de cada imagen) y sus imágenes en `contentRefs.assets`. No lleva sidecar ni va en carpetas. Al insertarla, la aplicación copia los elementos con identidades nuevas.
 
 El `customData` del motor no es una fuente fiable: el motor lo copia al duplicar y al pegar (fase 0, prueba 0.3).
+
+### 2.5.3 Documentos de texto enriquecido (`objects/<hash>.json`) — [esquema](formato/schemas/v1/rich-doc.schema.json)
+
+Desde el 15/10/2026. Un documento `doc` guarda el documento entero en JSON y cada cambio es una revisión nueva. `content` es el árbol de ProseMirror que produce el editor (Tiptap): nodos con `type` y, según el caso, `attrs`, `content`, `marks` o `text`.
+
+```json
+{
+  "schemaVersion": 1,
+  "content": {
+    "type": "doc",
+    "content": [
+      { "type": "heading", "attrs": { "level": 1, "textAlign": "center" },
+        "content": [{ "type": "text", "text": "Guion" }] },
+      { "type": "paragraph", "content": [
+        { "type": "text", "text": "Escena " },
+        { "type": "text", "text": "uno", "marks": [{ "type": "bold" }] } ] }
+    ]
+  }
+}
+```
+
+- El esquema solo fija la forma general del árbol; qué nodos y marcas existen lo decide el editor. Un árbol que el editor no acepta se abre en solo lectura y no se reescribe.
+- Nodos actuales: `paragraph`, `heading` (niveles 1–3), `bulletList`, `orderedList`, `listItem`, `blockquote`, `codeBlock`, `horizontalRule`, `hardBreak` y `text`; marcas `bold`, `italic`, `underline`, `strike`, `code` y `link`; atributo `textAlign` en párrafos y títulos.
+- No hay copia legible en `readable/`: se edita solo dentro de la aplicación. No va en carpetas (`folderId` null).
+- Las claves desconocidas se conservan. Un `schemaVersion` posterior se abre en solo lectura.
 
 ### 2.6 `heads/<deviceId>.json` — [esquema](formato/schemas/v1/heads.schema.json)
 

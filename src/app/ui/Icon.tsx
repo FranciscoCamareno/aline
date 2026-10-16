@@ -62,6 +62,15 @@ export type IconName =
   | 'mas'
   | 'menu'
   | 'nota'
+  | 'documento'
+  | 'alinear-izq'
+  | 'alinear-centro'
+  | 'alinear-der'
+  | 'lista'
+  | 'lista-numerada'
+  | 'cita'
+  | 'deshacer'
+  | 'rehacer'
   | 'nube'
   | 'nube-off'
   | 'nube-ok'
@@ -115,4 +124,5 @@ const KIND_ICONS: Record<RevisionKind, IconName> = {
   folder: 'carpeta',
   calendar: 'calendario',
   template: 'biblioteca',
+  doc: 'documento',
 };

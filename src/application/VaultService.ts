@@ -22,6 +22,7 @@ import {
   type EventColor,
 } from '../domain/calendar.ts';
 import type { DocumentKind, DocumentRecord, Revision, RevisionKind } from '../domain/revision.ts';
+import { emptyRichDoc, parseRichDoc, type RichDocData } from '../domain/richDoc.ts';
 import { emptyCanvasExtensions, type CanvasExtensions } from '../domain/sidecar.ts';
 import { wouldCreateCycle } from '../domain/folders.ts';
 import { dedupeTags } from '../domain/tags.ts';
@@ -44,6 +45,7 @@ export const MIME = {
   excalidraw: 'application/vnd.excalidraw+json',
   extensions: 'application/json',
   calendar: 'application/json',
+  richDoc: 'application/json',
 } as const;
 
 /** Cabezas conocidas al abrir o al guardar por última vez; se pasan al siguiente commit. */
@@ -73,7 +75,8 @@ const LAST_OPENED_KEY = 'lastOpenedDocumentId';
 export type RevisionPreview =
   | { kind: 'note'; revision: Revision; body: string }
   | { kind: 'canvas'; revision: Revision; sceneJson: string | null }
-  | { kind: 'calendar'; revision: Revision; calendar: CalendarData };
+  | { kind: 'calendar'; revision: Revision; calendar: CalendarData }
+  | { kind: 'doc'; revision: Revision; doc: RichDocData };
 
 /** Decisión del propietario ante dos o más cabezas (diseño §8.1). */
 export type ConflictChoice =
@@ -115,6 +118,13 @@ export interface OpenedCalendar {
   document: DocumentRecord;
   session: EditSession;
   calendar: CalendarData;
+  readOnly: ReadOnlyReason | null;
+}
+
+export interface OpenedRichDoc {
+  document: DocumentRecord;
+  session: EditSession;
+  doc: RichDocData;
   readOnly: ReadOnlyReason | null;
 }
 
@@ -332,6 +342,75 @@ export class VaultService {
         operation: 'save',
         knownHeads: session.knownHeads,
         metadata: { kind: 'calendar', title, tags, folderId, deleted: false },
+        contentRefs: { body: body.hash, extensions: null, assets: [] },
+        blobs: [body],
+      });
+    });
+  }
+
+  /**
+   * CreateRichDoc: documento de texto enriquecido (kind `doc`), con el árbol del editor en JSON.
+   * Como los calendarios, vive en su propia sección y fuera de las carpetas (folderId null).
+   */
+  async createRichDoc(title: string): Promise<DocumentRecord> {
+    const cleanTitle = validateTitle(title);
+    const body = await toBlob(utf8Encode(JSON.stringify(emptyRichDoc())), MIME.richDoc);
+    const result = await this.repo.commit({
+      documentId: newId(),
+      kind: 'doc',
+      operation: 'save',
+      knownHeads: [],
+      metadata: { kind: 'doc', title: cleanTitle, folderId: null, tags: [], deleted: false },
+      contentRefs: { body: body.hash, extensions: null, assets: [] },
+      blobs: [body],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  async openRichDoc(documentId: Uuid): Promise<OpenedRichDoc> {
+    await this.pendingWrites(documentId);
+    const { document, head } = await this.loadHead(documentId, 'doc');
+    let parsed: ReturnType<typeof parseRichDoc>;
+    try {
+      parsed = parseRichDoc(
+        JSON.parse(head.contentRefs.body ? await this.readText(head.contentRefs.body) : '{}'),
+      );
+    } catch {
+      parsed = { doc: emptyRichDoc(), readOnly: 'invalid-content' };
+    }
+    const readOnly = firstReason(checkRevision(head), parsed.readOnly);
+    return {
+      document,
+      session: this.openSession(documentId, head, readOnly),
+      doc: parsed.doc,
+      readOnly,
+    };
+  }
+
+  /**
+   * SaveRichDoc: el documento entero en una revisión nueva. Las claves que el editor no conoce
+   * se conservan (`preserved`, lo leído al abrir), como en las notas y los calendarios.
+   */
+  saveRichDoc(
+    session: EditSession,
+    content: RichDocData['content'],
+    preserved?: RichDocData,
+  ): Promise<CommitResult> {
+    return this.serialized(session.documentId, async () => {
+      assertWritable(session);
+      const parsed = parseRichDoc({ ...(preserved ?? emptyRichDoc()), content });
+      if (parsed.readOnly) throw new DomainError('invalid-content', 'Documento con forma inválida');
+      const head = await this.currentHead(session);
+      const body = await toBlob(utf8Encode(JSON.stringify(parsed.doc)), MIME.richDoc);
+      if (body.hash === head.contentRefs.body) return this.unchanged(session, head);
+      const { title, tags, folderId } = head.metadata;
+      return this.commitAndAdvance(session, {
+        documentId: session.documentId,
+        kind: 'doc',
+        operation: 'save',
+        knownHeads: session.knownHeads,
+        metadata: { kind: 'doc', title, tags, folderId, deleted: false },
         contentRefs: { body: body.hash, extensions: null, assets: [] },
         blobs: [body],
       });
@@ -743,6 +822,15 @@ export class VaultService {
       }
       return { kind: 'calendar', revision, calendar };
     }
+    if (revision.metadata.kind === 'doc') {
+      let doc: RichDocData;
+      try {
+        doc = parseRichDoc(JSON.parse(text ?? '{}')).doc;
+      } catch {
+        doc = emptyRichDoc();
+      }
+      return { kind: 'doc', revision, doc };
+    }
     return { kind: 'canvas', revision, sceneJson: text };
   }
 
@@ -902,7 +990,9 @@ export class VaultService {
       }
     }
     const kind =
-      source.metadata.kind === 'note' || source.metadata.kind === 'calendar'
+      source.metadata.kind === 'note' ||
+      source.metadata.kind === 'calendar' ||
+      source.metadata.kind === 'doc'
         ? source.metadata.kind
         : 'canvas';
     const result = await this.repo.commit({

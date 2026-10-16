@@ -1,15 +1,16 @@
 import { useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, setLanguage, type AppLanguage } from '../../app/i18n.ts';
-import { useUiStore } from '../../app/store.ts';
+import { useUiStore, type Section } from '../../app/store.ts';
 import { setThemePreference, useTheme } from '../../app/theme.ts';
-import { Icon, KindIcon } from '../../app/ui/Icon.tsx';
+import { Icon, KindIcon, type IconName } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
 import { effectiveFolder, RECOVERY_FOLDER } from '../../domain/folders.ts';
 import type { DocumentKind, DocumentRecord } from '../../domain/revision.ts';
 import { hasConflict, isContentKind } from '../../domain/revision.ts';
 import { tagKey } from '../../domain/tags.ts';
 import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
+import { DocsSidebar } from '../docs/DocsSidebar.tsx';
 import { RenameableTitle } from './RenameableTitle.tsx';
 import logoDark from '../../../brand/aline-logo-dark.svg?url';
 import logoLight from '../../../brand/aline-logo.svg?url';
@@ -26,11 +27,18 @@ interface Props {
   /** Mover un lienzo o una nota a una carpeta (o a la raíz con null), arrastrándolo. */
   onMove: (documentId: string, folderId: string | null) => Promise<void>;
   onCreateCalendar: (title: string) => Promise<void>;
+  /** Documento de texto enriquecido nuevo (sección «Documentos»). */
+  onCreateDoc: () => Promise<void>;
   /** Abre el perfil: conexión con Google Drive y estado del almacenamiento. */
   onOpenProfile: () => void;
 }
 
 const RECENT_COUNT = 5;
+const SECTION_ICONS = {
+  library: 'biblioteca',
+  calendar: 'calendario',
+  documents: 'documento',
+} as const satisfies Record<Section, IconName>;
 /** Tipo del arrastre de un documento dentro de la biblioteca. */
 const DOCUMENT_DRAG_TYPE = 'application/x-aline-document';
 /** Destino del arrastre: el id de una carpeta o la raíz. */
@@ -54,6 +62,7 @@ export function LibrarySidebar({
   onImport,
   onMove,
   onCreateCalendar,
+  onCreateDoc,
   onOpenProfile,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -168,7 +177,9 @@ export function LibrarySidebar({
           ? t('library.kindCanvas')
           : kind === 'note'
             ? t('library.kindNote')
-            : t('library.kindFolder')
+            : kind === 'doc'
+              ? t('docs.kind')
+              : t('library.kindFolder')
       }
     >
       <KindIcon kind={kind} on={isActive} />
@@ -419,9 +430,9 @@ export function LibrarySidebar({
         </button>
       </div>
 
-      {/* Secciones: documentos (lienzos y notas) y calendario. */}
+      {/* Secciones: biblioteca (lienzos y notas), calendario y documentos. */}
       <div className="library-sections" role="tablist" aria-label={t('library.sections')}>
-        {(['library', 'calendar'] as const).map((key) => (
+        {(['library', 'calendar', 'documents'] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -431,12 +442,12 @@ export function LibrarySidebar({
             className={`section-tab${section === key ? ' is-active' : ''}`}
             onClick={() => setSection(key)}
           >
-            <Icon
-              name={key === 'library' ? 'biblioteca' : 'calendario'}
-              size={18}
-              on={section === key}
-            />
-            {key === 'library' ? t('library.title') : t('calendar.title')}
+            <Icon name={SECTION_ICONS[key]} size={18} on={section === key} />
+            {key === 'library'
+              ? t('library.title')
+              : key === 'calendar'
+                ? t('calendar.title')
+                : t('docs.title')}
           </button>
         ))}
       </div>
@@ -447,6 +458,8 @@ export function LibrarySidebar({
           onRename={onRename}
           onTrash={onTrash}
         />
+      ) : section === 'documents' ? (
+        <DocsSidebar onCreateDoc={onCreateDoc} onRename={onRename} onTrash={onTrash} />
       ) : (
         <>
           <div className="library-actions">

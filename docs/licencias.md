@@ -1,6 +1,6 @@
 # Inventario de licencias
 
-Generado con `node scripts/licenses.ts` el 2026-10-15 a partir de `pnpm licenses list --prod`. No editar a mano.
+Generado con `node scripts/licenses.ts` el 2026-10-16 a partir de `pnpm licenses list --prod`. No editar a mano.
 
 Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso previsto. Se admiten las licencias permisivas de la lista del script; cualquier otra aparece en «Por revisar» y hace fallar `--check`.
 
@@ -8,7 +8,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 
 | Licencia | Paquetes |
 | --- | --- |
-| MIT | 284 |
+| MIT | 332 |
 | ISC | 38 |
 | Apache-2.0 | 11 |
 | BSD-3-Clause | 7 |
@@ -131,6 +131,33 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @radix-ui/react-use-rect | 1.1.0 | MIT |
 | @radix-ui/react-use-size | 1.1.0 | MIT |
 | @radix-ui/rect | 1.1.0 | MIT |
+| @tiptap/core | 3.31.4 | MIT |
+| @tiptap/extension-blockquote | 3.31.4 | MIT |
+| @tiptap/extension-bold | 3.31.4 | MIT |
+| @tiptap/extension-bullet-list | 3.31.4 | MIT |
+| @tiptap/extension-code | 3.31.4 | MIT |
+| @tiptap/extension-code-block | 3.31.4 | MIT |
+| @tiptap/extension-document | 3.31.4 | MIT |
+| @tiptap/extension-dropcursor | 3.31.4 | MIT |
+| @tiptap/extension-gapcursor | 3.31.4 | MIT |
+| @tiptap/extension-hard-break | 3.31.4 | MIT |
+| @tiptap/extension-heading | 3.31.4 | MIT |
+| @tiptap/extension-horizontal-rule | 3.31.4 | MIT |
+| @tiptap/extension-italic | 3.31.4 | MIT |
+| @tiptap/extension-link | 3.31.4 | MIT |
+| @tiptap/extension-list | 3.31.4 | MIT |
+| @tiptap/extension-list-item | 3.31.4 | MIT |
+| @tiptap/extension-list-keymap | 3.31.4 | MIT |
+| @tiptap/extension-ordered-list | 3.31.4 | MIT |
+| @tiptap/extension-paragraph | 3.31.4 | MIT |
+| @tiptap/extension-strike | 3.31.4 | MIT |
+| @tiptap/extension-text | 3.31.4 | MIT |
+| @tiptap/extension-text-align | 3.31.4 | MIT |
+| @tiptap/extension-underline | 3.31.4 | MIT |
+| @tiptap/extensions | 3.31.4 | MIT |
+| @tiptap/pm | 3.31.4 | MIT |
+| @tiptap/react | 3.31.4 | MIT |
+| @tiptap/starter-kit | 3.31.4 | MIT |
 | @types/d3 | 7.4.3 | MIT |
 | @types/d3-array | 3.2.2 | MIT |
 | @types/d3-axis | 3.0.6 | MIT |
@@ -168,7 +195,10 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @types/mdast | 4.0.4 | MIT |
 | @types/ms | 2.1.0 | MIT |
 | @types/pako | 2.0.4 | MIT |
+| @types/react | 19.3.0 | MIT |
+| @types/react-dom | 19.3.0 | MIT |
 | @types/unist | 3.0.3 | MIT |
+| @types/use-sync-external-store | 0.0.6 | MIT |
 | @ungap/structured-clone | 1.4.0 | ISC |
 | @upsetjs/venn.js | 2.0.0 | MIT |
 | anymatch | 3.1.3 | ISC |
@@ -194,6 +224,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | crelt | 1.0.7 | MIT |
 | cross-env | 7.0.3 | MIT |
 | cross-spawn | 7.0.6 | MIT |
+| csstype | 3.2.3 | MIT |
 | cytoscape | 3.34.3 | MIT |
 | cytoscape-cose-bilkent | 4.1.0 | MIT |
 | cytoscape-fcose | 2.2.0 | MIT |
@@ -247,6 +278,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | escape-string-regexp | 5.0.0 | MIT |
 | extend | 3.0.2 | MIT |
 | fake-indexeddb | 6.2.5 | Apache-2.0 |
+| fast-equals | 5.4.5 | MIT |
 | fast-png | 6.4.0 | MIT |
 | fastdom | 1.0.12 | MIT |
 | fflate | 0.8.3 | MIT |
@@ -283,6 +315,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | khroma | 2.1.0 | MIT |
 | langium | 3.3.1 | MIT |
 | layout-base | 1.0.2, 2.0.1 | MIT |
+| linkifyjs | 4.3.3 | MIT |
 | lodash-es | 4.18.1 | MIT |
 | lodash.debounce | 4.0.8 | MIT |
 | lodash.throttle | 4.1.1 | MIT |
@@ -338,6 +371,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | normalize-path | 3.0.0 | MIT |
 | object-assign | 4.1.1 | MIT |
 | open-color | 1.9.1 | MIT |
+| orderedmap | 2.1.1 | MIT |
 | package-manager-detector | 1.9.0 | MIT |
 | pako | 2.0.3, 2.2.0 | (MIT AND Zlib) |
 | path-data-parser | 0.1.0 | MIT |
@@ -351,6 +385,19 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | points-on-curve | 0.2.0, 1.0.1 | MIT |
 | points-on-path | 0.2.1 | MIT |
 | property-information | 7.2.0 | MIT |
+| prosemirror-changeset | 2.4.4 | MIT |
+| prosemirror-commands | 1.7.2 | MIT |
+| prosemirror-dropcursor | 1.8.4 | MIT |
+| prosemirror-gapcursor | 1.4.1 | MIT |
+| prosemirror-history | 1.5.1 | MIT |
+| prosemirror-inputrules | 1.5.1 | MIT |
+| prosemirror-keymap | 1.2.3 | MIT |
+| prosemirror-model | 1.25.12 | MIT |
+| prosemirror-schema-list | 1.5.1 | MIT |
+| prosemirror-state | 1.4.4 | MIT |
+| prosemirror-tables | 1.8.5 | MIT |
+| prosemirror-transform | 1.12.2 | MIT |
+| prosemirror-view | 1.42.6 | MIT |
 | pwacompat | 2.0.17 | Apache-2.0 |
 | react | 19.3.0 | MIT |
 | react-dom | 19.3.0 | MIT |
@@ -366,6 +413,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | remark-rehype | 11.1.2 | MIT |
 | remark-stringify | 11.0.0 | MIT |
 | robust-predicates | 3.0.3 | Unlicense |
+| rope-sequence | 1.3.4 | MIT |
 | roughjs | 4.6.4, 4.6.6 | MIT |
 | rw | 1.3.3 | BSD-3-Clause |
 | safer-buffer | 2.1.2 | MIT |

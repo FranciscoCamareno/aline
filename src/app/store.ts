@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DocumentRecord } from '../domain/revision.ts';
+import { isContentKind, type DocumentRecord } from '../domain/revision.ts';
 import type { PersistenceStatus } from '../ports/RemoteStore.ts';
 import type { RemoteStatus } from './syncRuntime.ts';
 
@@ -28,8 +28,16 @@ export interface ViewCommand {
   kind: 'export';
 }
 
-/** Sección de la biblioteca: documentos (lienzos y notas) o calendario. */
-export type Section = 'library' | 'calendar';
+/**
+ * Sección de la barra lateral: biblioteca (lienzos y notas), calendario o documentos de texto
+ * enriquecido (kind `doc`).
+ */
+export type Section = 'library' | 'calendar' | 'documents';
+
+/** Sección en la que se abre un documento: los `doc` en «Documentos», el resto en la biblioteca. */
+function sectionFor(documents: readonly DocumentRecord[], id: string): Section {
+  return documents.find((d) => d.id === id)?.kind === 'doc' ? 'documents' : 'library';
+}
 
 interface UiState {
   section: Section;
@@ -67,7 +75,17 @@ interface UiState {
 
 export const useUiStore = create<UiState>()((set, get) => ({
   section: 'library',
-  setSection: (section) => set({ section }),
+  // Al entrar en una sección, si el documento abierto es de otra, se abre su más reciente.
+  setSection: (section) =>
+    set((state) => {
+      if (section === 'calendar') return { section };
+      const active = state.documents.find((d) => d.id === state.activeId);
+      if (active && sectionFor(state.documents, active.id) === section) return { section };
+      const recent = state.documents.find(
+        (d) => !d.deleted && (section === 'documents' ? d.kind === 'doc' : isContentKind(d.kind)),
+      );
+      return { section, activeId: recent?.id ?? null };
+    }),
   documents: [],
   activeId: null,
   saveStatus: 'idle',
@@ -93,9 +111,17 @@ export const useUiStore = create<UiState>()((set, get) => ({
       documents: state.documents.filter((d) => d.id !== id),
       activeId: state.activeId === id ? null : state.activeId,
     })),
-  // Abrir un documento siempre lleva a la sección de documentos.
-  setActive: (activeId) => set(activeId ? { activeId, section: 'library' } : { activeId }),
-  navigate: (focus) => set({ activeId: focus.documentId, focus, section: 'library' }),
+  // Abrir un documento lleva a su sección (biblioteca o documentos).
+  setActive: (activeId) =>
+    set((state) =>
+      activeId ? { activeId, section: sectionFor(state.documents, activeId) } : { activeId },
+    ),
+  navigate: (focus) =>
+    set((state) => ({
+      activeId: focus.documentId,
+      focus,
+      section: sectionFor(state.documents, focus.documentId),
+    })),
   consumeFocus: (documentId) => {
     const focus = get().focus;
     if (focus?.documentId !== documentId) return null;

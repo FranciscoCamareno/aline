@@ -90,6 +90,10 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
 - **Calendario** (DESIGN.md §8): sección propia en la biblioteca, vistas de mes y semana,
   eventos de todo el día, con hora o de varios días con los colores de las notas adhesivas, y
   varios calendarios que se muestran u ocultan. Cada calendario es un documento del almacén.
+- **Documentos** (beta): tercera sección de la barra lateral con documentos de formato libre
+  editados con Tiptap (títulos, negrita, cursiva, subrayado, tachado, listas, citas y
+  alineación) y vista «Continuo» u «Hoja» (A4). Cada documento es un documento del almacén
+  (`kind: 'doc'`, JSON); las notas siguen siendo Markdown.
 - **Plantillas del lienzo** (DESIGN.md §9): guardar una selección (también con imágenes y
   stickers) e insertarla con un clic o arrastrándola. Sustituyen a la biblioteca de Excalidraw.
 - **Biblioteca y cabecera** (DESIGN.md §6): «Nuevo» con desplegable (lienzo, nota, carpeta,
@@ -369,6 +373,8 @@ El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-
 | Stickers en oscuro (DESIGN.md «Selector de stickers»)                    | Conservan su color con una capa sin filtro, pero quedan por encima de las formas aunque estén detrás en el orden de capas, no respetan el recorte de un marco y la exportación en oscuro los muestra con el filtro del motor | `features/canvas/stickerLayer.ts`       |
 | Calendario: lo que falta (DESIGN.md §8.6)                                | Selector de fechas propio, hoja de «hoy», eventos repetidos, semana desde el domingo y búsqueda de eventos                                                                                                                   | `features/calendar/`                    |
 | Calendario y plantillas con versiones antiguas de la app                 | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento: actualizar todos los dispositivos antes de usarlos                                                                                                   | `domain/revision.ts`                    |
+| Documentos: lo que falta (beta)                                          | Exportar (PDF/DOCX/Markdown), tablas, imágenes, enlaces internos, búsqueda e índice de enlaces, paginación real al editar, iconos propios de negrita/cursiva y pruebas en el iPad                                            | `features/docs/`                        |
+| Documentos con versiones antiguas de la app                              | Una versión anterior al 15/10/2026 no reconoce el tipo `doc`: actualizar todos los dispositivos antes de usarlo                                                                                                              | `domain/revision.ts`                    |
 | Desactivar la biblioteca externa de Excalidraw                           | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                                                                                                     | —                                       |
 
 ## Decisiones de implementación

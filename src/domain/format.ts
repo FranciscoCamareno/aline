@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { revisionKindSchema, revisionSchema } from './revision.ts';
 import { calendarSchema } from './calendar.ts';
+import { richDocSchema } from './richDoc.ts';
 import { encryptionFileSchema } from './encryption.ts';
 import { canvasExtensionsSchema } from './sidecar.ts';
 import { vaultSchema, versionPruneSchema } from './vault.ts';
@@ -59,6 +60,7 @@ export const FORMAT_SCHEMAS = {
   revision: revisionSchema,
   'canvas-extensions': canvasExtensionsSchema,
   calendar: calendarSchema,
+  'rich-doc': richDocSchema,
   heads: headsFileSchema,
   catalog: catalogSchema,
   'version-prune': versionPruneSchema,

@@ -27,6 +27,7 @@ import { bootstrap, type AppServices } from './services.ts';
 import { StartupError } from './StartupError.tsx';
 import { EVENT_COLORS } from '../domain/calendar.ts';
 import { CalendarView } from '../features/calendar/CalendarView.tsx';
+import { DocView } from '../features/docs/DocView.tsx';
 import { useCalendarStore } from '../features/calendar/calendarStore.ts';
 import { useUiStore } from './store.ts';
 import { useTheme } from './theme.ts';
@@ -43,10 +44,14 @@ async function loadApp(firstCanvasTitle: string, temporary: boolean) {
   const docs = await app.service.listDocuments();
   const lastId = await app.service.lastOpenedDocumentId();
   const visible = docs.filter((d) => !d.deleted && isContentKind(d.kind));
+  // El último abierto puede ser un documento de texto (se abre en su sección, «Documentos»).
+  const last = docs.find(
+    (d) => d.id === lastId && !d.deleted && (isContentKind(d.kind) || d.kind === 'doc'),
+  );
   return {
     app,
     docs,
-    activeId: visible.find((d) => d.id === lastId)?.id ?? visible[0]?.id ?? null,
+    activeId: last?.id ?? visible[0]?.id ?? null,
   };
 }
 
@@ -301,6 +306,19 @@ export function App() {
     [services, t, upsertDocument, setActive, setSaveStatus, reportError],
   );
 
+  /** Documento de texto enriquecido nuevo, abierto en la sección «Documentos». */
+  const createRichDoc = useCallback(async () => {
+    if (!services) return;
+    try {
+      const doc = await services.service.createRichDoc(t('docs.untitled'));
+      upsertDocument(doc);
+      setActive(doc.id);
+      setSaveStatus('saved-local');
+    } catch (error) {
+      reportError(error);
+    }
+  }, [services, t, upsertDocument, setActive, setSaveStatus, reportError]);
+
   const createFolder = useCallback(
     async (title: string, parentId: string | null) => {
       try {
@@ -412,8 +430,11 @@ export function App() {
   if (!services) return <div className="view-message">{t('app.loading')}</div>;
 
   const inCalendar = section === 'calendar';
-  // En el calendario no hay documento abierto: la cabecera solo deja lo general.
-  const active = inCalendar ? null : (documents.find((d) => d.id === activeId) ?? null);
+  const inDocs = section === 'documents';
+  // En el calendario no hay documento abierto: la cabecera solo deja lo general. Cada sección
+  // muestra solo lo suyo: los `doc` en «Documentos» y lienzos y notas en la biblioteca.
+  const activeDoc = inCalendar ? null : (documents.find((d) => d.id === activeId) ?? null);
+  const active = activeDoc && (activeDoc.kind === 'doc') === inDocs ? activeDoc : null;
   /** Carpeta elegida en la biblioteca, si sigue viva: la exportación de Markdown se limita a ella. */
   const exportFolder =
     selectedFolder && documents.some((d) => d.id === selectedFolder && !d.deleted)
@@ -473,7 +494,7 @@ export function App() {
             <Icon name="historial" />
           </button>
         )}
-        {active && (
+        {active && active.kind !== 'doc' && (
           <button
             type="button"
             className="topbar-button"
@@ -608,6 +629,7 @@ export function App() {
           onImport={importDocuments}
           onMove={moveDocument}
           onOpenProfile={() => setPanel((p) => (p === 'profile' ? null : 'profile'))}
+          onCreateDoc={createRichDoc}
           onCreateCalendar={(title) =>
             useCalendarStore
               .getState()
@@ -654,7 +676,24 @@ export function App() {
           )}
         </div>
         {inCalendar && <CalendarView service={services.service} />}
-        {!active && !inCalendar && (
+        {!active && inDocs && (
+          <div className="empty-state" data-testid="docs-empty-state">
+            <img className="sticker" src={stickerA} alt="" width={120} height={120} />
+            <h2>{t('docs.emptyTitle')}</h2>
+            <p>{t('docs.emptyBody')}</p>
+            <button type="button" className="primary" onClick={() => void createRichDoc()}>
+              {t('docs.new')}
+            </button>
+          </div>
+        )}
+        {active?.kind === 'doc' && (
+          <DocView
+            key={`${active.id}:${reloads[active.id] ?? 0}`}
+            documentId={active.id}
+            service={services.service}
+          />
+        )}
+        {!active && !inCalendar && !inDocs && (
           // Estado vacío (DESIGN.md §6): una invitación con el personaje de la marca.
           <div className="empty-state" data-testid="empty-state">
             <img className="sticker" src={stickerA} alt="" width={120} height={120} />

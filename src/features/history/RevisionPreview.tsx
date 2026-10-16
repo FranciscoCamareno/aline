@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { excalidrawCanvasAdapter } from '../../adapters/excalidraw/sceneCodec.ts';
 import type { RevisionPreview as Preview, VaultService } from '../../application/VaultService.ts';
 import { compareEvents } from '../../domain/calendar.ts';
+import { richDocText } from '../../domain/richDoc.ts';
 import { renderMarkdownPreview } from '../notes/markdown.ts';
 
 interface Props {
@@ -100,6 +101,14 @@ export function RevisionPreview({ revisionId, service, onLoaded }: Props) {
             ))}
           </ul>
         )}
+      </div>
+    );
+  }
+  if (preview.kind === 'doc') {
+    // Texto plano, un bloque por línea: la vista previa no reconstruye el formato.
+    return (
+      <div className="revision-preview doc-preview" data-testid="revision-preview">
+        {richDocText(preview.doc) || <span className="muted">{t('docs.emptyDoc')}</span>}
       </div>
     );
   }

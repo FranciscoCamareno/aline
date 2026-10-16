@@ -1,0 +1,95 @@
+import { z } from 'zod';
+import type { ReadOnlyReason } from './compat.ts';
+
+/**
+ * Documento de texto enriquecido (kind `doc`, desde el 15/10/2026): un documento con formato
+ * libre, editado con Tiptap. El cuerpo es JSON con el árbol de ProseMirror que produce el editor
+ * (`content`, nodo raíz `doc`). El dominio no conoce el esquema del editor: solo comprueba la
+ * forma general del árbol; el editor valida los nodos y marcas al cargarlo.
+ */
+export const RICH_DOC_SCHEMA_VERSION = 1 as const;
+
+/** Nodo de ProseMirror en JSON: `type` y, según el caso, atributos, hijos, marcas o texto. */
+export interface RichNode {
+  type: string;
+  attrs?: Record<string, unknown> | undefined;
+  content?: RichNode[] | undefined;
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> | undefined }> | undefined;
+  text?: string | undefined;
+  [key: string]: unknown;
+}
+
+const markSchema = z.looseObject({
+  type: z.string().min(1).max(100),
+  attrs: z.record(z.string(), z.unknown()).optional(),
+});
+
+const nodeSchema: z.ZodType<RichNode> = z.lazy(() =>
+  z.looseObject({
+    type: z.string().min(1).max(100),
+    attrs: z.record(z.string(), z.unknown()).optional(),
+    content: z.array(nodeSchema).max(100_000).optional(),
+    marks: z.array(markSchema).max(100).optional(),
+    text: z.string().optional(),
+  }),
+);
+
+export const richDocSchema = z.looseObject({
+  schemaVersion: z.literal(RICH_DOC_SCHEMA_VERSION),
+  content: z.looseObject({
+    type: z.literal('doc'),
+    content: z.array(nodeSchema).max(100_000).optional(),
+  }),
+});
+export type RichDocData = z.infer<typeof richDocSchema>;
+
+export function emptyRichDoc(): RichDocData {
+  return {
+    schemaVersion: RICH_DOC_SCHEMA_VERSION,
+    content: { type: 'doc', content: [{ type: 'paragraph' }] },
+  };
+}
+
+/**
+ * Lectura tolerante (diseño §5, compatibilidad): una versión posterior o un contenido inválido
+ * se muestran en solo lectura y nunca se reescriben.
+ */
+export function parseRichDoc(value: unknown): {
+  doc: RichDocData;
+  readOnly: ReadOnlyReason | null;
+} {
+  const version =
+    value && typeof value === 'object' ? (value as { schemaVersion?: unknown }).schemaVersion : 0;
+  if (typeof version === 'number' && version > RICH_DOC_SCHEMA_VERSION) {
+    const content = richDocSchema.shape.content.safeParse((value as { content?: unknown }).content);
+    return {
+      doc: content.success ? { ...emptyRichDoc(), content: content.data } : emptyRichDoc(),
+      readOnly: 'unsupported-version',
+    };
+  }
+  const parsed = richDocSchema.safeParse(value);
+  return parsed.success
+    ? { doc: parsed.data, readOnly: null }
+    : { doc: emptyRichDoc(), readOnly: 'invalid-content' };
+}
+
+/** Nodos que separan bloques al extraer el texto (párrafos, títulos, elementos de lista…). */
+const INLINE_TYPES = new Set(['text', 'hardBreak']);
+
+/** Texto plano del documento, un bloque por línea (vistas previas del historial). */
+export function richDocText(doc: RichDocData): string {
+  const lines: string[] = [];
+  let line = '';
+  const walk = (node: RichNode): void => {
+    if (node.type === 'text') line += node.text ?? '';
+    else if (node.type === 'hardBreak') line += '\n';
+    for (const child of node.content ?? []) walk(child);
+    if (!INLINE_TYPES.has(node.type) && node.type !== 'doc' && line) {
+      lines.push(line);
+      line = '';
+    }
+  };
+  walk(doc.content);
+  if (line) lines.push(line);
+  return lines.join('\n');
+}

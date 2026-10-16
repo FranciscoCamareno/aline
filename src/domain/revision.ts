@@ -10,9 +10,17 @@ export type DocumentKind = z.infer<typeof documentKindSchema>;
 /**
  * Tipos de documento del almacén. `calendar` (eventos, JSON) y `template` (plantilla del lienzo,
  * una escena .excalidraw con sus imágenes) se añadieron el 14/10/2026: ver el registro de
- * cambios de arquitectura en el diseño técnico.
+ * cambios de arquitectura en el diseño técnico. `doc` (documento de texto enriquecido, JSON de
+ * Tiptap/ProseMirror) se añadió el 15/10/2026 con el mismo registro.
  */
-export const revisionKindSchema = z.enum(['note', 'canvas', 'folder', 'calendar', 'template']);
+export const revisionKindSchema = z.enum([
+  'note',
+  'canvas',
+  'folder',
+  'calendar',
+  'template',
+  'doc',
+]);
 export type RevisionKind = z.infer<typeof revisionKindSchema>;
 
 /** Notas y lienzos: lo que se abre y se organiza en la biblioteca. */
@@ -83,8 +91,8 @@ export type ContentRefs = Revision['contentRefs'];
 export interface DocumentRecord {
   id: Uuid;
   /**
-   * Nota, lienzo, carpeta, calendario o plantilla; todos son revisionados (§5). Solo notas y
-   * lienzos se abren en la biblioteca (`isContentKind`).
+   * Nota, lienzo, carpeta, calendario, plantilla o documento; todos son revisionados (§5). Solo
+   * notas y lienzos se abren en la biblioteca (`isContentKind`).
    */
   kind: RevisionKind;
   title: string;

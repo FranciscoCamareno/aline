@@ -17,7 +17,7 @@ export interface RemoteChangePage {
 }
 
 /** Papel de un objeto en el formato abierto; decide su ruta y extensión. */
-/** `data`: cuerpo JSON de un calendario (objects/<sha256>.json, como las extensiones). */
+/** `data`: cuerpo JSON de un calendario o un documento (objects/<sha256>.json, como las extensiones). */
 export type ObjectRole = 'note' | 'canvas' | 'extensions' | 'data' | 'asset';
 
 export interface RemoteObject {
