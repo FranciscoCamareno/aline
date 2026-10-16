@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { clickAndWaitForReload } from './vaultSwitch.ts';
 import { FakeDrive } from '../unit/fakeDrive.ts';
 
 /**
@@ -162,7 +163,7 @@ test('conectar Drive, sincronizar y abrir el almacén desde otro «equipo» (pla
   await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByPlaceholder('Nombre del almacén nuevo').fill('Equipo B');
-  await page.getByRole('button', { name: 'Crear y abrir' }).click();
+  await clickAndWaitForReload(page, page.getByRole('button', { name: 'Crear y abrir' }));
   await expect(page.locator('.excalidraw')).toBeVisible();
   await page.getByTestId('open-profile').click();
   await page.getByTestId('connect-drive').click();
@@ -170,10 +171,10 @@ test('conectar Drive, sincronizar y abrir el almacén desde otro «equipo» (pla
   await page.getByTestId('drive-accept').click();
   await page.getByTestId('drive-authorize').click();
   await expect(page.getByTestId('drive-choices')).toContainText('Mi almacén');
-  await page
-    .getByTestId('drive-choices')
-    .getByRole('button', { name: 'Abrir ese almacén aquí' })
-    .click();
+  await clickAndWaitForReload(
+    page,
+    page.getByTestId('drive-choices').getByRole('button', { name: 'Abrir ese almacén aquí' }),
+  );
   await expect(page.getByTestId('remote-status')).toContainText('Necesita autorización');
   await page.getByTestId('remote-status').click();
   await page.getByTestId('drive-reconnect').click();
@@ -238,7 +239,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByPlaceholder('Nombre del almacén nuevo').fill('Equipo B');
-  await page.getByRole('button', { name: 'Crear y abrir' }).click();
+  await clickAndWaitForReload(page, page.getByRole('button', { name: 'Crear y abrir' }));
   await expect(page.locator('.excalidraw')).toBeVisible();
   await page.getByTestId('open-profile').click();
   await page.getByTestId('connect-drive').click();
@@ -246,10 +247,10 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await page.getByTestId('drive-accept').click();
   await page.getByTestId('drive-authorize').click();
   await expect(page.getByTestId('drive-choices')).toContainText('Mi almacén · cifrado');
-  await page
-    .getByTestId('drive-choices')
-    .getByRole('button', { name: 'Abrir ese almacén aquí' })
-    .click();
+  await clickAndWaitForReload(
+    page,
+    page.getByTestId('drive-choices').getByRole('button', { name: 'Abrir ese almacén aquí' }),
+  );
   await page.getByTestId('remote-status').click();
   await page.getByTestId('drive-reconnect').click();
   await page.getByTestId('drive-authorize').click();
@@ -283,12 +284,14 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
 
   // A vuelve: su carpeta cifrada ya no existe, pero la nueva NO está cifrada. No sube nada a
   // ella hasta que el propietario lo acepte (auditoría 13/10/2026, H01).
-  await page
-    .getByTestId('vault-item')
-    .filter({ hasText: 'Mi almacén' })
-    .first()
-    .getByRole('button', { name: 'Abrir' })
-    .click();
+  await clickAndWaitForReload(
+    page,
+    page
+      .getByTestId('vault-item')
+      .filter({ hasText: 'Mi almacén' })
+      .first()
+      .getByRole('button', { name: 'Abrir' }),
+  );
   await page.getByTestId('remote-status').click();
   await page.getByTestId('drive-reconnect').click();
   await page.getByTestId('drive-authorize').click();

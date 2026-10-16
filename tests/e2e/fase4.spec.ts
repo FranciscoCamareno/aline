@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { clickAndWaitForReload } from './vaultSwitch.ts';
 
 /**
  * Fase 4 sin Drive: carpeta local, sincronización entre dos «dispositivos» y ediciones externas.
@@ -111,11 +112,11 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
   await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
   await page.getByPlaceholder('Nombre del almacén nuevo').fill('Equipo B');
-  await page.getByRole('button', { name: 'Crear y abrir' }).click();
+  await clickAndWaitForReload(page, page.getByRole('button', { name: 'Crear y abrir' }));
   await expect(page.locator('.excalidraw')).toBeVisible();
   await connectFolder(page);
   await expect(page.getByTestId('folder-mismatch')).toBeVisible();
-  await page.getByTestId('open-folder-vault').click();
+  await clickAndWaitForReload(page, page.getByTestId('open-folder-vault'));
   await expect(page.getByTestId('remote-status')).toContainText('Carpeta al día');
   if (await page.getByTestId('profile-close').isVisible()) {
     await page.getByTestId('profile-close').click();
@@ -140,12 +141,14 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
   // De vuelta en el «equipo A»: al abrir se sincroniza y aparece el cambio.
   await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
-  await page
-    .getByTestId('vault-item')
-    .filter({ hasText: 'Mi almacén' })
-    .first()
-    .getByRole('button', { name: 'Abrir' })
-    .click();
+  await clickAndWaitForReload(
+    page,
+    page
+      .getByTestId('vault-item')
+      .filter({ hasText: 'Mi almacén' })
+      .first()
+      .getByRole('button', { name: 'Abrir' }),
+  );
   await expect(page.getByTestId('remote-status')).toContainText('Carpeta al día');
   if (await page.getByTestId('status-panel').isVisible()) {
     await page.getByTestId('status-panel').getByRole('button', { name: 'Cerrar' }).click();

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { clickAndWaitForReload } from './vaultSwitch.ts';
 
 /** Recorridos de la fase 2 en Chromium: papelera, historial, conflictos, copias y robustez. */
 test.use({ locale: 'es-ES' });
@@ -153,7 +154,7 @@ test('copia ZIP y restauración en un almacén nuevo (RF-32, CA-16)', async ({ p
   await expect(report).toContainText('coincide byte a byte');
   await expect(page.getByTestId('vault-item')).toHaveCount(2);
 
-  await page.getByTestId('open-restored').click();
+  await clickAndWaitForReload(page, page.getByTestId('open-restored'));
   await expect(page.locator('.excalidraw, .cm-content').first()).toBeVisible();
   await page.getByTestId('library-title-text').filter({ hasText: 'Nota sin título' }).click();
   await expect(page.locator('.cm-content')).toContainText('contenido para la copia ✓');
