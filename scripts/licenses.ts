@@ -31,6 +31,17 @@ const ALLOWED = new Set([
   'OFL-1.1',
 ]);
 
+/**
+ * Licencias comprobadas a mano para paquetes que no la declaran en su package.json. pnpm la
+ * deduce entonces del archivo de licencia, y en Linux (sistema de archivos sensible a
+ * mayúsculas) no encuentra un archivo llamado `license` en minúsculas: sale «Unknown» en CI y
+ * «MIT» en Windows. Cada entrada va atada a su versión; una versión nueva se vuelve a revisar.
+ */
+const VERIFIED: Record<string, { version: string; license: string; evidence: string }> = {
+  // Dependencia de Mermaid (a través de Excalidraw). Archivo `license`: «The MIT License (MIT)».
+  khroma: { version: '2.1.0', license: 'MIT', evidence: 'texto MIT en su archivo `license`' },
+};
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // Orden fija sin datos externos: no hay argumentos que escapar.
 const raw = execSync(pnpmCommand('licenses list --prod --json'), {
@@ -41,12 +52,21 @@ const raw = execSync(pnpmCommand('licenses list --prod --json'), {
 const byLicense = JSON.parse(raw) as Record<string, PackageEntry[]>;
 
 const rows = Object.entries(byLicense)
-  .flatMap(([license, packages]) => packages.map((p) => ({ ...p, license })))
+  .flatMap(([license, packages]) =>
+    packages.map((p) => {
+      const verified = VERIFIED[p.name];
+      // Solo si pnpm no la reconoce y la versión es exactamente la comprobada.
+      return verified && !ALLOWED.has(license) && p.versions.join(',') === verified.version
+        ? { ...p, license: verified.license }
+        : { ...p, license };
+    }),
+  )
   .sort((a, b) => a.name.localeCompare(b.name));
 const rejected = rows.filter((r) => !ALLOWED.has(r.license));
-const summary = Object.entries(byLicense)
-  .map(([license, packages]) => [license, packages.length] as const)
-  .sort((a, b) => b[1] - a[1]);
+// Del resultado ya corregido: el inventario sale igual en Windows y en Linux.
+const counts = new Map<string, number>();
+for (const r of rows) counts.set(r.license, (counts.get(r.license) ?? 0) + 1);
+const summary = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
 const md = [
   '# Inventario de licencias',
@@ -66,6 +86,12 @@ const md = [
   rejected.length
     ? rejected.map((r) => `- ${r.name} ${r.versions.join(', ')}: ${r.license}`).join('\n')
     : 'Ninguna dependencia de producción tiene una licencia fuera de la lista admitida.',
+  '',
+  'Comprobadas a mano (el paquete no declara licencia y pnpm la deduce de su archivo, lo que no funciona igual en todos los sistemas):',
+  '',
+  ...Object.entries(VERIFIED).map(
+    ([name, v]) => `- ${name} ${v.version}: ${v.license} (${v.evidence})`,
+  ),
   '',
   '## Licencia del código propio',
   '',
@@ -115,4 +141,7 @@ const md = [
 
 writeFileSync(join(root, 'docs', 'licencias.md'), md);
 console.log(`docs/licencias.md: ${rows.length} paquetes, ${rejected.length} por revisar`);
+// En CI el registro debe decir qué paquete falla, no solo cuántos.
+for (const r of rejected)
+  console.error(`  por revisar: ${r.name} ${r.versions.join(', ')}: ${r.license}`);
 if (process.argv.includes('--check') && rejected.length) process.exit(1);

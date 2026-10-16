@@ -12,16 +12,20 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 | ISC | 38 |
 | Apache-2.0 | 11 |
 | BSD-3-Clause | 7 |
-| OFL-1.1 | 1 |
-| (MPL-2.0 OR Apache-2.0) | 1 |
-| CC0-1.0 | 1 |
 | (MIT AND Zlib) | 1 |
-| Unlicense | 1 |
+| (MPL-2.0 OR Apache-2.0) | 1 |
 | 0BSD | 1 |
+| CC0-1.0 | 1 |
+| OFL-1.1 | 1 |
+| Unlicense | 1 |
 
 ## Por revisar
 
 Ninguna dependencia de producción tiene una licencia fuera de la lista admitida.
+
+Comprobadas a mano (el paquete no declara licencia y pnpm la deduce de su archivo, lo que no funciona igual en todos los sistemas):
+
+- khroma 2.1.0: MIT (texto MIT en su archivo `license`)
 
 ## Licencia del código propio
 
