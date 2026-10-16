@@ -150,3 +150,86 @@ describe('documentos en el almacén (cambio de arquitectura 15/10/2026)', () => 
     expect(await knowledge.reindex(doc.id)).toBeNull();
   });
 });
+
+describe('documentos Markdown y carpetas de «Documentos» (cambio de arquitectura 16/10/2026)', () => {
+  it('un documento Markdown tiene el formato de una nota y su propio tipo', async () => {
+    const { service } = await freshService();
+    const doc = await service.createMarkdownDoc('Escaleta');
+    expect(doc.kind).toBe('mddoc');
+    expect(isContentKind(doc.kind)).toBe(false);
+
+    const opened = await service.openNote(doc.id);
+    expect(opened.body).toBe('');
+    await service.saveNote(opened.session, '## Escena uno\n\n**importante**\n');
+    const markdown = await service.exportNoteMarkdown(doc.id);
+    expect(markdown).toMatch(/^---\nschema_version: 1\n/);
+    expect(markdown).toContain(`id: ${doc.id}`);
+    expect(markdown).toContain('## Escena uno');
+    // Renombrar reescribe el frontmatter y conserva el tipo.
+    const renamed = await service.renameDocument(doc.id, 'Escaleta final');
+    expect(renamed.revision.metadata.kind).toBe('mddoc');
+    expect(await service.exportNoteMarkdown(doc.id)).toContain('title: "Escaleta final"');
+  });
+
+  it('tiene copia legible en el formato abierto, como las notas', async () => {
+    const { service } = await freshService();
+    const doc = await service.createMarkdownDoc('Escaleta');
+    const content = await service.exportContent();
+    const files = vaultToFiles(content, { deviceId: crypto.randomUUID() });
+    expect([...files.keys()].some((p) => p.startsWith(`readable/${doc.id}/`))).toBe(true);
+    const { content: back, problems } = await filesToVault(files);
+    expect(problems).toEqual([]);
+    expect(back.documents.find((d) => d.id === doc.id)?.kind).toBe('mddoc');
+  });
+
+  it('una edición externa de la copia legible conserva el tipo', async () => {
+    const { service } = await freshService();
+    const doc = await service.createMarkdownDoc('Escaleta');
+    const [parent] = doc.headRevisionIds;
+    const text = `---\nschema_version: 1\nid: ${doc.id}\ntitle: "Escaleta"\ntags: []\n---\nDesde fuera\n`;
+    const revisionId = await service.importExternalNote(
+      doc.id,
+      parent!,
+      new TextEncoder().encode(text),
+    );
+    expect(revisionId).toBeTruthy();
+    expect((await service.openNote(doc.id)).body).toBe('Desde fuera\n');
+    expect((await service.listDocuments()).find((d) => d.id === doc.id)?.kind).toBe('mddoc');
+  });
+
+  it('cada sección tiene sus carpetas: un documento no entra en una carpeta de «Notas»', async () => {
+    const { service } = await freshService();
+    const docsFolder = await service.createFolder('Guiones', null, 'docfolder');
+    const notesFolder = await service.createFolder('Ideas');
+    expect(docsFolder.kind).toBe('docfolder');
+
+    const md = await service.createMarkdownDoc('Escaleta', docsFolder.id);
+    const rich = await service.createRichDoc('Guion', docsFolder.id);
+    expect(md.folderId).toBe(docsFolder.id);
+    expect(rich.folderId).toBe(docsFolder.id);
+    // Subcarpeta de «Documentos» dentro de otra de «Documentos».
+    const sub = await service.createFolder('Temporada 2', docsFolder.id, 'docfolder');
+    expect(sub.folderId).toBe(docsFolder.id);
+
+    await expect(service.moveDocument(md.id, notesFolder.id)).rejects.toThrow(/Carpeta/);
+    await expect(service.createRichDoc('Otro', notesFolder.id)).rejects.toThrow(/Carpeta/);
+    await expect(service.createFolder('Mezcla', notesFolder.id, 'docfolder')).rejects.toThrow(
+      /Carpeta/,
+    );
+    const note = await service.createDocument('note', 'Nota');
+    await expect(service.moveDocument(note.id, docsFolder.id)).rejects.toThrow(/Carpeta/);
+    await service.moveDocument(md.id, sub.id);
+    expect((await service.listDocuments()).find((d) => d.id === md.id)?.folderId).toBe(sub.id);
+  });
+
+  it('entra en el índice de búsqueda y enlaces', async () => {
+    const { db, repo, service } = await freshService();
+    const doc = await service.createMarkdownDoc('Escaleta');
+    const opened = await service.openNote(doc.id);
+    await service.saveNote(opened.session, 'Una escena con lluvia');
+    const knowledge = new KnowledgeService(repo, new DexieKnowledgeStore(db));
+    const indexed = await knowledge.reindex(doc.id);
+    expect(indexed?.kind).toBe('mddoc');
+    expect(indexed?.text).toContain('lluvia');
+  });
+});

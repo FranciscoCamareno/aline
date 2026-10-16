@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ConflictChoice, VaultService } from '../../application/VaultService.ts';
-import type { DocumentRecord, Revision } from '../../domain/revision.ts';
+import { isMarkdownKind, type DocumentRecord, type Revision } from '../../domain/revision.ts';
 import { diffLines } from '../../shared/diff.ts';
 import { RevisionPreview } from './RevisionPreview.tsx';
 
@@ -29,7 +29,7 @@ export function ConflictPanel({ document, service, onResolve, onClose }: Props) 
     void (async () => {
       const list = await service.conflictHeads(document.id);
       const texts: Record<string, string> = {};
-      if (document.kind === 'note') {
+      if (isMarkdownKind(document.kind)) {
         for (const head of list) {
           const p = await service.previewRevision(head.id);
           if (p.kind === 'note') texts[head.id] = p.body;
@@ -46,7 +46,7 @@ export function ConflictPanel({ document, service, onResolve, onClose }: Props) 
   }, [document.id, document.kind, document.headRevisionIds, service]);
 
   const diff = useMemo(() => {
-    if (!heads || heads.length !== 2 || document.kind !== 'note') return null;
+    if (!heads || heads.length !== 2 || !isMarkdownKind(document.kind)) return null;
     return diffLines(bodies[heads[0]!.id] ?? '', bodies[heads[1]!.id] ?? '');
   }, [heads, bodies, document.kind]);
 
@@ -132,7 +132,7 @@ export function ConflictPanel({ document, service, onResolve, onClose }: Props) 
             </section>
           )}
 
-          {document.kind === 'note' && (
+          {isMarkdownKind(document.kind) && (
             <section>
               <h3>{t('conflict.merge')}</h3>
               {diff && (

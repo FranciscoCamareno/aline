@@ -10,15 +10,18 @@ interface Props {
   sync: SyncRuntime | null;
   onClose: () => void;
   onError: (error: unknown) => void;
+  /** Abre las Preferencias (idioma y esquemas de color), en su propio modal. */
+  onOpenPreferences: () => void;
 }
 
 /**
- * Perfil: dónde se guarda el almacén y la conexión con Google Drive (o con una carpeta), con sus
+ * Perfil: las Preferencias (en su propio modal) y dónde se guarda el almacén y la conexión con
+ * Google Drive (o con una carpeta), con sus
  * avisos y la elección de cifrado. El estado y el diagnóstico siguen en el menú «⋯» de la
  * cabecera. Un modal: es una decisión con consecuencias (RN-12), así que se atiende aquí y no se
  * cierra por un clic accidental fuera, que perdería la contraseña a medio escribir.
  */
-export function ProfileDialog({ services, sync, onClose, onError }: Props) {
+export function ProfileDialog({ services, sync, onClose, onError, onOpenPreferences }: Props) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +57,19 @@ export function ProfileDialog({ services, sync, onClose, onError }: Props) {
             <Icon name="cerrar" size={18} />
           </button>
         </header>
+        <button
+          type="button"
+          className="profile-option"
+          data-testid="open-preferences"
+          onClick={onOpenPreferences}
+        >
+          <Icon name="ajustes" size={20} />
+          <span>
+            <strong>{t('preferences.title')}</strong>
+            <span className="muted">{t('profile.preferencesHint')}</span>
+          </span>
+          <Icon name="chevron-der" size={18} />
+        </button>
         <p className="muted">{t('profile.lead')}</p>
         <StorageSection services={services} sync={sync} onError={onError} />
         {(services.temporary || !sync) && <p className="notice">{t('profile.unavailable')}</p>}

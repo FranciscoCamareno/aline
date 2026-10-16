@@ -1,6 +1,11 @@
 import { parseNoteMarkdown } from '../domain/frontmatter.ts';
 import type { Uuid } from '../domain/ids.ts';
-import { isContentKind, type DocumentRecord, type Revision } from '../domain/revision.ts';
+import {
+  isIndexedKind,
+  isMarkdownKind,
+  type DocumentRecord,
+  type Revision,
+} from '../domain/revision.ts';
 import { utf8Decode } from '../shared/hash.ts';
 import type { KnowledgeStore, SearchDocument, StoredLink } from '../ports/KnowledgeStore.ts';
 import type { VaultReader, VaultRepository } from '../ports/VaultRepository.ts';
@@ -32,8 +37,9 @@ export class KnowledgeService {
   /** Vuelve a derivar un documento. Devuelve su documento de búsqueda, o null si se retiró. */
   async reindex(documentId: Uuid): Promise<SearchDocument | null> {
     const doc = await this.repo.getDocument(documentId);
-    // Solo notas y lienzos tienen enlaces y texto indexable (no carpetas, calendarios ni plantillas).
-    if (!doc || doc.deleted || !isContentKind(doc.kind)) {
+    // Notas, lienzos y documentos Markdown tienen enlaces y texto indexable (no carpetas,
+    // calendarios, plantillas ni documentos con formato, por ahora).
+    if (!doc || doc.deleted || !isIndexedKind(doc.kind)) {
       await this.store.removeDerived(documentId);
       return null;
     }
@@ -44,10 +50,9 @@ export class KnowledgeService {
       const blob = await this.repo.getBlob(hash);
       return blob ? utf8Decode(blob.bytes) : null;
     };
-    const extracted =
-      doc.kind === 'note'
-        ? extractNote(parseNoteMarkdown((await text(head.contentRefs.body)) ?? '').body)
-        : extractCanvas(await text(head.contentRefs.body), await text(head.contentRefs.extensions));
+    const extracted = isMarkdownKind(doc.kind)
+      ? extractNote(parseNoteMarkdown((await text(head.contentRefs.body)) ?? '').body)
+      : extractCanvas(await text(head.contentRefs.body), await text(head.contentRefs.extensions));
     const search: SearchDocument = {
       documentId,
       revisionId: head.id,
@@ -73,7 +78,7 @@ export class KnowledgeService {
     onProgress?: (done: number, total: number) => void,
   ): Promise<{ changed: SearchDocument[]; removed: Uuid[] }> {
     const documents = (await this.repo.listDocuments()).filter(
-      (d) => !d.deleted && isContentKind(d.kind),
+      (d) => !d.deleted && isIndexedKind(d.kind),
     );
     const indexed = await this.store.indexedRevisions();
     const stale: Uuid[] = [];
@@ -136,7 +141,7 @@ export class KnowledgeService {
   ): DocumentRecord | 'ambiguous' | null {
     const key = titleKey(label);
     const matches = [...documents].filter(
-      (d) => !d.deleted && isContentKind(d.kind) && titleKey(d.title) === key,
+      (d) => !d.deleted && isIndexedKind(d.kind) && titleKey(d.title) === key,
     );
     if (matches.length > 1) return 'ambiguous';
     return matches[0] ?? null;

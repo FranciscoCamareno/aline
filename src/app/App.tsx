@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { DomainError } from '../domain/errors.ts';
 import type { ConflictChoice } from '../application/VaultService.ts';
-import { hasConflict, isContentKind, type DocumentKind } from '../domain/revision.ts';
+import { hasConflict, isContentKind, isDocsKind, type DocumentKind } from '../domain/revision.ts';
 import { ConflictPanel } from '../features/history/ConflictPanel.tsx';
 import { DetailsPanel } from '../features/knowledge/DetailsPanel.tsx';
 import { SearchPalette } from '../features/knowledge/SearchPalette.tsx';
@@ -15,6 +15,7 @@ import { CanvasView } from '../features/canvas/CanvasView.tsx';
 import { LibrarySidebar } from '../features/library/LibrarySidebar.tsx';
 import { RenameableTitle } from '../features/library/RenameableTitle.tsx';
 import { NoteView } from '../features/notes/NoteView.tsx';
+import { PreferencesDialog } from '../features/status/PreferencesDialog.tsx';
 import { ProfileDialog } from '../features/status/ProfileDialog.tsx';
 import { QUOTA_WARNING_RATIO, quotaRatio, StatusPanel } from '../features/status/StatusPanel.tsx';
 import { describeError } from '../ports/Diagnostics.ts';
@@ -28,14 +29,15 @@ import { StartupError } from './StartupError.tsx';
 import { EVENT_COLORS } from '../domain/calendar.ts';
 import { CalendarView } from '../features/calendar/CalendarView.tsx';
 import { DocView } from '../features/docs/DocView.tsx';
+import { MarkdownDocView } from '../features/docs/MarkdownDocView.tsx';
+import type { DocEditorKind } from '../features/library/LibrarySidebar.tsx';
 import { useCalendarStore } from '../features/calendar/calendarStore.ts';
 import { useUiStore } from './store.ts';
 import { useTheme } from './theme.ts';
 import { Icon } from './ui/Icon.tsx';
 import { Menu } from './ui/Menu.tsx';
 import { ThemeSwitch } from './ui/ThemeSwitch.tsx';
-import logoDark from '../../brand/aline-logo-dark.svg?url';
-import logoLight from '../../brand/aline-logo.svg?url';
+import { schemeLogo } from './schemes.ts';
 import stickerA from '../../brand/stickers/sticker-a.svg?url';
 
 /** Abre el almacén y elige el documento inicial: el último abierto, o el más reciente. */
@@ -46,7 +48,7 @@ async function loadApp(firstCanvasTitle: string, temporary: boolean) {
   const visible = docs.filter((d) => !d.deleted && isContentKind(d.kind));
   // El último abierto puede ser un documento de texto (se abre en su sección, «Documentos»).
   const last = docs.find(
-    (d) => d.id === lastId && !d.deleted && (isContentKind(d.kind) || d.kind === 'doc'),
+    (d) => d.id === lastId && !d.deleted && (isContentKind(d.kind) || isDocsKind(d.kind)),
   );
   return {
     app,
@@ -57,13 +59,13 @@ async function loadApp(firstCanvasTitle: string, temporary: boolean) {
 
 export function App() {
   const { t } = useTranslation();
-  const { theme } = useTheme();
+  const { theme, scheme } = useTheme();
   const [services, setServices] = useState<AppServices | null>(null);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [panel, setPanel] = useState<
-    'status' | 'profile' | 'history' | 'conflict' | 'details' | null
+    'status' | 'profile' | 'preferences' | 'history' | 'conflict' | 'details' | null
   >(null);
   const [searchOpen, setSearchOpen] = useState(false);
   /** Índices de enlaces y búsqueda del almacén abierto. */
@@ -75,6 +77,7 @@ export function App() {
   /** Documento abierto que otra pestaña acaba de modificar. */
   const [changedElsewhere, setChangedElsewhere] = useState<string | null>(null);
   const [quotaHigh, setQuotaHigh] = useState(false);
+  const zenMode = useUiStore((s) => s.zen);
   const { documents, activeId, saveStatus, libraryOpen, selectedFolder, section } = useUiStore(
     useShallow((s) => ({
       documents: s.documents,
@@ -306,23 +309,32 @@ export function App() {
     [services, t, upsertDocument, setActive, setSaveStatus, reportError],
   );
 
-  /** Documento de texto enriquecido nuevo, abierto en la sección «Documentos». */
-  const createRichDoc = useCallback(async () => {
-    if (!services) return;
-    try {
-      const doc = await services.service.createRichDoc(t('docs.untitled'));
-      upsertDocument(doc);
-      setActive(doc.id);
-      setSaveStatus('saved-local');
-    } catch (error) {
-      reportError(error);
-    }
-  }, [services, t, upsertDocument, setActive, setSaveStatus, reportError]);
+  /**
+   * Documento nuevo de la sección «Documentos»: con formato (Tiptap, JSON) o Markdown (Milkdown,
+   * mismo formato que una nota). Se abre en su sección.
+   */
+  const createDocsDocument = useCallback(
+    async (editor: DocEditorKind, folderId: string | null = null) => {
+      if (!services) return;
+      try {
+        const doc =
+          editor === 'tiptap'
+            ? await services.service.createRichDoc(t('docs.untitled'), folderId)
+            : await services.service.createMarkdownDoc(t('docs.untitled'), folderId);
+        upsertDocument(doc);
+        setActive(doc.id);
+        setSaveStatus('saved-local');
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, t, upsertDocument, setActive, setSaveStatus, reportError],
+  );
 
   const createFolder = useCallback(
-    async (title: string, parentId: string | null) => {
+    async (title: string, parentId: string | null, kind: 'folder' | 'docfolder' = 'folder') => {
       try {
-        upsertDocument(await services!.service.createFolder(title, parentId));
+        upsertDocument(await services!.service.createFolder(title, parentId, kind));
       } catch (error) {
         reportError(error);
       }
@@ -434,7 +446,9 @@ export function App() {
   // En el calendario no hay documento abierto: la cabecera solo deja lo general. Cada sección
   // muestra solo lo suyo: los `doc` en «Documentos» y lienzos y notas en la biblioteca.
   const activeDoc = inCalendar ? null : (documents.find((d) => d.id === activeId) ?? null);
-  const active = activeDoc && (activeDoc.kind === 'doc') === inDocs ? activeDoc : null;
+  const active = activeDoc && isDocsKind(activeDoc.kind) === inDocs ? activeDoc : null;
+  // Zen solo cuenta con un lienzo abierto (lo fija su vista).
+  const zen = zenMode && active?.kind === 'canvas';
   /** Carpeta elegida en la biblioteca, si sigue viva: la exportación de Markdown se limita a ella. */
   const exportFolder =
     selectedFolder && documents.some((d) => d.id === selectedFolder && !d.deleted)
@@ -444,139 +458,138 @@ export function App() {
     saveStatus === 'out-of-space' ? 'outOfSpace' : quotaHigh ? 'quotaHigh' : null;
 
   return (
-    <div className={`shell ${libraryOpen ? 'library-open' : ''}`}>
-      <header className="topbar">
-        {!libraryOpen && (
-          <>
+    <div className={`shell ${libraryOpen ? 'library-open' : ''}${zen ? ' zen' : ''}`}>
+      {/* En el modo Zen del lienzo no hay cabecera ni barra lateral; vuelven al salir. */}
+      {!zen && (
+        <header className="topbar">
+          {!libraryOpen && (
+            <>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={t('app.toggleLibrary')}
+                title={t('app.toggleLibrary')}
+                aria-expanded={false}
+                onClick={toggleLibrary}
+              >
+                <Icon name="panel-lateral" />
+              </button>
+              <img className="brand" src={schemeLogo(scheme)} alt={t('app.name')} height={24} />
+            </>
+          )}
+          {inCalendar && <span className="doc-title">{t('calendar.title')}</span>}
+          {active && (
+            <RenameableTitle
+              key={active.id}
+              className="doc-title"
+              title={active.title}
+              testId="active-title"
+              onRename={(title) => renameDocument(active.id, title)}
+            />
+          )}
+          <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
+            {t(`status.${saveStatus}`)}
+          </span>
+          <RemoteChip onOpen={() => setPanel('profile')} />
+          <span className="topbar-spacer" />
+          {active && (
             <button
               type="button"
               className="icon-button"
-              aria-label={t('app.toggleLibrary')}
-              title={t('app.toggleLibrary')}
-              aria-expanded={false}
-              onClick={toggleLibrary}
+              aria-label={t('history.title')}
+              title={t('history.title')}
+              aria-expanded={panel === 'history'}
+              data-testid="open-history"
+              onClick={() => setPanel((p) => (p === 'history' ? null : 'history'))}
             >
-              <Icon name="panel-lateral" />
+              <Icon name="historial" />
             </button>
-            <img
-              className="brand"
-              src={theme === 'dark' ? logoDark : logoLight}
-              alt={t('app.name')}
-              height={24}
-            />
-          </>
-        )}
-        {inCalendar && <span className="doc-title">{t('calendar.title')}</span>}
-        {active && (
-          <RenameableTitle
-            key={active.id}
-            className="doc-title"
-            title={active.title}
-            testId="active-title"
-            onRename={(title) => renameDocument(active.id, title)}
+          )}
+          {active && !isDocsKind(active.kind) && (
+            <button
+              type="button"
+              className="topbar-button"
+              aria-label={t('details.title')}
+              title={t('details.title')}
+              aria-expanded={panel === 'details'}
+              data-testid="open-details"
+              onClick={() => setPanel((p) => (p === 'details' ? null : 'details'))}
+            >
+              <Icon name="enlace" size={18} />
+              <span className="topbar-button-label">{t('nav.links')}</span>
+            </button>
+          )}
+          <Menu
+            trigger={
+              <>
+                <span className="topbar-button-label">{t('nav.export')}</span>
+                <Icon name="chevron-abajo" size={16} />
+              </>
+            }
+            label={t('nav.export')}
+            triggerClassName="topbar-button"
+            testId="export-menu"
+            placement="bottom-end"
+            items={[
+              ...(active?.kind === 'canvas'
+                ? [
+                    {
+                      id: 'canvas-export',
+                      label: t('nav.exportCanvas'),
+                      icon: 'imagen' as const,
+                      onSelect: () => sendViewCommand(active.id, 'export'),
+                    },
+                  ]
+                : []),
+              ...(active?.kind === 'note' || active?.kind === 'mddoc'
+                ? [
+                    {
+                      id: 'note-export',
+                      label: t('nav.exportNote'),
+                      icon: 'nota' as const,
+                      onSelect: () => sendViewCommand(active.id, 'export'),
+                    },
+                  ]
+                : []),
+              {
+                id: 'export-markdown',
+                label: exportFolder
+                  ? t('nav.exportMarkdownFolder', {
+                      folder: documents.find((d) => d.id === exportFolder)?.title,
+                    })
+                  : t('nav.exportMarkdownAll'),
+                icon: 'descargar',
+                separated:
+                  active?.kind === 'canvas' || active?.kind === 'note' || active?.kind === 'mddoc',
+                onSelect: () => void exportMarkdown(exportFolder),
+              },
+            ]}
           />
-        )}
-        <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
-          {t(`status.${saveStatus}`)}
-        </span>
-        <RemoteChip onOpen={() => setPanel('profile')} />
-        <span className="topbar-spacer" />
-        {active && (
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={t('history.title')}
-            title={t('history.title')}
-            aria-expanded={panel === 'history'}
-            data-testid="open-history"
-            onClick={() => setPanel((p) => (p === 'history' ? null : 'history'))}
-          >
-            <Icon name="historial" />
-          </button>
-        )}
-        {active && active.kind !== 'doc' && (
-          <button
-            type="button"
-            className="topbar-button"
-            aria-label={t('details.title')}
-            title={t('details.title')}
-            aria-expanded={panel === 'details'}
-            data-testid="open-details"
-            onClick={() => setPanel((p) => (p === 'details' ? null : 'details'))}
-          >
-            <Icon name="enlace" size={18} />
-            <span className="topbar-button-label">{t('nav.links')}</span>
-          </button>
-        )}
-        <Menu
-          trigger={
-            <>
-              <span className="topbar-button-label">{t('nav.export')}</span>
-              <Icon name="chevron-abajo" size={16} />
-            </>
-          }
-          label={t('nav.export')}
-          triggerClassName="topbar-button"
-          testId="export-menu"
-          placement="bottom-end"
-          items={[
-            ...(active?.kind === 'canvas'
-              ? [
-                  {
-                    id: 'canvas-export',
-                    label: t('nav.exportCanvas'),
-                    icon: 'imagen' as const,
-                    onSelect: () => sendViewCommand(active.id, 'export'),
-                  },
-                ]
-              : []),
-            ...(active?.kind === 'note'
-              ? [
-                  {
-                    id: 'note-export',
-                    label: t('nav.exportNote'),
-                    icon: 'nota' as const,
-                    onSelect: () => sendViewCommand(active.id, 'export'),
-                  },
-                ]
-              : []),
-            {
-              id: 'export-markdown',
-              label: exportFolder
-                ? t('nav.exportMarkdownFolder', {
-                    folder: documents.find((d) => d.id === exportFolder)?.title,
-                  })
-                : t('nav.exportMarkdownAll'),
-              icon: 'descargar',
-              separated: active?.kind === 'canvas' || active?.kind === 'note',
-              onSelect: () => void exportMarkdown(exportFolder),
-            },
-          ]}
-        />
-        <Menu
-          trigger={<Icon name="mas-opciones" />}
-          label={t('nav.more')}
-          triggerClassName="icon-button"
-          testId="more-menu"
-          placement="bottom-end"
-          items={[
-            {
-              id: 'open-search',
-              label: t('search.title'),
-              icon: 'buscar',
-              hint: t('search.shortcut'),
-              onSelect: () => setSearchOpen(true),
-            },
-            {
-              id: 'open-status',
-              label: t('app.openStatus'),
-              icon: 'info',
-              onSelect: () => setPanel((p) => (p === 'status' ? null : 'status')),
-            },
-          ]}
-        />
-        <ThemeSwitch />
-      </header>
+          <Menu
+            trigger={<Icon name="mas-opciones" />}
+            label={t('nav.more')}
+            triggerClassName="icon-button"
+            testId="more-menu"
+            placement="bottom-end"
+            items={[
+              {
+                id: 'open-search',
+                label: t('search.title'),
+                icon: 'buscar',
+                hint: t('search.shortcut'),
+                onSelect: () => setSearchOpen(true),
+              },
+              {
+                id: 'open-status',
+                label: t('app.openStatus'),
+                icon: 'info',
+                onSelect: () => setPanel((p) => (p === 'status' ? null : 'status')),
+              },
+            ]}
+          />
+          <ThemeSwitch />
+        </header>
+      )}
 
       {services.temporary && (
         <p className="banner banner-warn" role="alert" data-testid="temporary-banner">
@@ -615,10 +628,10 @@ export function App() {
         </div>
       )}
 
-      {libraryOpen && (
+      {libraryOpen && !zen && (
         <div className="library-backdrop" aria-hidden="true" onClick={toggleLibrary} />
       )}
-      {libraryOpen && (
+      {libraryOpen && !zen && (
         <LibrarySidebar
           onCreate={createDocument}
           onCreateFolder={createFolder}
@@ -629,7 +642,7 @@ export function App() {
           onImport={importDocuments}
           onMove={moveDocument}
           onOpenProfile={() => setPanel((p) => (p === 'profile' ? null : 'profile'))}
-          onCreateDoc={createRichDoc}
+          onCreateDoc={createDocsDocument}
           onCreateCalendar={(title) =>
             useCalendarStore
               .getState()
@@ -681,10 +694,34 @@ export function App() {
             <img className="sticker" src={stickerA} alt="" width={120} height={120} />
             <h2>{t('docs.emptyTitle')}</h2>
             <p>{t('docs.emptyBody')}</p>
-            <button type="button" className="primary" onClick={() => void createRichDoc()}>
-              {t('docs.new')}
-            </button>
+            <div className="empty-actions">
+              <button
+                type="button"
+                className="primary"
+                data-testid="empty-new-rich"
+                onClick={() => void createDocsDocument('tiptap')}
+              >
+                <Icon name="documento" size={18} />
+                {t('docs.kindRich')}
+              </button>
+              <button
+                type="button"
+                data-testid="empty-new-markdown"
+                onClick={() => void createDocsDocument('milkdown')}
+              >
+                <Icon name="documento-md" size={18} />
+                {t('docs.kindMarkdown')}
+              </button>
+            </div>
           </div>
+        )}
+        {active?.kind === 'mddoc' && (
+          <MarkdownDocView
+            key={`${active.id}:${reloads[active.id] ?? 0}`}
+            documentId={active.id}
+            title={active.title}
+            service={services.service}
+          />
         )}
         {active?.kind === 'doc' && (
           <DocView
@@ -737,8 +774,10 @@ export function App() {
           sync={sync}
           onClose={() => setPanel(null)}
           onError={reportError}
+          onOpenPreferences={() => setPanel('preferences')}
         />
       )}
+      {panel === 'preferences' && <PreferencesDialog onClose={() => setPanel(null)} />}
       {panel === 'history' && active && (
         <HistoryPanel
           key={active.id}

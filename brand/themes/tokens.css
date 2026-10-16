@@ -1,0 +1,208 @@
+/* aline · esquemas de color. Generado: no editar a mano. */
+/* Constantes de marca (no cambian entre esquemas) */
+:root {
+  --brand: #FFE380;
+  --brand-hover: #F5C842;
+  --on-brand: #262118;
+}
+
+/* Papel — Cálido, el original (par: noche) */
+[data-scheme="papel"] {
+  color-scheme: light;
+  --bg-canvas: #FFFDF4;
+  --bg-panel: #F8F2E1;
+  --bg-popover: #FFFDF4;
+  --border-soft: #E8DFC6;
+  --border-ink: #262118;
+  --text-primary: #262118;
+  --text-secondary: #6B6250;
+  --text-muted: #8F8672;
+  --selection-soft: #FFF6CC;
+  --on-selection-soft: #262118;
+  --icon-accent-active: #FFE380;
+  --logo-highlight: #FFE380;
+  --focus: #3F7F88;
+  --link: #3F7F88;
+  --success: #2F7D4F;
+  --warning: #B4530A;
+  --danger: #B83A26;
+  --object-halo: none;
+  --calendar-weekend: #FAF8EE;
+}
+[data-scheme="papel"] .excalidraw { --color-selection: #3F7F88; }
+
+/* Blanco — Blanco puro, neutro (par: negro) */
+[data-scheme="blanco"] {
+  color-scheme: light;
+  --bg-canvas: #FFFFFF;
+  --bg-panel: #FFFFFF;
+  --bg-popover: #FFFFFF;
+  --border-soft: #E5E2DA;
+  --border-ink: #262118;
+  --text-primary: #262118;
+  --text-secondary: #5F5B53;
+  --text-muted: #8C877D;
+  --selection-soft: #FFF6CC;
+  --on-selection-soft: #262118;
+  --icon-accent-active: #FFE380;
+  --logo-highlight: #FFE380;
+  --focus: #3F7F88;
+  --link: #3F7F88;
+  --success: #2F7D4F;
+  --warning: #B4530A;
+  --danger: #B83A26;
+  --object-halo: none;
+  --calendar-weekend: #FAF9F9;
+}
+[data-scheme="blanco"] .excalidraw { --color-selection: #3F7F88; }
+
+/* Bruma — Frío, azul agua (par: marea) */
+[data-scheme="bruma"] {
+  color-scheme: light;
+  --bg-canvas: #F6FAFA;
+  --bg-panel: #E6F0F1;
+  --bg-popover: #FBFDFD;
+  --border-soft: #CFE0E2;
+  --border-ink: #1E2A2D;
+  --text-primary: #1E2A2D;
+  --text-secondary: #4F6669;
+  --text-muted: #7D9396;
+  --selection-soft: #FFF3C4;
+  --on-selection-soft: #1E2A2D;
+  --icon-accent-active: #FFE380;
+  --logo-highlight: #FFE380;
+  --focus: #3F7F88;
+  --link: #3F7F88;
+  --success: #2F7D4F;
+  --warning: #B4530A;
+  --danger: #B83A26;
+  --object-halo: none;
+  --calendar-weekend: #F1F5F5;
+}
+[data-scheme="bruma"] .excalidraw { --color-selection: #3F7F88; }
+
+/* Salvia — Verde suave, sereno (par: bosque) */
+[data-scheme="salvia"] {
+  color-scheme: light;
+  --bg-canvas: #F8FAF3;
+  --bg-panel: #EBF0E2;
+  --bg-popover: #FCFDF9;
+  --border-soft: #D3DCC5;
+  --border-ink: #22291E;
+  --text-primary: #22291E;
+  --text-secondary: #56634D;
+  --text-muted: #86917B;
+  --selection-soft: #FBF2C2;
+  --on-selection-soft: #22291E;
+  --icon-accent-active: #FFE380;
+  --logo-highlight: #FFE380;
+  --focus: #3F7F88;
+  --link: #3F7F88;
+  --success: #2F7D4F;
+  --warning: #B4530A;
+  --danger: #B83A26;
+  --object-halo: none;
+  --calendar-weekend: #F3F5EE;
+}
+[data-scheme="salvia"] .excalidraw { --color-selection: #3F7F88; }
+
+/* Noche — Cálido, el original (par: papel) */
+[data-scheme="noche"] {
+  color-scheme: dark;
+  --bg-canvas: #16140C;
+  --bg-panel: #24211B;
+  --bg-popover: #2F2B22;
+  --border-soft: #3A3428;
+  --border-ink: #B5AC97;
+  --text-primary: #F3EEDF;
+  --text-secondary: #B5AC97;
+  --text-muted: #8A826F;
+  --selection-soft: #3B3320;
+  --on-selection-soft: #FFE380;
+  --icon-accent-active: #5B5234;
+  --logo-highlight: #6B5520;
+  --focus: #7FC4CC;
+  --link: #7FC4CC;
+  --success: #7BC79A;
+  --warning: #F0A35E;
+  --danger: #F08A78;
+  --object-halo: #F3EEDF;
+  --calendar-weekend: #1D1B12;
+}
+[data-scheme="noche"] .excalidraw.theme--dark { --theme-filter: invert(93%) hue-rotate(180deg); --color-selection: #00515A; }
+
+/* Negro — Negro puro (OLED) (par: blanco) */
+[data-scheme="negro"] {
+  color-scheme: dark;
+  --bg-canvas: #000000;
+  --bg-panel: #000000;
+  --bg-popover: #161616;
+  --border-soft: #2A2A2A;
+  --border-ink: #A9A59D;
+  --text-primary: #F5F3EE;
+  --text-secondary: #A9A59D;
+  --text-muted: #7B7871;
+  --selection-soft: #302D22;
+  --on-selection-soft: #FFE380;
+  --icon-accent-active: #403920;
+  --logo-highlight: #5C522E;
+  --focus: #7FC4CC;
+  --link: #7FC4CC;
+  --success: #7BC79A;
+  --warning: #F0A35E;
+  --danger: #F08A78;
+  --object-halo: #F5F3EE;
+  --calendar-weekend: #070707;
+  /* Negro: el lienzo invierte al 100 % para llegar a negro puro */
+}
+[data-scheme="negro"] .excalidraw.theme--dark { --theme-filter: invert(100%) hue-rotate(180deg); --color-selection: #00515A; }
+
+/* Marea — Azul profundo (par: bruma) */
+[data-scheme="marea"] {
+  color-scheme: dark;
+  --bg-canvas: #141818;
+  --bg-panel: #162428;
+  --bg-popover: #1E3035;
+  --border-soft: #2B4147;
+  --border-ink: #9CB3B6;
+  --text-primary: #E6F0F1;
+  --text-secondary: #9CB3B6;
+  --text-muted: #6E878B;
+  --selection-soft: #303932;
+  --on-selection-soft: #FFE380;
+  --icon-accent-active: #50543E;
+  --logo-highlight: #69613D;
+  --focus: #7FC4CC;
+  --link: #7FC4CC;
+  --success: #7BC79A;
+  --warning: #F0A35E;
+  --danger: #F08A78;
+  --object-halo: #E6F0F1;
+  --calendar-weekend: #1A1E1F;
+}
+[data-scheme="marea"] .excalidraw.theme--dark { --theme-filter: invert(93%) hue-rotate(180deg); --color-selection: #00515A; }
+
+/* Bosque — Verde noche (par: salvia) */
+[data-scheme="bosque"] {
+  color-scheme: dark;
+  --bg-canvas: #161812;
+  --bg-panel: #192219;
+  --bg-popover: #222D21;
+  --border-soft: #304030;
+  --border-ink: #A6B49D;
+  --text-primary: #ECF1E6;
+  --text-secondary: #A6B49D;
+  --text-muted: #76836E;
+  --selection-soft: #323724;
+  --on-selection-soft: #FFE380;
+  --icon-accent-active: #525233;
+  --logo-highlight: #6A613A;
+  --focus: #7FC4CC;
+  --link: #7FC4CC;
+  --success: #7BC79A;
+  --warning: #F0A35E;
+  --danger: #F08A78;
+  --object-halo: #ECF1E6;
+  --calendar-weekend: #1C1F18;
+}
+[data-scheme="bosque"] .excalidraw.theme--dark { --theme-filter: invert(93%) hue-rotate(180deg); --color-selection: #00515A; }

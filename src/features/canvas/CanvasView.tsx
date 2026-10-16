@@ -20,7 +20,9 @@ import {
 import { excalidrawLangCode } from '../../app/i18n.ts';
 import { logDiagnostic } from '../../app/runtime.ts';
 import { describeError } from '../../ports/Diagnostics.ts';
+import { displayedCanvasBackground } from '../../app/schemes.ts';
 import { useUiStore } from '../../app/store.ts';
+import { activeScheme, useTheme } from '../../app/theme.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
 import { useAutosave } from '../../app/useAutosave.ts';
 import { internalLink, parseInternalLink } from '../../application/knowledge.ts';
@@ -86,10 +88,20 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const selectionKey = useRef('');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const openExport = () => setExportOpen(true);
   const navigate = useUiStore((s) => s.navigate);
   const focus = useUiStore((s) => s.focus);
   const hostRef = useRef<HTMLDivElement>(null);
   const stickerLayer = useRef<ReturnType<typeof attachStickerLayer> | null>(null);
+  const { scheme } = useTheme();
+  /**
+   * Fondo del lienzo (DESIGN.md §2.5): `stored` es el de la escena guardada y `shown` el que se
+   * pinta con el esquema activo. Guardar y exportar usan siempre `stored`.
+   */
+  const backgroundRef = useRef<{ stored: string; shown: string } | null>(null);
+  /** Modo Zen del motor: la aplicación oculta su barra lateral y su cabecera. */
+  const zenRef = useRef(false);
+  useEffect(() => () => useUiStore.getState().setZen(false), []);
 
   // Stickers sin filtro de tema en oscuro (ver stickerLayer.ts).
   useEffect(() => {
@@ -120,7 +132,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         if (!api || !viewCommand || viewCommand.documentId !== documentId) return;
         if (viewCommand.seq <= handledCommand.current) return;
         handledCommand.current = viewCommand.seq;
-        if (viewCommand.kind === 'export') setExportOpen(true);
+        if (viewCommand.kind === 'export') openExport();
       }),
     [api, documentId],
   );
@@ -151,6 +163,11 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       signatureRef.current = recoveredDraft
         ? null
         : excalidrawCanvasAdapter.contentSignature(scene);
+      // El fondo se pinta con el del esquema activo, sin cambiar lo guardado (ni la firma).
+      const stored = scene.appState.viewBackgroundColor ?? '#ffffff';
+      const shown = displayedCanvasBackground(stored, activeScheme());
+      backgroundRef.current = { stored, shown };
+      scene.appState = { ...scene.appState, viewBackgroundColor: shown };
       extensionsRef.current = opened.extensions;
       bindingsRef.current = currentBindings(scene.elements);
       setDangling(opened.extensions.danglingConnectorIds);
@@ -197,6 +214,10 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const lastDraftAt = useRef(0);
   const onChange = useCallback<NonNullable<Parameters<typeof Excalidraw>[0]['onChange']>>(
     (elements, appState, files) => {
+      if (appState.zenModeEnabled !== zenRef.current) {
+        zenRef.current = appState.zenModeEnabled;
+        useUiStore.getState().setZen(appState.zenModeEnabled);
+      }
       if (pendingFocus.current) applyPendingFocus();
       // Selección actual, para ofrecer «Vincular» cuando hay un solo elemento.
       const ids = Object.keys(appState.selectedElementIds).filter(
@@ -218,7 +239,20 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         }
         return;
       }
-      const scene: EngineScene = { elements, appState, files };
+      // Un fondo distinto del que pintamos lo eligió el usuario en el motor: pasa a ser el guardado.
+      if (backgroundRef.current && appState.viewBackgroundColor !== backgroundRef.current.shown) {
+        const chosen = appState.viewBackgroundColor;
+        backgroundRef.current = { stored: chosen, shown: chosen };
+      }
+      const stored = backgroundRef.current?.stored ?? appState.viewBackgroundColor;
+      const scene: EngineScene = {
+        elements,
+        appState:
+          stored === appState.viewBackgroundColor
+            ? appState
+            : { ...appState, viewBackgroundColor: stored },
+        files,
+      };
       const signature = excalidrawCanvasAdapter.contentSignature(scene);
       // Desplazamiento, zoom y selección no generan revisiones de contenido.
       // En solo lectura no se guarda nada (versión desconocida o contenido inválido).
@@ -244,6 +278,19 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         .catch(() => undefined);
     }, 50);
   }, [autosave, service, documentId]);
+
+  // Al cambiar de esquema, el fondo pintado cambia con él (sin crear una revisión).
+  useEffect(() => {
+    const background = backgroundRef.current;
+    if (!api || !background) return;
+    const shown = displayedCanvasBackground(background.stored, scheme);
+    if (shown === background.shown) return;
+    backgroundRef.current = { stored: background.stored, shown };
+    api.updateScene({
+      appState: { viewBackgroundColor: shown },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+  }, [api, scheme, loaded]);
 
   // Abrir un lienzo desde un enlace, un backlink o la búsqueda: centrar y resaltar el elemento.
   // El motor entrega su API antes de cargar la escena, así que el destino queda pendiente hasta
@@ -377,7 +424,12 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         )}
       </div>
       {exportOpen && api && (
-        <ExportDialog api={api} title={title} onClose={() => setExportOpen(false)} />
+        <ExportDialog
+          api={api}
+          title={title}
+          storedBackground={() => backgroundRef.current?.stored ?? null}
+          onClose={() => setExportOpen(false)}
+        />
       )}
       {pickerOpen && selection && (
         <LinkPicker
@@ -420,7 +472,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         {/* Menú propio sin enlaces a servicios externos (diseño §13). */}
         <MainMenu>
           {/* Exportación propia: PNG, SVG, PDF y .excalidraw con avisos (diseño §12.1). */}
-          <MainMenu.Item onSelect={() => setExportOpen(true)}>{t('export.open')}</MainMenu.Item>
+          <MainMenu.Item onSelect={openExport}>{t('export.open')}</MainMenu.Item>
           <MainMenu.DefaultItems.SearchMenu />
           <MainMenu.DefaultItems.ClearCanvas />
           <MainMenu.Separator />

@@ -5,40 +5,21 @@ import { Placeholder } from '@tiptap/extensions';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAutosave } from '../../app/useAutosave.ts';
-import { Icon, type IconName } from '../../app/ui/Icon.tsx';
 import type { OpenedRichDoc, VaultService } from '../../application/VaultService.ts';
 import type { ReadOnlyReason } from '../../domain/compat.ts';
 import type { RichDocData } from '../../domain/richDoc.ts';
+import { LayoutToggle, useDocLayout } from './layout.tsx';
+import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
 
 interface Props {
   documentId: string;
   service: VaultService;
 }
 
-/** Presentación del documento: texto corrido o una hoja A4. No cambia el contenido guardado. */
-type Layout = 'continuous' | 'page';
-const LAYOUT_KEY = 'mindnote.docLayout';
-
-function readLayout(): Layout {
-  try {
-    return localStorage.getItem(LAYOUT_KEY) === 'continuous' ? 'continuous' : 'page';
-  } catch {
-    return 'page';
-  }
-}
-
-function writeLayout(layout: Layout): void {
-  try {
-    localStorage.setItem(LAYOUT_KEY, layout);
-  } catch {
-    // Sin almacenamiento del navegador: la preferencia dura lo que la pestaña.
-  }
-}
-
 /**
- * Documento de texto enriquecido (kind `doc`) editado con Tiptap. Cada cambio pasa por el
- * guardado automático y es una revisión nueva (VaultService.saveRichDoc). Sin extensión de
- * imágenes ni incrustados: lo pegado desde la web no descarga nada (diseño §13).
+ * Documento con formato (kind `doc`) editado con Tiptap. Cada cambio pasa por el guardado
+ * automático y es una revisión nueva (VaultService.saveRichDoc). Sin extensión de imágenes ni
+ * incrustados: lo pegado desde la web no descarga nada (diseño §13).
  */
 export function DocView({ documentId, service }: Props) {
   const { t } = useTranslation();
@@ -77,7 +58,7 @@ function DocEditor({
   placeholder: string;
 }) {
   const { t } = useTranslation();
-  const [layout, setLayout] = useState<Layout>(readLayout);
+  const [layout, setLayout] = useDocLayout();
   /** El editor rechazó el contenido guardado: se muestra sin guardar para no perder nada. */
   const [contentError, setContentError] = useState(false);
   const readOnly: ReadOnlyReason | null =
@@ -125,11 +106,6 @@ function DocEditor({
     },
   });
 
-  const changeLayout = (next: Layout) => {
-    setLayout(next);
-    writeLayout(next);
-  };
-
   return (
     <div className={`doc-view layout-${layout}`} data-testid="doc-view">
       {readOnly && (
@@ -140,20 +116,7 @@ function DocEditor({
       <div className="doc-toolbar" role="toolbar" aria-label={t('docs.toolbar')}>
         {editor && <FormatControls editor={editor} disabled={readOnly !== null} />}
         <span className="doc-toolbar-spacer" />
-        <div className="segmented" role="group" aria-label={t('docs.layout')}>
-          {(['continuous', 'page'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={layout === value}
-              data-testid={`doc-layout-${value}`}
-              className={`segmented-option${layout === value ? " is-active" : ""}`}
-              onClick={() => changeLayout(value)}
-            >
-              {t(`docs.layout_${value}`)}
-            </button>
-          ))}
-        </div>
+        <LayoutToggle layout={layout} onChange={setLayout} />
       </div>
       <div className="doc-scroll">
         <div className="doc-sheet">
@@ -163,8 +126,6 @@ function DocEditor({
     </div>
   );
 }
-
-type BlockStyle = 'paragraph' | 'h1' | 'h2' | 'h3';
 
 /** Botones de formato. Su estado (activo o no) se lee del editor en cada transacción. */
 function FormatControls({ editor, disabled }: { editor: Editor; disabled: boolean }) {
@@ -200,100 +161,112 @@ function FormatControls({ editor, disabled }: { editor: Editor; disabled: boolea
     else chain().setHeading({ level: Number(block.slice(1)) as 1 | 2 | 3 }).run();
   };
 
-  const iconButton = (
-    id: string,
-    icon: IconName,
-    label: string,
-    active: boolean,
-    run: () => void,
-    enabled = true,
-  ) => (
-    <button
-      key={id}
-      type="button"
-      className="icon-button"
-      aria-label={label}
-      title={label}
-      aria-pressed={active}
-      data-testid={`doc-${id}`}
-      disabled={disabled || !enabled}
-      onClick={run}
-    >
-      <Icon name={icon} size={18} />
-    </button>
-  );
-
-  /** Formato de carácter con su letra (sin iconos propios todavía). */
-  const markButton = (id: string, letter: string, label: string, active: boolean, run: () => void) => (
-    <button
-      key={id}
-      type="button"
-      className={`icon-button doc-mark doc-mark-${id}`}
-      aria-label={label}
-      title={label}
-      aria-pressed={active}
-      data-testid={`doc-${id}`}
-      disabled={disabled}
-      onClick={run}
-    >
-      <span aria-hidden="true">{letter}</span>
-    </button>
-  );
-
   return (
     <>
       <div className="doc-toolbar-group">
-        {iconButton('undo', 'deshacer', t('docs.undo'), false, () => chain().undo().run(), state.canUndo)}
-        {iconButton('redo', 'rehacer', t('docs.redo'), false, () => chain().redo().run(), state.canRedo)}
+        <ToolIconButton
+          id="undo"
+          icon="deshacer"
+          label={t('docs.undo')}
+          disabled={disabled || !state.canUndo}
+          onRun={() => chain().undo().run()}
+        />
+        <ToolIconButton
+          id="redo"
+          icon="rehacer"
+          label={t('docs.redo')}
+          disabled={disabled || !state.canRedo}
+          onRun={() => chain().redo().run()}
+        />
       </div>
       <div className="doc-toolbar-group">
-        <select
-          className="doc-block-style"
-          aria-label={t('docs.blockStyle')}
-          data-testid="doc-block-style"
-          value={state.block}
+        <BlockStyleSelect value={state.block} disabled={disabled} onChange={setBlock} />
+      </div>
+      <div className="doc-toolbar-group">
+        <ToolMarkButton
+          id="bold"
+          letter="B"
+          label={t('docs.bold')}
+          active={state.bold}
           disabled={disabled}
-          onChange={(e) => setBlock(e.target.value as BlockStyle)}
-        >
-          <option value="paragraph">{t('docs.paragraph')}</option>
-          <option value="h1">{t('docs.heading', { level: 1 })}</option>
-          <option value="h2">{t('docs.heading', { level: 2 })}</option>
-          <option value="h3">{t('docs.heading', { level: 3 })}</option>
-        </select>
+          onRun={() => chain().toggleBold().run()}
+        />
+        <ToolMarkButton
+          id="italic"
+          letter="I"
+          label={t('docs.italic')}
+          active={state.italic}
+          disabled={disabled}
+          onRun={() => chain().toggleItalic().run()}
+        />
+        <ToolMarkButton
+          id="underline"
+          letter="U"
+          label={t('docs.underline')}
+          active={state.underline}
+          disabled={disabled}
+          onRun={() => chain().toggleUnderline().run()}
+        />
+        <ToolMarkButton
+          id="strike"
+          letter="S"
+          label={t('docs.strike')}
+          active={state.strike}
+          disabled={disabled}
+          onRun={() => chain().toggleStrike().run()}
+        />
       </div>
       <div className="doc-toolbar-group">
-        {markButton('bold', 'B', t('docs.bold'), state.bold, () => chain().toggleBold().run())}
-        {markButton('italic', 'I', t('docs.italic'), state.italic, () =>
-          chain().toggleItalic().run(),
-        )}
-        {markButton('underline', 'U', t('docs.underline'), state.underline, () =>
-          chain().toggleUnderline().run(),
-        )}
-        {markButton('strike', 'S', t('docs.strike'), state.strike, () =>
-          chain().toggleStrike().run(),
-        )}
+        <ToolIconButton
+          id="align-left"
+          icon="alinear-izq"
+          label={t('docs.alignLeft')}
+          active={state.left}
+          disabled={disabled}
+          onRun={() => chain().setTextAlign('left').run()}
+        />
+        <ToolIconButton
+          id="align-center"
+          icon="alinear-centro"
+          label={t('docs.alignCenter')}
+          active={state.center}
+          disabled={disabled}
+          onRun={() => chain().setTextAlign('center').run()}
+        />
+        <ToolIconButton
+          id="align-right"
+          icon="alinear-der"
+          label={t('docs.alignRight')}
+          active={state.right}
+          disabled={disabled}
+          onRun={() => chain().setTextAlign('right').run()}
+        />
       </div>
       <div className="doc-toolbar-group">
-        {iconButton('align-left', 'alinear-izq', t('docs.alignLeft'), state.left, () =>
-          chain().setTextAlign('left').run(),
-        )}
-        {iconButton('align-center', 'alinear-centro', t('docs.alignCenter'), state.center, () =>
-          chain().setTextAlign('center').run(),
-        )}
-        {iconButton('align-right', 'alinear-der', t('docs.alignRight'), state.right, () =>
-          chain().setTextAlign('right').run(),
-        )}
-      </div>
-      <div className="doc-toolbar-group">
-        {iconButton('bullet-list', 'lista', t('docs.bulletList'), state.bulletList, () =>
-          chain().toggleBulletList().run(),
-        )}
-        {iconButton('ordered-list', 'lista-numerada', t('docs.orderedList'), state.orderedList, () =>
-          chain().toggleOrderedList().run(),
-        )}
-        {iconButton('blockquote', 'cita', t('docs.blockquote'), state.blockquote, () =>
-          chain().toggleBlockquote().run(),
-        )}
+        <ToolIconButton
+          id="bullet-list"
+          icon="lista"
+          label={t('docs.bulletList')}
+          active={state.bulletList}
+          disabled={disabled}
+          onRun={() => chain().toggleBulletList().run()}
+        />
+        <ToolIconButton
+          id="ordered-list"
+          icon="lista-numerada"
+          label={t('docs.orderedList')}
+          active={state.orderedList}
+          disabled={disabled}
+          onRun={() => chain().toggleOrderedList().run()}
+        />
+        <ToolIconButton
+          id="blockquote"
+          icon="cita"
+          label={t('docs.blockquote')}
+          active={state.blockquote}
+          disabled={disabled}
+          onRun={() => chain().toggleBlockquote().run()}
+        />
       </div>
     </>
   );

@@ -83,12 +83,13 @@ export function objectPath(hash: string, role: Exclude<ObjectRole, 'asset'>): st
 }
 
 /**
- * Papel del cuerpo de una revisión: Markdown en notas, escena .excalidraw en lienzos y
+ * Papel del cuerpo de una revisión: Markdown en notas y documentos Markdown, escena .excalidraw en lienzos y
  * plantillas, JSON en calendarios y documentos. Las carpetas no tienen cuerpo.
  */
 export function bodyRole(kind: RevisionKind): Exclude<ObjectRole, 'asset' | 'extensions'> | null {
   switch (kind) {
     case 'note':
+    case 'mddoc':
       return 'note';
     case 'canvas':
     case 'template':
@@ -97,6 +98,7 @@ export function bodyRole(kind: RevisionKind): Exclude<ObjectRole, 'asset' | 'ext
     case 'doc':
       return 'data';
     case 'folder':
+    case 'docfolder':
       return null;
   }
 }

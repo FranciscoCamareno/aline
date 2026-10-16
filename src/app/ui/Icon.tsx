@@ -63,6 +63,7 @@ export type IconName =
   | 'menu'
   | 'nota'
   | 'documento'
+  | 'documento-md'
   | 'alinear-izq'
   | 'alinear-centro'
   | 'alinear-der'
@@ -125,4 +126,6 @@ const KIND_ICONS: Record<RevisionKind, IconName> = {
   calendar: 'calendario',
   template: 'biblioteca',
   doc: 'documento',
+  mddoc: 'documento-md',
+  docfolder: 'carpeta',
 };

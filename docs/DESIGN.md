@@ -89,7 +89,33 @@ Colores: `#FF9B7A` coral · `#F7AFCB` rosa · `#A8D5A2` brote · `#BFDFE2` agua,
 | Éxito sobre su fondo | 4.53:1 |
 | Aviso sobre su fondo | 4.52:1 |
 
-Regla: todo texto ≥ 4.5:1; iconos y bordes funcionales ≥ 3:1. `tests/unit/accesibilidad.test.ts` lo comprueba sobre los tokens reales de `src/app/styles.css` en los dos temas.
+Regla: todo texto ≥ 4.5:1; iconos y bordes funcionales ≥ 3:1. `tests/unit/accesibilidad.test.ts` lo comprueba sobre los tokens reales de `src/app/styles.css` en los dos temas y en los 8 esquemas.
+
+### 2.5 Esquemas de color
+
+8 esquemas en 4 pares claro ↔ oscuro. El usuario elige **uno claro y uno oscuro** en Preferencias (Perfil → Preferencias); por defecto, Papel y Noche. El interruptor de la cabecera alterna entre los dos elegidos; «Seguir al sistema» usa el claro de día y el oscuro de noche. Es una preferencia del navegador (`mindnote.scheme.light` / `.dark`), aplicada con `data-scheme` en `<html>`.
+
+- **Constante (identidad):** mantequilla y yema, foco y enlaces agua, semánticos, rellenos del lienzo, notas adhesivas, stickers y objetos ilustrados.
+- **Variable (atmósfera):** lienzo, paneles, popovers, líneas, textos y selección suave. En Bruma y Salvia, foco y enlaces usan `#38727B` (un agua algo más oscura) para llegar a 4,5:1 sobre su panel.
+
+| Esquema | Modo | Lienzo | Panel | Línea | Texto | Texto 2 | Selección | Par |
+|---|---|---|---|---|---|---|---|---|
+| Papel | Claro | `#FFFDF4` | `#F8F2E1` | `#E8DFC6` | `#262118` | `#6B6250` | `#FFF6CC` | Noche |
+| Blanco | Claro | `#FFFFFF` | `#FFFFFF` | `#E5E2DA` | `#262118` | `#5F5B53` | `#FFF6CC` | Negro |
+| Bruma | Claro | `#F6FAFA` | `#E6F0F1` | `#CFE0E2` | `#1E2A2D` | `#4F6669` | `#FFF3C4` | Marea |
+| Salvia | Claro | `#F8FAF3` | `#EBF0E2` | `#D3DCC5` | `#22291E` | `#56634D` | `#FBF2C2` | Bosque |
+| Noche | Oscuro | `#16140C` | `#24211B` | `#3A3428` | `#F3EEDF` | `#B5AC97` | `#3B3320` | Papel |
+| Negro | Oscuro | `#000000` | `#000000` | `#2A2A2A` | `#F5F3EE` | `#A9A59D` | `#302D22` | Blanco |
+| Marea | Oscuro | `#141818` | `#162428` | `#2B4147` | `#E6F0F1` | `#9CB3B6` | `#303932` | Bruma |
+| Bosque | Oscuro | `#161812` | `#192219` | `#304030` | `#ECF1E6` | `#A6B49D` | `#323724` | Salvia |
+
+**Lienzo:**
+- El lienzo oscuro de cada par es el filtro del motor sobre el lienzo claro del par. Por eso, en un esquema oscuro, el lienzo se pinta con el fondo claro de su par (Marea con el de Bruma) y el filtro lo convierte en el suyo.
+- El fondo del esquema solo se **pinta**: la escena guarda su propio fondo (papel en los lienzos nuevos) y lo conservan las revisiones y las exportaciones. Un lienzo con un fondo elegido a propósito (distinto de los cuatro de esquema) conserva el suyo.
+- **Negro** invierte al 100 % (`--theme-filter: invert(100%) hue-rotate(180deg)`) para llegar a negro puro: es la única excepción a no sobrescribir `--theme-filter` (§3.1). Las exportaciones oscuras usan el filtro del motor, así que en Negro el fondo exportado es `#121212`.
+- La esquina recortada de una nota adhesiva toma el fondo pintado al crearla; en otro esquema puede notarse.
+
+**Archivos** (`brand/themes/`): `tokens.css` y `themes.json` (fuente), y por esquema `aline-logo.svg` (logotipo con su tinta y su resaltador) y `preview.png` (miniatura del selector). Los objetos de la barra en oscuro usan el troquel crema de `tools-dark/` en los cuatro esquemas oscuros (los troqueles de cada esquema apenas difieren).
 
 ---
 
@@ -311,7 +337,7 @@ Ocupa toda la altura, a la izquierda de la cabecera. De arriba abajo:
 3. Buscador de títulos ("Buscar archivos…"), con el icono `buscar` dentro del campo.
 4. Pestañas **Todos** (carpetas, etiquetas y "Recuperación") y **Recientes**. La activa lleva `--selection-soft`.
 5. La lista, con su propio desplazamiento. Los lienzos y las notas se arrastran a una carpeta (su fila o su contenido) o al espacio libre de «Todos» para sacarlos a la raíz; el destino se marca con el anillo de foco discontinuo y la fila arrastrada se atenúa. Sin arrastre, la carpeta se cambia en el panel de Detalles.
-6. Pie con iconos y texto en `--text-secondary`: **Papelera** (con su recuento; abre un cajón encima del pie, sin ocultar la lista), **Preferencias** (idioma y "Seguir al sistema") y **Perfil** (abre un modal con «Dónde se guarda»: conectar Google Drive o una carpeta, con el aviso y la elección de cifrado dentro; no se cierra con un clic fuera para no perder una contraseña a medio escribir). «Estado y diagnóstico» sigue en el menú «⋯» de la cabecera. La **ayuda** de atajos es el botón «?» del motor, abajo a la derecha del lienzo, en el estilo de la aplicación (40 px, borde tinta, radio 12) y solo con un lienzo abierto. La entrada «Ayuda» del menú del lienzo y los textos de ayuda que el motor pone bajo su barra («Para mover el lienzo…») no se muestran. El atajo «?» también abre el diálogo.
+6. Pie con iconos y texto en `--text-secondary`: **Papelera** (con su recuento; abre un cajón encima del pie, sin ocultar la lista), y **Perfil** (abre un modal con **Preferencias** —un segundo modal con idioma, "Seguir al sistema" y los esquemas de color (§2.5)— y «Dónde se guarda»: conectar Google Drive o una carpeta, con el aviso y la elección de cifrado dentro; no se cierra con un clic fuera para no perder una contraseña a medio escribir). «Estado y diagnóstico» sigue en el menú «⋯» de la cabecera. La **ayuda** de atajos es el botón «?» del motor, abajo a la derecha del lienzo, en el estilo de la aplicación (40 px, borde tinta, radio 12) y solo con un lienzo abierto. La entrada «Ayuda» del menú del lienzo y los textos de ayuda que el motor pone bajo su barra («Para mover el lienzo…») no se muestran. El atajo «?» también abre el diálogo.
 
 El diálogo de ayuda usa los tokens de la interfaz (fondo `--bg-popover`, teclas en `--selection-soft`) y no trae los cuatro enlaces externos del motor (documentación, blog, GitHub, YouTube): la aplicación no ofrece salidas a la red sin que el usuario las pida (diseño §13).
 
@@ -453,6 +479,7 @@ Sustituye al desplegable de tema de la cabecera. Referencia: `brand/icons/theme/
 - El icono del otro tema queda en el carril en `--text-secondary`, como pista de a dónde lleva el cambio.
 - Transición: el pomo se desplaza en 200ms con ease-out (sin animación con "reducir movimiento").
 - Accesibilidad: `role="switch"`, `aria-checked` (oscuro = true) y `aria-label="Tema oscuro"`; se activa con Espacio o Enter. En pantallas táctiles el área pulsable mide 44px de alto, aunque el carril se vea de 36.
+- **Esquemas:** el interruptor alterna entre el esquema claro y el oscuro elegidos en Preferencias (§2.5); su carril oscuro usa `--bg-popover` del esquema.
 - **Seguir al sistema:** es una opción de Preferencias (glifo `tema-sistema`), no del interruptor. Si está activa, el interruptor refleja el tema resuelto y, al tocarlo, se pasa a modo manual.
 
 ## 8. Calendario

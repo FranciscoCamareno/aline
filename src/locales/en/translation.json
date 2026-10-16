@@ -59,7 +59,8 @@
     "trashShort": "Trash",
     "importFiles": "Import files…",
     "importFolder": "Import folder…",
-    "sections": "Sections"
+    "sections": "Sections",
+    "sectionNotes": "Notes"
   },
   "title": {
     "edit": "Edit title",
@@ -452,7 +453,11 @@
   },
   "preferences": {
     "title": "Preferences",
-    "followSystem": "Follow the system"
+    "followSystem": "Follow the system",
+    "lightSchemes": "Light scheme",
+    "darkSchemes": "Dark scheme",
+    "pair": "pair: {{scheme}}",
+    "followSystemHint": "Light by day and dark by night, with the schemes chosen below."
   },
   "nav": {
     "links": "Links",
@@ -540,17 +545,14 @@
   "profile": {
     "title": "Profile",
     "lead": "Your vault starts in this browser. Here you can also keep it in Google Drive or in a folder on your computer. Nothing leaves this device until you confirm.",
-    "unavailable": "Not available: this vault is temporary or sync is not active."
+    "unavailable": "Not available: this vault is temporary or sync is not active.",
+    "preferencesHint": "Language and colour schemes"
   },
   "docs": {
     "title": "Documents",
-    "kind": "Document",
-    "new": "New document",
-    "all": "My documents",
-    "emptyList": "No documents yet.",
     "untitled": "Untitled document",
     "emptyTitle": "Write a document",
-    "emptyBody": "Formatted documents: headings, lists, alignment and page view.",
+    "emptyBody": "Free formatting (headings, alignment, underline) or Markdown, which can also be edited outside the app. Continuous or A4 page view.",
     "placeholder": "Start writing…",
     "editor": "Document content",
     "toolbar": "Document formatting",
@@ -572,6 +574,44 @@
     "bulletList": "Bulleted list",
     "orderedList": "Numbered list",
     "blockquote": "Quote",
-    "emptyDoc": "Empty document"
+    "emptyDoc": "Empty document",
+    "kindRich": "Formatted document",
+    "kindMarkdown": "Markdown document",
+    "markdownHint": "Saved as Markdown: it can be opened and edited outside the app (readable copy).",
+    "editorError": "The editor could not be opened ({{message}}). The document has not been changed."
+  },
+  "schemes": {
+    "papel": {
+      "name": "Paper",
+      "note": "Warm, the original"
+    },
+    "blanco": {
+      "name": "White",
+      "note": "Pure white, neutral"
+    },
+    "bruma": {
+      "name": "Mist",
+      "note": "Cool, water blue"
+    },
+    "salvia": {
+      "name": "Sage",
+      "note": "Soft green, calm"
+    },
+    "noche": {
+      "name": "Night",
+      "note": "Warm, the original"
+    },
+    "negro": {
+      "name": "Black",
+      "note": "Pure black (OLED)"
+    },
+    "marea": {
+      "name": "Tide",
+      "note": "Deep blue"
+    },
+    "bosque": {
+      "name": "Forest",
+      "note": "Night green"
+    }
   }
 }

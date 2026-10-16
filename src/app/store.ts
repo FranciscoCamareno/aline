@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { isContentKind, type DocumentRecord } from '../domain/revision.ts';
+import { isContentKind, isDocsKind, type DocumentRecord } from '../domain/revision.ts';
 import type { PersistenceStatus } from '../ports/RemoteStore.ts';
 import type { RemoteStatus } from './syncRuntime.ts';
 
@@ -29,18 +29,28 @@ export interface ViewCommand {
 }
 
 /**
- * Sección de la barra lateral: biblioteca (lienzos y notas), calendario o documentos de texto
- * enriquecido (kind `doc`).
+ * Sección de la barra lateral: «Notas» (`library`: lienzos y notas), calendario o «Documentos»
+ * (documentos con formato `doc` y Markdown `mddoc`).
  */
 export type Section = 'library' | 'calendar' | 'documents';
 
-/** Sección en la que se abre un documento: los `doc` en «Documentos», el resto en la biblioteca. */
+/**
+ * Sección en la que se abre un documento: los documentos (Tiptap y Milkdown) en «Documentos»;
+ * notas y lienzos en «Notas» (la biblioteca).
+ */
 function sectionFor(documents: readonly DocumentRecord[], id: string): Section {
-  return documents.find((d) => d.id === id)?.kind === 'doc' ? 'documents' : 'library';
+  const kind = documents.find((d) => d.id === id)?.kind;
+  return kind && isDocsKind(kind) ? 'documents' : 'library';
 }
 
 interface UiState {
   section: Section;
+  /**
+   * Modo Zen del lienzo (el del motor): mientras está activo, la aplicación oculta la barra
+   * lateral y la cabecera. Lo fija la vista del lienzo; al salir del lienzo vuelve a false.
+   */
+  zen: boolean;
+  setZen: (zen: boolean) => void;
   setSection: (section: Section) => void;
   documents: DocumentRecord[];
   activeId: string | null;
@@ -75,6 +85,8 @@ interface UiState {
 
 export const useUiStore = create<UiState>()((set, get) => ({
   section: 'library',
+  zen: false,
+  setZen: (zen) => set((state) => (state.zen === zen ? state : { zen })),
   // Al entrar en una sección, si el documento abierto es de otra, se abre su más reciente.
   setSection: (section) =>
     set((state) => {
@@ -82,7 +94,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
       const active = state.documents.find((d) => d.id === state.activeId);
       if (active && sectionFor(state.documents, active.id) === section) return { section };
       const recent = state.documents.find(
-        (d) => !d.deleted && (section === 'documents' ? d.kind === 'doc' : isContentKind(d.kind)),
+        (d) => !d.deleted && (section === 'documents' ? isDocsKind(d.kind) : isContentKind(d.kind)),
       );
       return { section, activeId: recent?.id ?? null };
     }),

@@ -1,4 +1,4 @@
-import type { DocumentRecord, Revision } from '../../domain/revision.ts';
+import { isMarkdownKind, type DocumentRecord, type Revision } from '../../domain/revision.ts';
 import {
   encryptionFileSchema,
   MAX_ENCRYPTION_FILE_BYTES,
@@ -442,7 +442,7 @@ export class DriveRemoteStore implements RemoteStore {
       return;
     }
     // Copia legible por versión (§8.3), antes de la revisión; no existe si se cifra.
-    if (!this.cipher && revision.metadata.kind === 'note' && revision.contentRefs.body) {
+    if (!this.cipher && isMarkdownKind(revision.metadata.kind) && revision.contentRefs.body) {
       const existing = await this.client.list(this.where('readable', { revisionId: revision.id }));
       const body = existing.length ? null : await this.getObject(revision.contentRefs.body);
       if (body) {

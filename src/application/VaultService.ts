@@ -21,7 +21,14 @@ import {
   type CalendarData,
   type EventColor,
 } from '../domain/calendar.ts';
-import type { DocumentKind, DocumentRecord, Revision, RevisionKind } from '../domain/revision.ts';
+import {
+  folderKindFor,
+  isMarkdownKind,
+  type DocumentKind,
+  type DocumentRecord,
+  type Revision,
+  type RevisionKind,
+} from '../domain/revision.ts';
 import { emptyRichDoc, parseRichDoc, type RichDocData } from '../domain/richDoc.ts';
 import { emptyCanvasExtensions, type CanvasExtensions } from '../domain/sidecar.ts';
 import { wouldCreateCycle } from '../domain/folders.ts';
@@ -350,17 +357,44 @@ export class VaultService {
 
   /**
    * CreateRichDoc: documento de texto enriquecido (kind `doc`), con el árbol del editor en JSON.
-   * Como los calendarios, vive en su propia sección y fuera de las carpetas (folderId null).
+   * Vive en la sección «Documentos», en sus carpetas (`docfolder`).
    */
-  async createRichDoc(title: string): Promise<DocumentRecord> {
+  async createRichDoc(title: string, folderId: Uuid | null = null): Promise<DocumentRecord> {
     const cleanTitle = validateTitle(title);
+    await this.assertFolder(folderId, 'docfolder');
     const body = await toBlob(utf8Encode(JSON.stringify(emptyRichDoc())), MIME.richDoc);
     const result = await this.repo.commit({
       documentId: newId(),
       kind: 'doc',
       operation: 'save',
       knownHeads: [],
-      metadata: { kind: 'doc', title: cleanTitle, folderId: null, tags: [], deleted: false },
+      metadata: { kind: 'doc', title: cleanTitle, folderId, tags: [], deleted: false },
+      contentRefs: { body: body.hash, extensions: null, assets: [] },
+      blobs: [body],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  /**
+   * CreateMarkdownDoc: documento Markdown de la sección «Documentos» (kind `mddoc`), editado con
+   * Milkdown. Mismo formato que una nota (frontmatter y cuerpo, copia legible); se abre y guarda
+   * con openNote/saveNote.
+   */
+  async createMarkdownDoc(title: string, folderId: Uuid | null = null): Promise<DocumentRecord> {
+    const cleanTitle = validateTitle(title);
+    await this.assertFolder(folderId, 'docfolder');
+    const documentId = newId();
+    const body = await toBlob(
+      utf8Encode(this.noteMarkdown(documentId, cleanTitle, [], '')),
+      MIME.markdown,
+    );
+    const result = await this.repo.commit({
+      documentId,
+      kind: 'mddoc',
+      operation: 'save',
+      knownHeads: [],
+      metadata: { kind: 'mddoc', title: cleanTitle, folderId, tags: [], deleted: false },
       contentRefs: { body: body.hash, extensions: null, assets: [] },
       blobs: [body],
     });
@@ -476,14 +510,15 @@ export class VaultService {
    */
   async exportNoteMarkdown(documentId: Uuid): Promise<string> {
     await this.pendingWrites(documentId);
-    const { head } = await this.loadHead(documentId, 'note');
+    const { head } = await this.loadHead(documentId, isMarkdownKind);
     if (!head.contentRefs.body) throw new DomainError('not-found', 'Nota sin contenido');
     return this.readText(head.contentRefs.body);
   }
 
   async openNote(documentId: Uuid): Promise<OpenedNote> {
     await this.pendingWrites(documentId);
-    const { document, head } = await this.loadHead(documentId, 'note');
+    // Notas y documentos Markdown (Milkdown) comparten formato: frontmatter y cuerpo.
+    const { document, head } = await this.loadHead(documentId, isMarkdownKind);
     const text = head.contentRefs.body ? await this.readText(head.contentRefs.body) : '';
     const parsed: ParsedNote = parseNoteMarkdown(text);
     const readOnly = firstReason(
@@ -550,12 +585,13 @@ export class VaultService {
       MIME.markdown,
     );
     if (markdown.hash === head.contentRefs.body) return this.unchanged(session, head);
+    const kind = isMarkdownKind(head.metadata.kind) ? head.metadata.kind : 'note';
     return this.commitAndAdvance(session, {
       documentId: session.documentId,
-      kind: 'note',
+      kind,
       operation: 'save',
       knownHeads: session.knownHeads,
-      metadata: { kind: 'note', title, tags, folderId, deleted: false },
+      metadata: { kind, title, tags, folderId, deleted: false },
       contentRefs: { body: markdown.hash, extensions: null, assets: [] },
       blobs: [markdown],
     });
@@ -638,7 +674,9 @@ export class VaultService {
     const documents = await this.repo.listDocuments();
     if (folderId) {
       const target = documents.find((d) => d.id === folderId);
-      if (target?.kind !== 'folder' || target.deleted) {
+      const moving = documents.find((d) => d.id === documentId);
+      // Solo a una carpeta de su misma sección («Notas» o «Documentos»).
+      if (!target || target.deleted || !moving || target.kind !== folderKindFor(moving.kind)) {
         throw new DomainError('not-found', 'Carpeta de destino no encontrada');
       }
       if (wouldCreateCycle(documents, documentId, folderId)) {
@@ -649,20 +687,20 @@ export class VaultService {
   }
 
   /** CreateFolder: entidad revisionada, sin contenido (diseño §5). */
-  async createFolder(title: string, parentId: Uuid | null = null): Promise<DocumentRecord> {
+  /** Carpeta de «Notas» (`folder`) o de «Documentos» (`docfolder`); cada sección tiene su árbol. */
+  async createFolder(
+    title: string,
+    parentId: Uuid | null = null,
+    kind: 'folder' | 'docfolder' = 'folder',
+  ): Promise<DocumentRecord> {
     const cleanTitle = validateTitle(title);
-    if (parentId) {
-      const parent = await this.repo.getDocument(parentId);
-      if (parent?.kind !== 'folder' || parent.deleted) {
-        throw new DomainError('not-found', 'Carpeta padre no encontrada');
-      }
-    }
+    await this.assertFolder(parentId, kind);
     const result = await this.repo.commit({
       documentId: newId(),
-      kind: 'folder',
+      kind,
       operation: 'save',
       knownHeads: [],
-      metadata: { kind: 'folder', title: cleanTitle, folderId: parentId, tags: [], deleted: false },
+      metadata: { kind, title: cleanTitle, folderId: parentId, tags: [], deleted: false },
       contentRefs: { body: null, extensions: null, assets: [] },
       blobs: [],
     });
@@ -696,7 +734,7 @@ export class VaultService {
     let contentRefs = head.contentRefs;
     const blobs: StoredBlob[] = [];
 
-    if (doc.kind === 'note') {
+    if (isMarkdownKind(doc.kind)) {
       const previous = head.contentRefs.body ? await this.readText(head.contentRefs.body) : '';
       const parsed = parseNoteMarkdown(previous);
       // Reescribir un frontmatter de versión posterior lo degradaría: se rechaza.
@@ -810,7 +848,7 @@ export class VaultService {
     const revision = await this.repo.getRevision(revisionId);
     if (!revision) throw new DomainError('not-found', 'Revisión no encontrada');
     const text = revision.contentRefs.body ? await this.readText(revision.contentRefs.body) : null;
-    if (revision.metadata.kind === 'note') {
+    if (isMarkdownKind(revision.metadata.kind)) {
       return { kind: 'note', revision, body: parseNoteMarkdown(text ?? '').body };
     }
     if (revision.metadata.kind === 'calendar') {
@@ -919,7 +957,7 @@ export class VaultService {
           blobs: [body],
         };
       } else if (choice.kind === 'merge') {
-        if (doc.kind !== 'note') throw new DomainError('not-found', 'Solo se combinan notas');
+        if (!isMarkdownKind(doc.kind)) throw new DomainError('not-found', 'Solo se combinan notas');
         const base = (await this.conflictHeads(documentId)).at(-1)!;
         const markdown = await toBlob(
           utf8Encode(
@@ -929,7 +967,7 @@ export class VaultService {
         );
         input = {
           documentId,
-          kind: 'note',
+          kind: doc.kind,
           operation: 'resolve',
           knownHeads: heads,
           metadata: { ...base.metadata, deleted: false },
@@ -966,7 +1004,7 @@ export class VaultService {
     const cleanTitle = validateTitle(title);
     let contentRefs = source.contentRefs;
     const blobs: StoredBlob[] = [];
-    if (source.metadata.kind === 'note') {
+    if (isMarkdownKind(source.metadata.kind)) {
       const body = parseNoteMarkdown(
         source.contentRefs.body ? await this.readText(source.contentRefs.body) : '',
       ).body;
@@ -992,7 +1030,8 @@ export class VaultService {
     const kind =
       source.metadata.kind === 'note' ||
       source.metadata.kind === 'calendar' ||
-      source.metadata.kind === 'doc'
+      source.metadata.kind === 'doc' ||
+      source.metadata.kind === 'mddoc'
         ? source.metadata.kind
         : 'canvas';
     const result = await this.repo.commit({
@@ -1022,7 +1061,7 @@ export class VaultService {
     return this.serialized(documentId, async () => {
       const doc = await this.repo.getDocument(documentId);
       const parent = await this.repo.getRevision(parentRevisionId);
-      if (doc?.kind !== 'note' || parent?.documentId !== documentId) return null;
+      if (!doc || !isMarkdownKind(doc.kind) || parent?.documentId !== documentId) return null;
       let text: string;
       try {
         text = utf8Decode(bytes);
@@ -1042,7 +1081,7 @@ export class VaultService {
       const blob = await toBlob(bytes, MIME.markdown);
       const result = await this.repo.commit({
         documentId,
-        kind: 'note',
+        kind: doc.kind,
         operation: 'external',
         knownHeads: [parentRevisionId],
         metadata: { ...parent.metadata, title, tags, deleted: false },
@@ -1186,16 +1225,27 @@ export class VaultService {
 
   private async loadHead(
     documentId: Uuid,
-    kind?: RevisionKind,
+    kind?: RevisionKind | ((kind: RevisionKind) => boolean),
   ): Promise<{ document: DocumentRecord; head: Revision }> {
     const document = await this.requireDocument(documentId);
-    if (kind && document.kind !== kind)
-      throw new DomainError('not-found', 'Tipo de documento distinto');
+    const matches =
+      kind === undefined ||
+      (typeof kind === 'function' ? kind(document.kind) : document.kind === kind);
+    if (!matches) throw new DomainError('not-found', 'Tipo de documento distinto');
     // Con varias cabezas (conflicto) se abre la más reciente; la UI de resolución está pendiente.
     const heads = await this.repo.getHeads(documentId);
     const head = heads.sort((a, b) => a.createdAt.localeCompare(b.createdAt)).at(-1);
     if (!head) throw new DomainError('not-found', 'Documento sin revisiones');
     return { document, head };
+  }
+
+  /** Una carpeta de destino (o null, la raíz) debe existir, estar viva y ser del tipo pedido. */
+  private async assertFolder(folderId: Uuid | null, kind: 'folder' | 'docfolder'): Promise<void> {
+    if (!folderId) return;
+    const folder = await this.repo.getDocument(folderId);
+    if (folder?.kind !== kind || folder.deleted) {
+      throw new DomainError('not-found', 'Carpeta no encontrada');
+    }
   }
 
   private async readText(hash: string): Promise<string> {

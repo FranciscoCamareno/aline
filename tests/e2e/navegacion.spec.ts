@@ -69,12 +69,16 @@ test('biblioteca: Nuevo, buscador, pestañas, menú de fila y pie', async ({ pag
   await expect(page.getByTestId('recent-item')).toHaveCount(2);
   await page.getByRole('tab', { name: 'Todos' }).click();
 
-  // Pie: papelera con su recuento, preferencias (idioma) y perfil. La ayuda ya no está aquí.
+  // Pie: papelera con su recuento y perfil; las preferencias (idioma) se abren desde Perfil, en
+  // un modal. La ayuda ya no está aquí.
   await expect(page.getByTestId('trash-toggle')).toContainText('(0)');
   await expect(page.getByTestId('open-help')).toHaveCount(0);
+  await expect(library.getByTestId('open-preferences')).toHaveCount(0);
   await expect(page.getByTestId('open-profile')).toContainText('Perfil');
+  await page.getByTestId('open-profile').click();
   await page.getByTestId('open-preferences').click();
   await expect(page.getByTestId('preferences').getByLabel('Idioma')).toBeVisible();
+  await page.getByTestId('preferences-close').click();
   await page.getByTestId('library-title-text').filter({ hasText: 'Lienzo sin título' }).click();
   // La ayuda es el botón «?» del lienzo, abajo a la derecha, y solo existe con un lienzo abierto.
   await page.locator('.excalidraw .help-icon').click();

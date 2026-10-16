@@ -18,6 +18,15 @@ const dark = {
   ...light,
   ...tokens(/:root\[data-theme='dark'\]\s*\{([\s\S]*?)\n\}/.exec(css)![1]!),
 };
+/** Esquemas de color (DESIGN.md §2.5): cada uno sobre la base de su modo. */
+const DARK_SCHEMES = new Set(['noche', 'negro', 'marea', 'bosque']);
+const schemes = [...css.matchAll(/:root\[data-scheme='([a-z]+)'\]\s*\{([\s\S]*?)\n\}/g)].map(
+  (m) =>
+    [
+      `esquema ${m[1]!}`,
+      { ...(DARK_SCHEMES.has(m[1]!) ? dark : light), ...tokens(m[2]!) },
+    ] as const,
+);
 
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
 function luminance(hex: string): number {
@@ -64,10 +73,16 @@ const UI_PAIRS: Array<[string, string]> = [
 ];
 
 describe('contraste del tema (WCAG 2.1 AA, RNF-08)', () => {
+  it('cubre los 6 esquemas además de Papel y Noche', () => {
+    expect(schemes.map(([name]) => name).sort()).toEqual(
+      ['blanco', 'bosque', 'bruma', 'marea', 'negro', 'salvia'].map((s) => `esquema ${s}`),
+    );
+  });
   for (const [name, t] of [
-    ['claro', light],
-    ['oscuro', dark],
-  ] as const) {
+    ['tema claro', light] as const,
+    ['tema oscuro', dark] as const,
+    ...schemes,
+  ]) {
     const failing = (pairs: Array<[string, string]>, min: number) =>
       pairs
         .map(
@@ -76,10 +91,10 @@ describe('contraste del tema (WCAG 2.1 AA, RNF-08)', () => {
         )
         .filter(([, ratio]) => !(ratio >= min));
 
-    it(`tema ${name}: todos los textos alcanzan 4,5:1`, () => {
+    it(`${name}: todos los textos alcanzan 4,5:1`, () => {
       expect(failing(TEXT_PAIRS, 4.5)).toEqual([]);
     });
-    it(`tema ${name}: iconos, bordes y foco alcanzan 3:1`, () => {
+    it(`${name}: iconos, bordes y foco alcanzan 3:1`, () => {
       expect(failing(UI_PAIRS, 3)).toEqual([]);
     });
   }

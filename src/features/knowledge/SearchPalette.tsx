@@ -46,7 +46,7 @@ export function SearchPalette({ search, onClose }: Props) {
     navigate({
       documentId: hit.documentId,
       elementId: hit.kind === 'canvas' ? (elementId ?? hit.elementIds[0] ?? null) : null,
-      text: hit.kind === 'note' ? query.trim() : null,
+      text: hit.kind === 'note' || hit.kind === 'mddoc' ? query.trim() : null,
     });
     onClose();
   };

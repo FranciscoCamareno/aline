@@ -1,4 +1,4 @@
-import type { DocumentRecord, Revision } from '../../domain/revision.ts';
+import { isMarkdownKind, type DocumentRecord, type Revision } from '../../domain/revision.ts';
 import { vaultSchema, type Vault, type VersionPrune } from '../../domain/vault.ts';
 import {
   assetPath,
@@ -181,7 +181,7 @@ export class FolderRemoteStore implements RemoteStore {
   async publishRevision(revision: Revision, _operationId: string): Promise<void> {
     try {
       // Copia legible por versión (nunca se reescribe una existente, §8.3).
-      if (revision.metadata.kind === 'note' && revision.contentRefs.body) {
+      if (isMarkdownKind(revision.metadata.kind) && revision.contentRefs.body) {
         const body = (await this.getObject(revision.contentRefs.body))?.bytes;
         if (body) {
           const readable = await this.dir('readable', true);

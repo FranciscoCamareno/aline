@@ -31,10 +31,13 @@ const SCALES = [1, 2, 3] as const;
 export function ExportDialog({
   api,
   title,
+  storedBackground,
   onClose,
 }: {
   api: ExcalidrawImperativeAPI;
   title: string;
+  /** Fondo guardado del lienzo; el que se ve puede ser el del esquema activo (DESIGN.md §2.5). */
+  storedBackground: () => string | null;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -46,13 +49,18 @@ export function ExportDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const scene: ExportScene = useMemo(
-    () => ({
+  const scene: ExportScene = useMemo(() => {
+    const background = storedBackground();
+    return {
       elements: api.getSceneElements(),
-      appState: api.getAppState(),
+      appState: background
+        ? { ...api.getAppState(), viewBackgroundColor: background }
+        : api.getAppState(),
       files: api.getFiles(),
-    }),
-    [api],
+    };
+    // Una instantánea al abrir el diálogo (el fondo guardado se lee entonces).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]
   );
   const hasSelection = Object.values(scene.appState.selectedElementIds ?? {}).some(Boolean);
   const visibleCount = scene.elements.filter((e) => !e.isDeleted).length;

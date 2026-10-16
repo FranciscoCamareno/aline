@@ -16,7 +16,7 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 
 ## 2. Canvases and mind maps
 
-- **New canvas:** in the library, "+ New" → "Canvas". The tools are in the tray at the bottom; their shortcuts and styles are Excalidraw's.
+- **New canvas:** in the sidebar's **Notes** tab, "+ New" → "Canvas". The tools are in the tray at the bottom; their shortcuts and styles are Excalidraw's.
 - **Sticky notes and stickers:** the note in the tray (or the N key) puts a sticky note in the middle of the view; double-click it to write. The sticker sheet (or the B key) opens the stickers: click one or drag it onto the canvas.
 - **Templates:** select elements (images and stickers too), press "Templates" (top right) → "Save selection" and give it a name. Each template shows a thumbnail. To use it, click it in the panel or drag it onto the canvas: a copy is inserted.
 - **Linking an element** to a note, another canvas or a web page: select the element and press "Link" (above the canvas). The link opens from the element's icon.
@@ -36,12 +36,27 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 
 ## 3 bis. Calendar
 
-- In the library, the **Calendar** tab opens the month; **Week** and **Day** show timed events as blocks and a red line at the current time.
+- In the sidebar, the **Calendar** tab opens the month; **Week** and **Day** show timed events as blocks and a red line at the current time.
 - If a calendar was edited in two places at once, a notice with **Resolve** appears: keep one version, both, or **merge the events** (both sets are combined).
 - **New event** (or double-click a day or an hour): title, calendar, all day or timed, start and end dates and a colour (the sticky-note colours).
 - Click an event to edit it, move it to another calendar or delete it.
 - **My calendars:** "+" creates another calendar; its checkbox shows or hides it. Each calendar has history and is included in backups and sync like any document.
 - Before using the calendar or templates, update the app on all your devices: an older version does not recognise them.
+
+## 3 ter. Documents (beta)
+
+- The sidebar's **Documents** tab has its own "+ New", search and folders (separate from the ones in "Notes"):
+  - **Formatted document:** headings, bold, italic, underline, strikethrough, lists, quotes and alignment. It is edited only inside the app.
+  - **Markdown document:** shown formatted but saved as Markdown, like a note: it has a readable copy in the folder or in unencrypted Drive, can be edited outside and is searchable. Saving normalises the Markdown (list style, for example). Images are shown as text, without downloading them.
+  - **Folder:** for documents only.
+- **Continuous / Page** only changes the presentation (running text or an A4 sheet); there are no page breaks while editing.
+- Before using documents, update the app on all your devices: an older version does not recognise them.
+
+## 3 quater. Appearance and Zen mode
+
+- **Colour schemes:** in **Profile → Preferences** you choose a light scheme (Paper, White, Mist or Sage) and a dark one (Night, Black, Tide or Forest). The switch at the top right toggles between them and remembers your choice; "Follow system" uses the light one by day and the dark one by night. The language is there too.
+- The canvas is painted with the scheme's background, but what is saved and exported keeps its own background.
+- **Zen mode** (right-click the canvas → "Zen mode", or Alt+Z): it also hides the sidebar and the header. The canvas tools stay visible; leaving it brings everything back.
 
 ## 4. Organising and searching
 

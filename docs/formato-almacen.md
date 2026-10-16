@@ -55,17 +55,19 @@ Una revisión es una instantánea inmutable de un documento:
   "deviceId": "UUID del dispositivo",
   "createdAt": "ISO 8601 UTC (informativa, no decide precedencia)",
   "operation": "save | delete | restore | resolve | external",
-  "metadata": { "kind": "note | canvas | folder | calendar | template | doc", "title": "…", "folderId": null, "tags": [], "deleted": false },
+  "metadata": { "kind": "note | canvas | folder | calendar | template | doc | mddoc | docfolder", "title": "…", "folderId": null, "tags": [], "deleted": false },
   "contentRefs": { "body": "sha256 | null", "extensions": "sha256 | null", "assets": ["sha256"] }
 }
 ```
 
-- `body` depende de `metadata.kind`: una nota (`objects/<hash>.md`), una escena de lienzo o de plantilla (`objects/<hash>.excalidraw`) o un calendario o un documento de texto (`objects/<hash>.json`). Las carpetas no tienen cuerpo.
+- `body` depende de `metadata.kind`: una nota o un documento Markdown (`objects/<hash>.md`), una escena de lienzo o de plantilla (`objects/<hash>.excalidraw`) o un calendario o un documento con formato (`objects/<hash>.json`). Las carpetas (`folder` y `docfolder`) no tienen cuerpo.
 - `extensions` es el sidecar del lienzo (`objects/<hash>.json`).
 - `assets` son los archivos de `assets/`.
 - `operation: "delete"` envía el documento a la papelera y conserva el contenido.
 
 ### 2.3 Notas Markdown (`objects/<hash>.md` y `readable/…`)
+
+Desde el 16/10/2026 los documentos Markdown de la sección «Documentos» (`mddoc`, editados con Milkdown) usan exactamente este formato, con su copia legible; solo cambia `metadata.kind`.
 
 Texto UTF-8 con frontmatter. El hash se calcula sobre los bytes exactos, sin normalizar.
 
@@ -151,8 +153,12 @@ Desde el 15/10/2026. Un documento `doc` guarda el documento entero en JSON y cad
 
 - El esquema solo fija la forma general del árbol; qué nodos y marcas existen lo decide el editor. Un árbol que el editor no acepta se abre en solo lectura y no se reescribe.
 - Nodos actuales: `paragraph`, `heading` (niveles 1–3), `bulletList`, `orderedList`, `listItem`, `blockquote`, `codeBlock`, `horizontalRule`, `hardBreak` y `text`; marcas `bold`, `italic`, `underline`, `strike`, `code` y `link`; atributo `textAlign` en párrafos y títulos.
-- No hay copia legible en `readable/`: se edita solo dentro de la aplicación. No va en carpetas (`folderId` null).
+- No hay copia legible en `readable/`: se edita solo dentro de la aplicación. Va en las carpetas de «Documentos» (`docfolder`) o en la raíz.
 - Las claves desconocidas se conservan. Un `schemaVersion` posterior se abre en solo lectura.
+
+### 2.5.4 Carpetas de «Documentos» (`docfolder`)
+
+Desde el 16/10/2026. Igual que una carpeta (`folder`): sin cuerpo, con `metadata.folderId` para anidarse. Cada sección tiene su árbol: notas, lienzos y `folder` solo cuelgan de un `folder`; `doc`, `mddoc` y `docfolder` solo de un `docfolder`. Un documento que apunte a una carpeta de la otra sección o retirada se muestra en «Recuperación».
 
 ### 2.6 `heads/<deviceId>.json` — [esquema](formato/schemas/v1/heads.schema.json)
 

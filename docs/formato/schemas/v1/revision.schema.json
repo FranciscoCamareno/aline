@@ -56,7 +56,9 @@
             "folder",
             "calendar",
             "template",
-            "doc"
+            "doc",
+            "mddoc",
+            "docfolder"
           ]
         },
         "title": {

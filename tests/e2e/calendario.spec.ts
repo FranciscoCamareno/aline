@@ -116,7 +116,7 @@ test('calendario: crear, editar, ocultar y borrar eventos, y que se guarden', as
   ).toBeVisible();
 
   // Volver a la biblioteca: los calendarios no aparecen entre lienzos y notas.
-  await page.getByRole('tab', { name: 'Biblioteca' }).click();
+  await page.getByRole('tab', { name: 'Notas' }).click();
   await expect(page.getByTestId('library-item')).toHaveCount(1);
   expect(today()).toMatch(/^\d{4}-/);
 });

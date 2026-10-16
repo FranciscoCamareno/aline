@@ -1,23 +1,24 @@
 import { useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LANGUAGES, setLanguage, type AppLanguage } from '../../app/i18n.ts';
 import { useUiStore, type Section } from '../../app/store.ts';
-import { setThemePreference, useTheme } from '../../app/theme.ts';
+import { useTheme } from '../../app/theme.ts';
 import { Icon, KindIcon, type IconName } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
 import { effectiveFolder, RECOVERY_FOLDER } from '../../domain/folders.ts';
 import type { DocumentKind, DocumentRecord } from '../../domain/revision.ts';
-import { hasConflict, isContentKind } from '../../domain/revision.ts';
+import { hasConflict, isContentKind, isDocsKind, isFolderKind } from '../../domain/revision.ts';
 import { tagKey } from '../../domain/tags.ts';
 import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
-import { DocsSidebar } from '../docs/DocsSidebar.tsx';
 import { RenameableTitle } from './RenameableTitle.tsx';
-import logoDark from '../../../brand/aline-logo-dark.svg?url';
-import logoLight from '../../../brand/aline-logo.svg?url';
+import { schemeLogo } from '../../app/schemes.ts';
 
 interface Props {
   onCreate: (kind: DocumentKind, folderId: string | null) => Promise<void>;
-  onCreateFolder: (title: string, parentId: string | null) => Promise<void>;
+  onCreateFolder: (
+    title: string,
+    parentId: string | null,
+    kind: 'folder' | 'docfolder',
+  ) => Promise<void>;
   onRename: (documentId: string, title: string) => Promise<void>;
   onTrash: (documentId: string) => Promise<void>;
   onRestoreFromTrash: (documentId: string) => Promise<void>;
@@ -27,11 +28,14 @@ interface Props {
   /** Mover un lienzo o una nota a una carpeta (o a la raíz con null), arrastrándolo. */
   onMove: (documentId: string, folderId: string | null) => Promise<void>;
   onCreateCalendar: (title: string) => Promise<void>;
-  /** Documento de texto enriquecido nuevo (sección «Documentos»). */
-  onCreateDoc: () => Promise<void>;
+  /** Documento nuevo de la sección «Documentos»: con formato (Tiptap) o Markdown (Milkdown). */
+  onCreateDoc: (editor: DocEditorKind, folderId: string | null) => Promise<void>;
   /** Abre el perfil: conexión con Google Drive y estado del almacenamiento. */
   onOpenProfile: () => void;
 }
+
+/** Editor de un documento nuevo: Tiptap (formato libre, JSON) o Milkdown (Markdown). */
+export type DocEditorKind = 'tiptap' | 'milkdown';
 
 const RECENT_COUNT = 5;
 const SECTION_ICONS = {
@@ -67,8 +71,8 @@ export function LibrarySidebar({
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
-  const { t, i18n } = useTranslation();
-  const { theme, preference } = useTheme();
+  const { t } = useTranslation();
+  const { scheme } = useTheme();
   const documents = useUiStore((s) => s.documents);
   const activeId = useUiStore((s) => s.activeId);
   const setActiveDocument = useUiStore((s) => s.setActive);
@@ -86,11 +90,15 @@ export function LibrarySidebar({
     closeIfNarrow();
   };
   const create = (kind: DocumentKind) => void onCreate(kind, selected).then(closeIfNarrow);
+  const createDoc = (editor: DocEditorKind) =>
+    void onCreateDoc(editor, selected).then(closeIfNarrow);
+  // «Notas» y «Documentos» comparten este panel; cada una con sus documentos y sus carpetas.
+  const inDocs = section === 'documents';
+  const folderKind = inDocs ? 'docfolder' : 'folder';
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const [tab, setTab] = useState<'all' | 'recent'>('all');
   const [query, setQuery] = useState('');
   const [trashOpen, setTrashOpen] = useState(false);
-  const [prefsOpen, setPrefsOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [newFolder, setNewFolder] = useState<string | null>(null);
@@ -99,10 +107,13 @@ export function LibrarySidebar({
 
   const live = useMemo(() => documents.filter((d) => !d.deleted), [documents]);
   const folders = useMemo(
-    () => new Map(documents.filter((d) => d.kind === 'folder').map((d) => [d.id, d])),
-    [documents],
+    () => new Map(documents.filter((d) => d.kind === folderKind).map((d) => [d.id, d])),
+    [documents, folderKind],
   );
-  const content = useMemo(() => live.filter((d) => isContentKind(d.kind)), [live]);
+  const content = useMemo(
+    () => live.filter((d) => (inDocs ? isDocsKind(d.kind) : isContentKind(d.kind))),
+    [live, inDocs],
+  );
   const trashed = documents.filter((d) => d.deleted);
   const recent = content.slice(0, RECENT_COUNT);
 
@@ -115,7 +126,7 @@ export function LibrarySidebar({
 
   const childrenOf = (parent: string | null) => ({
     folders: live
-      .filter((d) => d.kind === 'folder' && effectiveFolder(d, folders) === parent)
+      .filter((d) => d.kind === folderKind && effectiveFolder(d, folders) === parent)
       .sort((a, b) => a.title.localeCompare(b.title)),
     docs: content.filter((d) => effectiveFolder(d, folders) === parent),
   });
@@ -139,7 +150,7 @@ export function LibrarySidebar({
 
   const moveTo = (documentId: string, folderId: string | null) => {
     const doc = documents.find((d) => d.id === documentId);
-    if (!doc || doc.kind === 'folder' || doc.folderId === folderId) return;
+    if (!doc || isFolderKind(doc.kind) || doc.folderId === folderId) return;
     if (folderId) setExpanded((prev) => new Set(prev).add(folderId));
     void onMove(documentId, folderId);
   };
@@ -178,8 +189,10 @@ export function LibrarySidebar({
           : kind === 'note'
             ? t('library.kindNote')
             : kind === 'doc'
-              ? t('docs.kind')
-              : t('library.kindFolder')
+              ? t('docs.kindRich')
+              : kind === 'mddoc'
+                ? t('docs.kindMarkdown')
+                : t('library.kindFolder')
       }
     >
       <KindIcon kind={kind} on={isActive} />
@@ -412,12 +425,7 @@ export function LibrarySidebar({
       }}
     >
       <div className="library-head">
-        <img
-          className="brand"
-          src={theme === 'dark' ? logoDark : logoLight}
-          alt={t('app.name')}
-          height={24}
-        />
+        <img className="brand" src={schemeLogo(scheme)} alt={t('app.name')} height={24} />
         <button
           type="button"
           className="icon-button"
@@ -444,7 +452,7 @@ export function LibrarySidebar({
           >
             <Icon name={SECTION_ICONS[key]} size={18} on={section === key} />
             {key === 'library'
-              ? t('library.title')
+              ? t('library.sectionNotes')
               : key === 'calendar'
                 ? t('calendar.title')
                 : t('docs.title')}
@@ -458,8 +466,6 @@ export function LibrarySidebar({
           onRename={onRename}
           onTrash={onTrash}
         />
-      ) : section === 'documents' ? (
-        <DocsSidebar onCreateDoc={onCreateDoc} onRename={onRename} onTrash={onTrash} />
       ) : (
         <>
           <div className="library-actions">
@@ -476,39 +482,63 @@ export function LibrarySidebar({
               label={t('library.new')}
               triggerClassName="primary"
               testId="new-menu"
-              items={[
-                {
-                  id: 'new-canvas',
-                  label: t('library.kindCanvas'),
-                  icon: 'lienzo',
-                  onSelect: () => create('canvas'),
-                },
-                {
-                  id: 'new-note',
-                  label: t('library.kindNote'),
-                  icon: 'nota',
-                  onSelect: () => create('note'),
-                },
-                {
-                  id: 'new-folder',
-                  label: t('library.kindFolder'),
-                  icon: 'carpeta',
-                  onSelect: () => setNewFolder(''),
-                },
-                {
-                  id: 'import-files',
-                  label: t('library.importFiles'),
-                  icon: 'subir',
-                  separated: true,
-                  onSelect: () => fileInput.current?.click(),
-                },
-                {
-                  id: 'import-folder',
-                  label: t('library.importFolder'),
-                  icon: 'carpeta-abierta',
-                  onSelect: () => folderInput.current?.click(),
-                },
-              ]}
+              items={
+                inDocs
+                  ? [
+                      {
+                        id: 'new-doc-rich',
+                        label: t('docs.kindRich'),
+                        icon: 'documento',
+                        onSelect: () => createDoc('tiptap'),
+                      },
+                      {
+                        id: 'new-doc-markdown',
+                        label: t('docs.kindMarkdown'),
+                        icon: 'documento-md',
+                        onSelect: () => createDoc('milkdown'),
+                      },
+                      {
+                        id: 'new-folder',
+                        label: t('library.kindFolder'),
+                        icon: 'carpeta',
+                        separated: true,
+                        onSelect: () => setNewFolder(''),
+                      },
+                    ]
+                  : [
+                      {
+                        id: 'new-canvas',
+                        label: t('library.kindCanvas'),
+                        icon: 'lienzo',
+                        onSelect: () => create('canvas'),
+                      },
+                      {
+                        id: 'new-note',
+                        label: t('library.kindNote'),
+                        icon: 'nota',
+                        onSelect: () => create('note'),
+                      },
+                      {
+                        id: 'new-folder',
+                        label: t('library.kindFolder'),
+                        icon: 'carpeta',
+                        onSelect: () => setNewFolder(''),
+                      },
+                      {
+                        id: 'import-files',
+                        label: t('library.importFiles'),
+                        icon: 'subir',
+                        separated: true,
+                        onSelect: () => fileInput.current?.click(),
+                      },
+                      {
+                        id: 'import-folder',
+                        label: t('library.importFolder'),
+                        icon: 'carpeta-abierta',
+                        onSelect: () => folderInput.current?.click(),
+                      },
+                    ]
+              }
             />
             {newFolder !== null && (
               <form
@@ -517,7 +547,7 @@ export function LibrarySidebar({
                   e.preventDefault();
                   const title = newFolder.trim();
                   setNewFolder(null);
-                  if (title) void onCreateFolder(title, selected);
+                  if (title) void onCreateFolder(title, selected, folderKind);
                 }}
               >
                 <input
@@ -660,42 +690,6 @@ export function LibrarySidebar({
         </section>
       )}
 
-      {prefsOpen && (
-        <section
-          className="preferences"
-          aria-label={t('preferences.title')}
-          data-testid="preferences"
-        >
-          <h3 className="section-title">{t('preferences.title')}</h3>
-          <label className="preference-row">
-            <Icon name="idioma" size={18} />
-            <span>{t('app.language')}</span>
-            <select
-              aria-label={t('app.language')}
-              value={i18n.language.startsWith('en') ? 'en' : 'es'}
-              onChange={(e) => setLanguage(e.target.value as AppLanguage)}
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </label>
-          {/* «Seguir al sistema» vive aquí; el interruptor de la cabecera pasa a modo manual. */}
-          <label className="preference-row">
-            <Icon name="tema-sistema" size={18} />
-            <span>{t('preferences.followSystem')}</span>
-            <input
-              type="checkbox"
-              checked={preference === 'system'}
-              data-testid="theme-system"
-              onChange={(e) => setThemePreference(e.target.checked ? 'system' : theme)}
-            />
-          </label>
-        </section>
-      )}
-
       <div className="library-foot">
         <button
           type="button"
@@ -708,17 +702,7 @@ export function LibrarySidebar({
           <span>{t('library.trashShort')}</span>
           <span className="foot-count">({trashed.length})</span>
         </button>
-        <button
-          type="button"
-          className="foot-button"
-          aria-expanded={prefsOpen}
-          data-testid="open-preferences"
-          onClick={() => setPrefsOpen((v) => !v)}
-        >
-          <Icon name="ajustes" size={18} />
-          <span>{t('preferences.title')}</span>
-        </button>
-        {/* Perfil: cuenta y copia en Google Drive (el panel de estado y almacenamiento). */}
+        {/* Perfil: almacenamiento y Google Drive, y desde ahí las Preferencias (modales). */}
         <button
           type="button"
           className="foot-button"

@@ -1,4 +1,4 @@
-import type { DocumentRecord } from './revision.ts';
+import { isFolderKind, type DocumentRecord } from './revision.ts';
 
 /**
  * Reglas de carpetas (diseño §5 y §15): sin ciclos, sin borrado en cascada; los documentos que
@@ -15,7 +15,7 @@ export function wouldCreateCycle(
   newParentId: string | null,
 ): boolean {
   const parentOf = new Map(
-    documents.filter((d) => d.kind === 'folder').map((d) => [d.id, d.folderId]),
+    documents.filter((d) => isFolderKind(d.kind)).map((d) => [d.id, d.folderId]),
   );
   let current = newParentId;
   const seen = new Set<string>();

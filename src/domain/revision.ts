@@ -11,7 +11,9 @@ export type DocumentKind = z.infer<typeof documentKindSchema>;
  * Tipos de documento del almacén. `calendar` (eventos, JSON) y `template` (plantilla del lienzo,
  * una escena .excalidraw con sus imágenes) se añadieron el 14/10/2026: ver el registro de
  * cambios de arquitectura en el diseño técnico. `doc` (documento de texto enriquecido, JSON de
- * Tiptap/ProseMirror) se añadió el 15/10/2026 con el mismo registro.
+ * Tiptap/ProseMirror) se añadió el 15/10/2026 con el mismo registro; `mddoc` (documento Markdown
+ * editado con Milkdown, mismo formato que una nota) y `docfolder` (carpeta de la sección
+ * «Documentos») el 16/10/2026.
  */
 export const revisionKindSchema = z.enum([
   'note',
@@ -20,12 +22,45 @@ export const revisionKindSchema = z.enum([
   'calendar',
   'template',
   'doc',
+  'mddoc',
+  'docfolder',
 ]);
 export type RevisionKind = z.infer<typeof revisionKindSchema>;
 
-/** Notas y lienzos: lo que se abre y se organiza en la biblioteca. */
+/** Notas y lienzos: lo que se abre y se organiza en la sección «Notas» (la biblioteca). */
 export function isContentKind(kind: RevisionKind): kind is DocumentKind {
   return kind === 'note' || kind === 'canvas';
+}
+
+/** Documentos de la sección «Documentos»: con formato (Tiptap) o Markdown (Milkdown). */
+export type DocsKind = 'doc' | 'mddoc';
+export function isDocsKind(kind: RevisionKind): kind is DocsKind {
+  return kind === 'doc' || kind === 'mddoc';
+}
+
+/** Carpetas de cualquier sección: `folder` en «Notas», `docfolder` en «Documentos». */
+export function isFolderKind(kind: RevisionKind): kind is 'folder' | 'docfolder' {
+  return kind === 'folder' || kind === 'docfolder';
+}
+
+/**
+ * Carpeta en la que puede estar un documento: las de su sección. Null para lo que no va en
+ * carpetas (calendarios y plantillas).
+ */
+export function folderKindFor(kind: RevisionKind): 'folder' | 'docfolder' | null {
+  if (kind === 'note' || kind === 'canvas' || kind === 'folder') return 'folder';
+  if (isDocsKind(kind) || kind === 'docfolder') return 'docfolder';
+  return null;
+}
+
+/** Cuerpo Markdown con frontmatter (notas y documentos Markdown): copia legible y edición externa. */
+export function isMarkdownKind(kind: RevisionKind): kind is 'note' | 'mddoc' {
+  return kind === 'note' || kind === 'mddoc';
+}
+
+/** Lo que entra en el índice de enlaces y búsqueda: notas, lienzos y documentos Markdown. */
+export function isIndexedKind(kind: RevisionKind): kind is 'note' | 'canvas' | 'mddoc' {
+  return isContentKind(kind) || kind === 'mddoc';
 }
 
 export const revisionOperationSchema = z.enum(['save', 'delete', 'restore', 'resolve', 'external']);

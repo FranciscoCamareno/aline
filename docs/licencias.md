@@ -8,7 +8,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 
 | Licencia | Paquetes |
 | --- | --- |
-| MIT | 332 |
+| MIT | 349 |
 | ISC | 38 |
 | Apache-2.0 | 11 |
 | BSD-3-Clause | 7 |
@@ -106,6 +106,17 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @lezer/markdown | 1.8.0 | MIT |
 | @marijn/find-cluster-break | 1.0.4 | MIT |
 | @mermaid-js/parser | 0.6.3, 1.2.1 | MIT |
+| @milkdown/core | 7.22.2 | MIT |
+| @milkdown/ctx | 7.22.2 | MIT |
+| @milkdown/exception | 7.22.2 | MIT |
+| @milkdown/plugin-clipboard | 7.22.2 | MIT |
+| @milkdown/plugin-history | 7.22.2 | MIT |
+| @milkdown/plugin-listener | 7.22.2 | MIT |
+| @milkdown/preset-commonmark | 7.22.2 | MIT |
+| @milkdown/preset-gfm | 7.22.2 | MIT |
+| @milkdown/prose | 7.22.2 | MIT |
+| @milkdown/transformer | 7.22.2 | MIT |
+| @milkdown/utils | 7.22.2 | MIT |
 | @radix-ui/primitive | 1.0.0, 1.1.1 | MIT |
 | @radix-ui/react-arrow | 1.1.2 | MIT |
 | @radix-ui/react-collection | 1.0.1 | MIT |
@@ -192,6 +203,8 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @types/debug | 4.1.13 | MIT |
 | @types/geojson | 7946.0.16 | MIT |
 | @types/hast | 3.0.5 | MIT |
+| @types/lodash | 4.17.26 | MIT |
+| @types/lodash-es | 4.17.12 | MIT |
 | @types/mdast | 4.0.4 | MIT |
 | @types/ms | 2.1.0 | MIT |
 | @types/pako | 2.0.4 | MIT |
@@ -322,6 +335,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | longest-streak | 3.1.0 | MIT |
 | markdown-table | 3.0.4 | MIT |
 | marked | 16.4.2 | MIT |
+| mdast-util-definitions | 6.0.0 | MIT |
 | mdast-util-find-and-replace | 3.0.3 | MIT |
 | mdast-util-from-markdown | 2.1.0 | MIT |
 | mdast-util-gfm | 3.1.0 | MIT |
@@ -367,7 +381,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | minisearch | 7.2.0 | MIT |
 | ms | 2.1.3 | MIT |
 | multimath | 2.0.0 | MIT |
-| nanoid | 3.3.20, 4.0.2 | MIT |
+| nanoid | 3.3.20, 4.0.2, 6.0.2 | MIT |
 | normalize-path | 3.0.0 | MIT |
 | object-assign | 4.1.1 | MIT |
 | open-color | 1.9.1 | MIT |
@@ -393,6 +407,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | prosemirror-inputrules | 1.5.1 | MIT |
 | prosemirror-keymap | 1.2.3 | MIT |
 | prosemirror-model | 1.25.12 | MIT |
+| prosemirror-safari-ime-span | 1.0.2 | MIT |
 | prosemirror-schema-list | 1.5.1 | MIT |
 | prosemirror-state | 1.4.4 | MIT |
 | prosemirror-tables | 1.8.5 | MIT |
@@ -408,7 +423,9 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | readdirp | 3.6.0 | MIT |
 | rehype-sanitize | 6.0.0 | MIT |
 | rehype-stringify | 10.0.1 | MIT |
+| remark | 15.0.1 | MIT |
 | remark-gfm | 4.0.1 | MIT |
+| remark-inline-links | 7.0.0 | MIT |
 | remark-parse | 11.0.0 | MIT |
 | remark-rehype | 11.1.2 | MIT |
 | remark-stringify | 11.0.0 | MIT |

@@ -59,7 +59,8 @@
     "trashShort": "Papelera",
     "importFiles": "Importar archivos…",
     "importFolder": "Importar carpeta…",
-    "sections": "Secciones"
+    "sections": "Secciones",
+    "sectionNotes": "Notas"
   },
   "title": {
     "edit": "Editar título",
@@ -452,7 +453,11 @@
   },
   "preferences": {
     "title": "Preferencias",
-    "followSystem": "Seguir al sistema"
+    "followSystem": "Seguir al sistema",
+    "lightSchemes": "Esquema claro",
+    "darkSchemes": "Esquema oscuro",
+    "pair": "par: {{scheme}}",
+    "followSystemHint": "Claro de día y oscuro de noche, con los esquemas elegidos abajo."
   },
   "nav": {
     "links": "Enlaces",
@@ -540,17 +545,14 @@
   "profile": {
     "title": "Perfil",
     "lead": "Tu almacén empieza en este navegador. Aquí puedes guardarlo además en Google Drive o en una carpeta de tu equipo. Nada sale de este dispositivo hasta que lo confirmes.",
-    "unavailable": "No disponible: este almacén es temporal o la sincronización no está activa."
+    "unavailable": "No disponible: este almacén es temporal o la sincronización no está activa.",
+    "preferencesHint": "Idioma y esquemas de color"
   },
   "docs": {
     "title": "Documentos",
-    "kind": "Documento",
-    "new": "Nuevo documento",
-    "all": "Mis documentos",
-    "emptyList": "Aún no hay documentos.",
     "untitled": "Documento sin título",
     "emptyTitle": "Escribe un documento",
-    "emptyBody": "Documentos con formato: títulos, listas, alineación y vista de hoja.",
+    "emptyBody": "Con formato libre (títulos, alineación, subrayado) o en Markdown, que también se edita fuera de la aplicación. Vista continua u hoja A4.",
     "placeholder": "Empieza a escribir…",
     "editor": "Contenido del documento",
     "toolbar": "Formato del documento",
@@ -572,6 +574,44 @@
     "bulletList": "Lista con viñetas",
     "orderedList": "Lista numerada",
     "blockquote": "Cita",
-    "emptyDoc": "Documento vacío"
+    "emptyDoc": "Documento vacío",
+    "kindRich": "Documento con formato",
+    "kindMarkdown": "Documento Markdown",
+    "markdownHint": "Se guarda como Markdown: se puede abrir y editar fuera de la aplicación (copia legible).",
+    "editorError": "No se pudo abrir el editor ({{message}}). El documento no se ha modificado."
+  },
+  "schemes": {
+    "papel": {
+      "name": "Papel",
+      "note": "Cálido, el original"
+    },
+    "blanco": {
+      "name": "Blanco",
+      "note": "Blanco puro, neutro"
+    },
+    "bruma": {
+      "name": "Bruma",
+      "note": "Frío, azul agua"
+    },
+    "salvia": {
+      "name": "Salvia",
+      "note": "Verde suave, sereno"
+    },
+    "noche": {
+      "name": "Noche",
+      "note": "Cálido, el original"
+    },
+    "negro": {
+      "name": "Negro",
+      "note": "Negro puro (OLED)"
+    },
+    "marea": {
+      "name": "Marea",
+      "note": "Azul profundo"
+    },
+    "bosque": {
+      "name": "Bosque",
+      "note": "Verde noche"
+    }
   }
 }

@@ -85,6 +85,116 @@
   color-scheme: dark;
 }
 
+/*
+ * Esquemas de color (DESIGN.md §2.5, `brand/themes/tokens.css`): `data-scheme` en <html>
+ * (app/theme.ts). Papel y Noche son los valores de arriba; aquí solo cambia la atmósfera
+ * (neutros, textos y selección). Marca, foco, enlaces y semánticos no cambian.
+ */
+/* Blanco (par: Negro) */
+:root[data-scheme='blanco'] {
+  --bg-canvas: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-popover: #ffffff;
+  --border-soft: #e5e2da;
+  --border-ink: #262118;
+  --text-primary: #262118;
+  --text-secondary: #5f5b53;
+  --selection-soft: #fff6cc;
+  --on-selection-soft: #262118;
+  --icon-accent-on: #ffe380;
+  --weekend: #faf9f9;
+  --primary-border: #262118;
+}
+/* Bruma (par: Marea) */
+:root[data-scheme='bruma'] {
+  --bg-canvas: #f6fafa;
+  --bg-panel: #e6f0f1;
+  --bg-popover: #fbfdfd;
+  --border-soft: #cfe0e2;
+  --border-ink: #1e2a2d;
+  --text-primary: #1e2a2d;
+  --text-secondary: #4f6669;
+  --selection-soft: #fff3c4;
+  --on-selection-soft: #1e2a2d;
+  --icon-accent-on: #ffe380;
+  --weekend: #f1f5f5;
+  --primary-border: #1e2a2d;
+  /* Agua algo más oscura: sobre este panel, #3b7780 queda en 4,4:1 (texto ≥ 4,5:1). */
+  --focus: #38727b;
+  --link: #38727b;
+}
+/* Salvia (par: Bosque) */
+:root[data-scheme='salvia'] {
+  --bg-canvas: #f8faf3;
+  --bg-panel: #ebf0e2;
+  --bg-popover: #fcfdf9;
+  --border-soft: #d3dcc5;
+  --border-ink: #22291e;
+  --text-primary: #22291e;
+  --text-secondary: #56634d;
+  --selection-soft: #fbf2c2;
+  --on-selection-soft: #22291e;
+  --icon-accent-on: #ffe380;
+  --weekend: #f3f5ee;
+  --primary-border: #22291e;
+  /* Agua algo más oscura: sobre este panel, #3b7780 queda en 4,4:1 (texto ≥ 4,5:1). */
+  --focus: #38727b;
+  --link: #38727b;
+}
+/* Negro, OLED (par: Blanco) */
+:root[data-scheme='negro'] {
+  --bg-canvas: #000000;
+  --bg-panel: #000000;
+  --bg-popover: #161616;
+  --border-soft: #2a2a2a;
+  --border-ink: #a9a59d;
+  --text-primary: #f5f3ee;
+  --text-secondary: #a9a59d;
+  --selection-soft: #302d22;
+  --on-selection-soft: #ffe380;
+  --icon-accent-on: #403920;
+  --weekend: #070707;
+  --primary-border: #ffe380;
+}
+/* Marea (par: Bruma) */
+:root[data-scheme='marea'] {
+  --bg-canvas: #141818;
+  --bg-panel: #162428;
+  --bg-popover: #1e3035;
+  --border-soft: #2b4147;
+  --border-ink: #9cb3b6;
+  --text-primary: #e6f0f1;
+  --text-secondary: #9cb3b6;
+  --selection-soft: #303932;
+  --on-selection-soft: #ffe380;
+  --icon-accent-on: #50543e;
+  --weekend: #1a1e1f;
+  --primary-border: #ffe380;
+}
+/* Bosque (par: Salvia) */
+:root[data-scheme='bosque'] {
+  --bg-canvas: #161812;
+  --bg-panel: #192219;
+  --bg-popover: #222d21;
+  --border-soft: #304030;
+  --border-ink: #a6b49d;
+  --text-primary: #ecf1e6;
+  --text-secondary: #a6b49d;
+  --selection-soft: #323724;
+  --on-selection-soft: #ffe380;
+  --icon-accent-on: #525233;
+  --weekend: #1c1f18;
+  --primary-border: #ffe380;
+}
+/*
+ * Excepción registrada (16/10/2026, diseño técnico): en Negro el lienzo invierte al 100 % para
+ * llegar a negro puro. Es la única excepción a «no sobrescribir --theme-filter»; las
+ * exportaciones oscuras usan el filtro del motor y salen en #121212.
+ */
+:root[data-scheme='negro'] .excalidraw.theme--dark {
+  --theme-filter: invert(100%) hue-rotate(180deg);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -584,7 +694,7 @@ a {
   border: 1.5px solid var(--border-ink);
 }
 :root[data-theme='dark'] .theme-switch-track {
-  background: #2f2b22;
+  background: var(--bg-popover);
   border-color: var(--border-soft);
 }
 .theme-switch-hint {
@@ -2719,26 +2829,7 @@ a,
   gap: 12px;
 }
 
-/* Sección «Documentos» de la barra lateral. */
-.docs-sidebar {
-  display: grid;
-  flex: 1;
-  align-content: start;
-  gap: 8px;
-  min-height: 0;
-  overflow-y: auto;
-}
-.new-doc {
-  width: 100%;
-  justify-content: flex-start;
-  min-height: 40px;
-  border-radius: 12px;
-}
-.docs-sidebar .section-title {
-  margin: 8px 4px 0;
-}
-
-/* Documento de texto enriquecido (Tiptap): barra de formato y hoja. */
+/* Documentos (Tiptap y Milkdown): barra de formato y hoja. */
 .doc-view {
   position: absolute;
   inset: 0;
@@ -2912,4 +3003,142 @@ a,
 /* Botón de formato activo: fondo mantequilla, icono en tinta también en oscuro. */
 .doc-toolbar .icon-button[aria-pressed='true'] .icon {
   color: var(--on-brand);
+}
+
+/* Estado vacío de «Documentos»: un botón por tipo de documento. */
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.empty-actions button {
+  gap: 8px;
+}
+
+/* Documento Markdown (Milkdown). */
+.md-doc-host,
+.md-doc-host .milkdown {
+  display: contents;
+}
+/* Lo que pide ProseMirror (Tiptap ya lo trae en sus estilos; Milkdown no). */
+.md-doc .ProseMirror {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-variant-ligatures: none;
+}
+.doc-format-badge {
+  padding: 2px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+/* Texto de ayuda del documento vacío (solo un párrafo sin texto). */
+.md-doc .doc-content > p:only-child:has(> br:only-child)::before {
+  content: var(--doc-placeholder);
+  float: left;
+  height: 0;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+/* Imagen de Markdown sin descarga: su texto alternativo, con la dirección en el título. */
+.md-image {
+  padding: 0 4px;
+  border: 1px dashed var(--border-soft);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+.md-doc .doc-content table {
+  border-collapse: collapse;
+  margin: 0 0 0.75em;
+}
+.md-doc .doc-content th,
+.md-doc .doc-content td {
+  padding: 4px 10px;
+  border: 1px solid var(--border-soft);
+}
+.md-doc .doc-content li[data-item-type='task'] {
+  list-style: none;
+}
+
+/* Preferencias (modal desde Perfil): idioma, «Seguir al sistema» y esquemas de color. */
+.profile-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  text-align: left;
+  font-weight: 400;
+}
+.profile-option > span:not(.icon) {
+  display: grid;
+  flex: 1;
+}
+.profile-option:hover {
+  background: var(--selection-soft);
+}
+.preferences-dialog {
+  width: min(760px, 100%);
+  gap: 10px;
+}
+.preferences-dialog .preference-row > span:not(.icon) {
+  display: grid;
+}
+.scheme-group .section-title {
+  margin: 12px 0 8px;
+}
+.scheme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.scheme-card {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 4px;
+  padding: 6px;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  font-weight: 400;
+}
+.scheme-card img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-soft);
+}
+.scheme-card.is-selected {
+  border-color: var(--focus);
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+.scheme-card:hover {
+  background: var(--selection-soft);
+}
+.scheme-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+.scheme-note {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Modo Zen del lienzo: sin barra lateral ni cabecera; el lienzo ocupa toda la ventana. */
+.shell.zen,
+.shell.zen.library-open {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  grid-template-areas: 'main';
 }

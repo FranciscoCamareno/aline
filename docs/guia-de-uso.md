@@ -16,7 +16,7 @@ _English version: [user-guide.md](user-guide.md)._
 
 ## 2. Lienzos y mapas mentales
 
-- **Lienzo nuevo:** en la biblioteca, «+ Nuevo» → «Lienzo». Las herramientas están en la bandeja de abajo; sus atajos y estilos son los de Excalidraw.
+- **Lienzo nuevo:** en la pestaña **Notas** de la barra lateral, «+ Nuevo» → «Lienzo». Las herramientas están en la bandeja de abajo; sus atajos y estilos son los de Excalidraw.
 - **Notas adhesivas y stickers:** la nota de la bandeja (o la tecla N) pone una nota adhesiva en el centro; con doble clic se escribe en ella. La hoja de stickers (o la tecla B) abre los stickers: se colocan con un clic o arrastrándolos al lienzo.
 - **Plantillas:** selecciona elementos (también imágenes y stickers), pulsa «Plantillas» (arriba a la derecha) → «Guardar selección» y ponle un nombre. Cada plantilla muestra una miniatura. Para usarla, púlsala en el panel o arrástrala al lienzo: se inserta una copia.
 - **Vincular un elemento** con una nota, otro lienzo o una web: selecciona el elemento y pulsa «Vincular» (encima del lienzo). El enlace se abre haciendo clic en el icono del elemento.
@@ -36,12 +36,27 @@ _English version: [user-guide.md](user-guide.md)._
 
 ## 3 bis. Calendario
 
-- En la biblioteca, la pestaña **Calendario** abre el mes; **Semana** y **Día** muestran los eventos con hora como bloques y una línea roja en la hora actual.
+- En la barra lateral, la pestaña **Calendario** abre el mes; **Semana** y **Día** muestran los eventos con hora como bloques y una línea roja en la hora actual.
 - **Nuevo evento** (o doble clic en un día o en una hora): título, calendario, todo el día o con hora, fechas de inicio y fin y un color (los de las notas adhesivas).
 - Pulsa un evento para editarlo, moverlo a otro calendario o eliminarlo.
 - **Mis calendarios:** «+» crea otro calendario; la casilla lo muestra u oculta en la vista. Cada calendario tiene historial y entra en las copias y la sincronización como cualquier documento.
 - Si un calendario se editó en dos sitios a la vez, aparece un aviso con **Resolver**: conserva una versión, ambas o **combina los eventos** (se juntan los de las dos).
 - Antes de usar el calendario o las plantillas, actualiza la aplicación en todos tus dispositivos: una versión anterior no los reconoce.
+
+## 3 ter. Documentos (beta)
+
+- La pestaña **Documentos** de la barra lateral tiene su propio «+ Nuevo», buscador y carpetas (distintas de las de «Notas»):
+  - **Documento con formato:** títulos, negrita, cursiva, subrayado, tachado, listas, citas y alineación. Se edita solo dentro de la aplicación.
+  - **Documento Markdown:** se ve con formato pero se guarda en Markdown, como una nota: tiene copia legible en la carpeta o en Drive sin cifrar, se puede editar fuera y entra en la búsqueda. Al guardarlo, el Markdown se normaliza (por ejemplo, el estilo de las listas). Las imágenes se muestran como texto, sin descargarlas.
+  - **Carpeta:** solo para documentos.
+- **Continuo / Hoja** cambia solo la presentación (texto corrido o una hoja A4); no hay saltos de página al editar.
+- Antes de usar documentos, actualiza la aplicación en todos tus dispositivos: una versión anterior no los reconoce.
+
+## 3 quater. Apariencia y modo Zen
+
+- **Esquemas de color:** en **Perfil → Preferencias** eliges un esquema claro (Papel, Blanco, Bruma o Salvia) y uno oscuro (Noche, Negro, Marea o Bosque). El interruptor de arriba a la derecha alterna entre los dos y recuerda cuál dejaste; «Seguir al sistema» usa el claro de día y el oscuro de noche. El idioma también está ahí.
+- El lienzo se pinta con el fondo del esquema, pero lo guardado y lo exportado conservan su propio fondo.
+- **Modo Zen** (clic derecho en el lienzo → «Modo zen», o Alt+Z): oculta también la barra lateral y la cabecera. Las herramientas del lienzo siguen a la vista; al salir, vuelve todo.
 
 ## 4. Organizar y buscar
 
