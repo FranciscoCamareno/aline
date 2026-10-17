@@ -257,3 +257,76 @@ test('el menú «⋯» de una carpeta y de lo que contiene cabe en la ventana', 
   await expect(page.getByRole('menuitem', { name: 'Enviar a la papelera' })).toBeVisible();
   await fitsInWindow();
 });
+
+/** Luminancia relativa de un color `rgb()` computado (WCAG). */
+const luminance = (rgb: string) => {
+  const [r, g, b] = (rgb.match(/[\d.]+/g) ?? []).slice(0, 3).map((c) => {
+    const v = Number(c) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+};
+const ratio = (a: string, b: string) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi! + 0.05) / (lo! + 0.05);
+};
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`carpeta marcada (${scheme}): sin texto añadido, borde visible y hover distinguible`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await freshStart(page);
+    await page.getByTestId('new-menu').click();
+    await page.getByTestId('new-folder').click();
+    await page.getByTestId('new-folder-input').fill('Proyectos');
+    await page.getByTestId('new-folder-input').press('Enter');
+    const row = page
+      .getByTestId('folder-item')
+      .filter({ hasText: 'Proyectos' })
+      .locator('.folder-row');
+    await page.getByRole('button', { name: 'Proyectos', exact: true }).click();
+    await expect(row).toHaveClass(/selected/);
+
+    // Ya no se añade un texto de ayuda que empuje la lista y tape el borde.
+    await expect(page.getByTestId('selected-folder')).toHaveCount(0);
+    const scroll = (await page.locator('.library-scroll').boundingBox())!;
+    const box = (await row.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(scroll.y);
+    expect(await row.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('dashed');
+
+    // Hover sobre cada parte de la fila marcada: el fondo cambia y se distingue de la fila.
+    // Fuera de la fila (tras el clic el ratón sigue encima): su fondo en reposo.
+    await page.mouse.move(700, 400);
+    const rowBackground = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
+    for (const part of [
+      row.getByRole('button', { name: /Expandir|Contraer/ }),
+      row.getByRole('button', { name: 'Proyectos', exact: true }),
+      row.getByTestId('folder-actions'),
+    ]) {
+      await part.hover();
+      const hovered = await part.evaluate((el) => {
+        // El fondo visible: el del botón superpuesto al de la fila.
+        const own = getComputedStyle(el).backgroundColor;
+        return own;
+      });
+      expect(hovered).not.toBe('rgba(0, 0, 0, 0)');
+      expect(hovered).not.toBe(rowBackground);
+    }
+    // Y la fila misma, con el ratón sobre ella, también cambia de fondo.
+    await row.hover({ position: { x: 4, y: 4 } });
+    const hoveredRow = await row.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(hoveredRow).not.toBe(rowBackground);
+    expect(ratio(hoveredRow, rowBackground)).toBeGreaterThan(1);
+  });
+}
+
+test('el estado de guardado va junto al icono de Historial', async ({ page }) => {
+  await freshStart(page);
+  const status = (await page.getByTestId('save-status').boundingBox())!;
+  const history = (await page.getByTestId('open-history').boundingBox())!;
+  // A su izquierda, en la misma línea y pegado (nada entre medias).
+  expect(status.x + status.width).toBeLessThanOrEqual(history.x);
+  expect(history.x - (status.x + status.width)).toBeLessThan(16);
+  expect(Math.abs(status.y + status.height / 2 - (history.y + history.height / 2))).toBeLessThan(8);
+});

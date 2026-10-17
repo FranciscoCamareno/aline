@@ -395,7 +395,7 @@ test('carpetas, etiquetas y carpeta de recuperación (RF-25, CA-21)', async ({ p
   const folder = page.getByTestId('folder-item').filter({ hasText: 'Proyectos' });
   await expect(folder).toBeVisible();
   await folder.getByTestId('folder-title-text').click(); // la selecciona para crear dentro
-  await expect(page.getByTestId('selected-folder')).toContainText('Proyectos');
+  await expect(folder.locator('.folder-row')).toHaveClass(/selected/);
   const noteId = await newNote(page, 'nota dentro de la carpeta');
   await expect(
     folder.locator(`[data-testid="library-item"][data-document-id="${noteId}"]`),

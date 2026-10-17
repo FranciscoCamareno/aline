@@ -40,7 +40,6 @@
     "kindFolder": "Folder",
     "newFolder": "New folder",
     "folderName": "Folder name",
-    "createInside": "New items go inside “{{folder}}”. Click the folder again to create at the root.",
     "trashFolder": "Move folder to trash (its content is not deleted)",
     "expand": "Expand",
     "collapse": "Collapse",

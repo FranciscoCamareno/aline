@@ -492,11 +492,12 @@ export function App() {
               onRename={(title) => renameDocument(active.id, title)}
             />
           )}
+          <RemoteChip onOpen={() => openSettings('storage')} />
+          <span className="topbar-spacer" />
+          {/* El estado de guardado va junto a Historial: es el estado de la versión. */}
           <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
             {t(`status.${saveStatus}`)}
           </span>
-          <RemoteChip onOpen={() => openSettings('storage')} />
-          <span className="topbar-spacer" />
           {active && (
             <button
               type="button"

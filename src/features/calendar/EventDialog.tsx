@@ -209,54 +209,57 @@ export function EventDialog({ service }: { service: VaultService }) {
             />
             <span>{t('calendar.allDay')}</span>
           </label>
-          <div className="field-row">
-            <label className="field">
-              <span>{t('calendar.startDate')}</span>
-              <input
-                type="date"
-                required
-                value={event.date}
-                data-testid="event-date"
-                onChange={(e) => update({ date: e.target.value })}
-              />
-            </label>
-            {!allDay && (
+          {/* «Empieza» y «Termina» en la misma línea; con hora, la hora va bajo su fecha. */}
+          <div className="field-pair">
+            <div className="field-group">
               <label className="field">
-                <span>{t('calendar.startTime')}</span>
+                <span>{t('calendar.startDate')}</span>
                 <input
-                  type="time"
+                  type="date"
                   required
-                  value={event.start ?? ''}
-                  data-testid="event-start"
-                  onChange={(e) => update({ start: e.target.value })}
+                  value={event.date}
+                  data-testid="event-date"
+                  onChange={(e) => update({ date: e.target.value })}
                 />
               </label>
-            )}
-          </div>
-          <div className="field-row">
-            <label className="field">
-              <span>{t('calendar.endDate')}</span>
-              <input
-                type="date"
-                required
-                min={event.date}
-                value={event.endDate}
-                data-testid="event-end-date"
-                onChange={(e) => update({ endDate: e.target.value })}
-              />
-            </label>
-            {!allDay && (
+              {!allDay && (
+                <label className="field">
+                  <span>{t('calendar.startTime')}</span>
+                  <input
+                    type="time"
+                    required
+                    value={event.start ?? ''}
+                    data-testid="event-start"
+                    onChange={(e) => update({ start: e.target.value })}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="field-group">
               <label className="field">
-                <span>{t('calendar.endTime')}</span>
+                <span>{t('calendar.endDate')}</span>
                 <input
-                  type="time"
+                  type="date"
                   required
-                  value={event.end ?? ''}
-                  data-testid="event-end"
-                  onChange={(e) => update({ end: e.target.value })}
+                  min={event.date}
+                  value={event.endDate}
+                  data-testid="event-end-date"
+                  onChange={(e) => update({ endDate: e.target.value })}
                 />
               </label>
-            )}
+              {!allDay && (
+                <label className="field">
+                  <span>{t('calendar.endTime')}</span>
+                  <input
+                    type="time"
+                    required
+                    value={event.end ?? ''}
+                    data-testid="event-end"
+                    onChange={(e) => update({ end: e.target.value })}
+                  />
+                </label>
+              )}
+            </div>
           </div>
           <fieldset className="color-choice">
             <legend>{t('calendar.color')}</legend>

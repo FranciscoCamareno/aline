@@ -252,6 +252,8 @@ export function CalendarView({ service }: { service: VaultService }) {
                     }`}
                     style={{ gridColumn: col + 1 }}
                     data-date={date}
+                    // Toda la casilla selecciona el día (el número sigue siendo el botón accesible).
+                    onClick={() => setSelected(date)}
                     onDoubleClick={() => newEvent(date)}
                   >
                     <button

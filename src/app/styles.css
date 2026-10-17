@@ -532,7 +532,8 @@ a {
   min-height: 0;
   overflow-y: auto;
   margin: 0 -4px;
-  padding: 0 4px;
+  /* Arriba y abajo cabe el contorno de la fila marcada (el contenedor recorta lo que se sale). */
+  padding: 2px 4px;
 }
 
 /* Arrastrar lienzos y notas entre carpetas: la fila que se arrastra se atenúa y el destino se
@@ -815,13 +816,6 @@ a {
   min-height: 32px;
   border-radius: 8px;
   padding-left: 8px;
-}
-.library-list li:hover {
-  background: color-mix(in srgb, var(--selection-soft) 60%, transparent);
-}
-.library-list li.active {
-  background: var(--selection-soft);
-  color: var(--on-selection-soft);
 }
 .library-list li.folder-node:hover {
   background: none;
@@ -1417,13 +1411,35 @@ button.section-title {
   min-height: 32px;
   border-radius: 8px;
 }
-.folder-row:hover {
-  background: color-mix(in srgb, var(--selection-soft) 60%, transparent);
+/*
+ * Estados de las filas de la lista (carpetas y documentos). Se superpone `--on-selection-soft`
+ * (tinta en claro, mantequilla en oscuro) con poca opacidad: se ve igual sobre el panel, sobre
+ * la selección y en los 8 esquemas. Sobre una fila ya marcada, el hover de sus botones (plegar,
+ * «⋯», título) con el mismo fondo que la fila no se distinguía.
+ */
+.folder-row:hover,
+.library-list li:hover {
+  background: color-mix(in srgb, var(--on-selection-soft) 9%, transparent);
 }
-.folder-row.selected {
+.folder-row.selected,
+.library-list li.active {
   background: var(--selection-soft);
   color: var(--on-selection-soft);
+}
+.folder-row.selected:hover,
+.library-list li.active:hover {
+  background: color-mix(in srgb, var(--on-selection-soft) 12%, var(--selection-soft));
+}
+.folder-row.selected {
+  /* Hacia dentro: el contorno no se recorta contra el borde del contenedor. */
   outline: 1px dashed var(--border-ink);
+  outline-offset: -1px;
+}
+.folder-row button:hover:not(:disabled),
+.library-list li button:hover:not(:disabled),
+.folder-row button:focus-visible,
+.library-list li button:focus-visible {
+  background: color-mix(in srgb, var(--on-selection-soft) 18%, transparent);
 }
 .folder-toggle {
   gap: 2px;
@@ -2257,7 +2273,12 @@ a,
   gap: 12px;
 }
 .calendar-title {
+  /* Ancho fijo, el del mes más largo con su año, para que los botones de al lado no se muevan
+     al cambiar de mes (se mide en la prueba e2e para los dos idiomas). */
+  box-sizing: content-box;
+  width: 8.6em;
   margin: 0 8px 0 0;
+  white-space: nowrap;
   font-size: 32px;
   font-weight: 700;
   line-height: 1.1;
@@ -2346,6 +2367,7 @@ a,
 }
 .month-day {
   position: relative;
+  cursor: pointer;
   grid-row: 1 / -1;
   padding: 4px 6px;
   border-right: 1px solid var(--border-soft);
@@ -2685,10 +2707,26 @@ a,
   font-weight: 600;
   color: var(--text-secondary);
 }
-.field-row {
+/* «Empieza» y «Termina»: dos columnas iguales en la misma línea (una sola en pantallas muy
+   estrechas, donde dos selectores de fecha no caben). */
+.field-pair {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+.field-group {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+.field-pair input {
+  min-width: 0;
+}
+@media (max-width: 360px) {
+  .field-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .field-check {
   display: flex;

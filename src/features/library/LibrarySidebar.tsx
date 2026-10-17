@@ -590,11 +590,6 @@ export function LibrarySidebar({
                 if (files.length) void onImport(files, selected);
               }}
             />
-            {selected && (
-              <p className="muted small" data-testid="selected-folder">
-                {t('library.createInside', { folder: folders.get(selected)?.title })}
-              </p>
-            )}
           </div>
 
           <label className="library-search">

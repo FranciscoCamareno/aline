@@ -40,7 +40,6 @@
     "kindFolder": "Carpeta",
     "newFolder": "Nueva carpeta",
     "folderName": "Nombre de la carpeta",
-    "createInside": "Se crea dentro de «{{folder}}». Pulsa la carpeta otra vez para crear en la raíz.",
     "trashFolder": "Enviar la carpeta a la papelera (su contenido no se borra)",
     "expand": "Expandir",
     "collapse": "Contraer",

@@ -245,3 +245,63 @@ test('mes: el marco del día seleccionado coincide con su celda, en todas las fi
     expect(box).not.toBeNull();
   }
 });
+
+test('mes: toda la casilla selecciona el día, no solo su número', async ({ page }) => {
+  await freshStart(page);
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  const cell = page.locator('.month-day[data-date]').nth(17);
+  const date = await cell.getAttribute('data-date');
+  const box = (await cell.boundingBox())!;
+  // Un punto de la casilla lejos del número (abajo a la derecha), sin eventos encima.
+  await page.mouse.click(box.x + box.width - 12, box.y + box.height - 12);
+  await expect(page.locator('.month-day.selected')).toHaveAttribute('data-date', date!);
+});
+
+for (const language of ['es', 'en']) {
+  test(`los botones del mes no se mueven al cambiar de mes (${language})`, async ({ page }) => {
+    await page.addInitScript((lang) => localStorage.setItem('mindnote.language', lang), language);
+    await freshStart(page);
+    await page.getByRole('tab', { name: language === 'es' ? 'Calendario' : 'Calendar' }).click();
+    const buttons = [
+      page.getByTestId('calendar-prev'),
+      page.getByTestId('calendar-next'),
+      page.getByTestId('calendar-today'),
+    ];
+    const positions = async () => Promise.all(buttons.map((b) => b.boundingBox()));
+    const first = await positions();
+    // Un año entero: los nombres más largos y más cortos pasan por la cabecera.
+    for (let month = 0; month < 12; month++) {
+      await page.getByTestId('calendar-next').click();
+      // El nombre cabe entero en su ancho fijo (si no, taparía los botones).
+      const fits = await page
+        .locator('.calendar-title')
+        .evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
+      expect(fits).toBe(true);
+      const now = await positions();
+      now.forEach((box, i) => {
+        expect(Math.abs(box!.x - first[i]!.x)).toBeLessThan(1);
+        expect(Math.abs(box!.y - first[i]!.y)).toBeLessThan(1);
+      });
+    }
+  });
+}
+
+test('editar evento: «Empieza» y «Termina» van en la misma línea', async ({ page }) => {
+  await freshStart(page);
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  await page.getByTestId('new-event').click();
+  await page.getByTestId('event-all-day').check();
+  const sameLine = async () => {
+    const start = (await page.getByTestId('event-date').boundingBox())!;
+    const end = (await page.getByTestId('event-end-date').boundingBox())!;
+    expect(Math.abs(start.y - end.y)).toBeLessThan(1);
+    expect(end.x).toBeGreaterThan(start.x + start.width - 1);
+  };
+  await sameLine();
+  // Con hora, las horas van bajo sus fechas y las dos columnas siguen en la misma línea.
+  await page.getByTestId('event-all-day').uncheck();
+  await sameLine();
+  const startTime = (await page.getByTestId('event-start').boundingBox())!;
+  const endTime = (await page.getByTestId('event-end').boundingBox())!;
+  expect(Math.abs(startTime.y - endTime.y)).toBeLessThan(1);
+});
