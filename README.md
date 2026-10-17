@@ -9,7 +9,9 @@ con historial de versiones. No necesita cuenta ni servidor; la carpeta local y G
 El diseño técnico es [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md) y el plan
 de trabajo, [docs/Plan-de-fases.md](docs/Plan-de-fases.md). Están implementadas las fases 0 a 5
 y 7 a 8; para la beta faltan las pruebas en el iPad y dos semanas de uso real, y la fase 6
-(ramas colapsables, tarjetas de nota, modo «Solo lápiz»…) sigue pendiente. Versión publicada:
+(ramas colapsables, tarjetas de nota, modo «Solo lápiz»…) sigue pendiente.
+
+**Versión actual: 0.1.0** (etiqueta `v0.1.0`; se muestra en «Estado y diagnóstico»). Publicada en
 https://aline.projeck.workers.dev (Cloudflare Workers, recursos estáticos de `dist/`).
 
 > El sistema se llama **aline**. Para no romper datos existentes, la base local conserva su
@@ -300,11 +302,13 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 Última ejecución: 17/10/2026, Windows 11, Node 24.21.
 
 - `pnpm verify`: formato, typecheck, lint, 245 pruebas unitarias y compilación, todo correcto.
-- `pnpm test:e2e` (Chromium): pasan los 100 recorridos; los 2 del banco de rendimiento se omiten, como
-  siempre (`pnpm test:rendimiento`).
-  - Un recorrido es intermitente: «documento Markdown: Ctrl+K enlaza la selección…»
-    (`tests/e2e/enlaces.spec.ts`) falló 1 de 3 veces porque la selección hecha con el teclado en
-    Milkdown quedó más corta.
+- `pnpm test:e2e` (Chromium): pasan los 100 recorridos; los 2 del banco de rendimiento se omiten,
+  como siempre (`pnpm test:rendimiento`). Los de enlaces, calendario y documentos se repitieron 3
+  veces (66 ejecuciones) sin fallos.
+  - Se corrigieron dos fallos intermitentes que eran errores reales de la aplicación: Ctrl+K justo
+    después de seleccionar con Mayús+flecha enlazaba un trozo más corto (la selección se lee ahora
+    del DOM, `features/docs/domSelection.ts`), y «Guardar» un evento abierto antes de que se
+    creara el primer calendario no hacía nada.
   - Esta vez no se ejecutaron en Microsoft Edge. La última ejecución en los dos navegadores fue
     la del 13/10/2026 (39 recorridos en cada uno).
   - Los recorridos nuevos de la fase 5, junto con los de Drive, se repitieron 4 veces en los dos

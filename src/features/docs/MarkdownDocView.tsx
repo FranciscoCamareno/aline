@@ -47,6 +47,7 @@ import {
 } from '../knowledge/useSelectionLinker.tsx';
 import { milkdownBacklinkKey, milkdownBacklinkPlugin } from './backlinkMarksPm.ts';
 import { DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
+import { domSelectionRange } from './domSelection.ts';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
 import { SelectionBubble } from './SelectionBubble.tsx';
 import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
@@ -563,15 +564,25 @@ function MarkdownDocEditor({
     },
     onClose: () => editor?.ctx.get(editorViewCtx).focus(),
   });
+  /** Sincroniza la selección con el DOM antes de usarla (ver domSelection.ts). */
+  const syncSelection = () => {
+    const view = editor!.ctx.get(editorViewCtx);
+    const dom = domSelectionRange(view);
+    const { from, to } = view.state.selection;
+    if (dom && (dom.from !== from || dom.to !== to)) {
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, dom.from, dom.to)));
+    }
+    return view;
+  };
   const openLink = () => {
     if (!editor || readOnly !== null) return;
-    const { from, to } = editor.ctx.get(editorViewCtx).state.selection;
+    const { from, to } = syncSelection().state.selection;
     linker.open({ from, to });
   };
   /** «Copiar enlace a la selección»: cita del texto seleccionado (o del bloque del cursor). */
   const copyLink = () => {
     if (!editor) return;
-    const { state } = editor.ctx.get(editorViewCtx);
+    const { state } = syncSelection();
     const projection = pmProjection(state.doc);
     const selector = selectorForRange(
       projection,

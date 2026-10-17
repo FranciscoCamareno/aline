@@ -57,7 +57,10 @@ export function EventDialog({ service }: { service: VaultService }) {
   /** Cómo era al abrir: seguir un enlace guarda antes lo cambiado. */
   const [pristine] = useState(() => JSON.stringify(initial));
   const [picking, setPicking] = useState(false);
-  const [calendarId, setCalendarId] = useState(initialCalendar);
+  const [chosenCalendar, setCalendarId] = useState(initialCalendar);
+  // Si el diálogo se abrió antes de cargar los calendarios, se usa el primero en cuanto lo hay
+  // (antes «Guardar» no hacía nada y el diálogo quedaba abierto sin aviso).
+  const calendarId = chosenCalendar || firstCalendar?.document.id || '';
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -362,7 +365,12 @@ export function EventDialog({ service }: { service: VaultService }) {
             {t('title.cancel')}
           </button>
           {!readOnly && (
-            <button type="submit" className="primary" data-testid="event-save" disabled={busy}>
+            <button
+              type="submit"
+              className="primary"
+              data-testid="event-save"
+              disabled={busy || !calendarId}
+            >
               {t('calendar.save')}
             </button>
           )}

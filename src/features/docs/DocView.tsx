@@ -67,6 +67,7 @@ import { SelectionBubble } from './SelectionBubble.tsx';
 import { downloadBlob } from '../../app/download.ts';
 import { safeFilename } from '../../application/portability.ts';
 import { CommentsPanel } from './CommentsPanel.tsx';
+import { domSelectionRange } from './domSelection.ts';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
 import { Pagination, paginationKey, setPagination } from './pagination.ts';
 import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
@@ -328,8 +329,18 @@ function DocEditor({
     },
     onClose: () => editor?.commands.focus(),
   });
+  /** Sincroniza la selección con el DOM antes de usarla (ver domSelection.ts). */
+  const syncSelection = () => {
+    if (!editor) return;
+    const dom = domSelectionRange(editor.view);
+    const { from, to } = editor.state.selection;
+    if (dom && (dom.from !== from || dom.to !== to)) {
+      editor.commands.setTextSelection({ from: dom.from, to: dom.to });
+    }
+  };
   const openLink = () => {
     if (!editor || readOnly !== null) return;
+    syncSelection();
     const { from, to } = editor.state.selection;
     linker.open({ from, to });
   };
@@ -339,6 +350,7 @@ function DocEditor({
    */
   const copyLink = () => {
     if (!editor) return;
+    syncSelection();
     const blockId = ensureBlockAnchor(editor, readOnly === null);
     const { state } = editor;
     const projection = pmProjection(state.doc);
