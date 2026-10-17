@@ -13,6 +13,7 @@ import { switchVault } from '../../app/vaults.ts';
 import type { DriveEncryptionChoice } from '../../domain/encryption.ts';
 import type { Vault } from '../../domain/vault.ts';
 import { DriveModeChooser, DriveSecrets, DriveUnlock } from './DriveEncryption.tsx';
+import { GoogleButton } from './GoogleButton.tsx';
 
 interface Props {
   services: AppServices;
@@ -151,14 +152,13 @@ export function StorageSection({ services, sync, onError }: Props) {
           <div className="startup-actions">
             {remote.phase === 'needs-auth' ? (
               sync.driveReady || drive?.step === 'ready' ? (
-                <button
-                  type="button"
+                <GoogleButton
                   disabled={busy}
-                  data-testid="drive-authorize"
+                  testId="drive-authorize"
                   onClick={() => void authorizeDrive(null)}
                 >
                   {t('storage.driveContinue')}
-                </button>
+                </GoogleButton>
               ) : (
                 <button
                   type="button"
@@ -299,14 +299,13 @@ export function StorageSection({ services, sync, onError }: Props) {
           )}
           <p className="muted small">{t('storage.folderHint')}</p>
           {driveConfigured() ? (
-            <button
-              type="button"
+            <GoogleButton
               disabled={busy}
-              data-testid="connect-drive"
+              testId="connect-drive"
               onClick={() => setDrive({ step: 'mode' })}
             >
               {t('storage.connectDrive')}
-            </button>
+            </GoogleButton>
           ) : (
             <p className="muted small" data-testid="drive-pending">
               {t('storage.driveNotConfigured')}
@@ -397,14 +396,13 @@ export function StorageSection({ services, sync, onError }: Props) {
         <div className="notice" data-testid="drive-ready">
           <p>{t('storage.driveReady')}</p>
           <div className="startup-actions">
-            <button
-              type="button"
+            <GoogleButton
               disabled={busy}
-              data-testid="drive-authorize"
+              testId="drive-authorize"
               onClick={() => void authorizeDrive(drive.choice)}
             >
               {t('storage.driveContinue')}
-            </button>
+            </GoogleButton>
             <button type="button" onClick={() => setDrive(null)}>
               {t('title.cancel')}
             </button>

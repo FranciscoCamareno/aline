@@ -27,6 +27,8 @@ export class KnowledgeRuntime {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private ready: Promise<void> = Promise.resolve();
   private unsubscribe: (() => void) | null = null;
+  /** Reindexación en curso (o la última); las siguientes se encadenan detrás. */
+  private flushing: Promise<void> = Promise.resolve();
 
   constructor(services: AppServices) {
     this.services = services;
@@ -67,10 +69,19 @@ export class KnowledgeRuntime {
     this.timer = setTimeout(() => void this.flush(), REINDEX_DELAY_MS);
   }
 
-  /** Indexa ya lo pendiente; las pruebas y la paleta de búsqueda pueden esperar a esto. */
-  async flush(): Promise<void> {
+  /**
+   * Indexa ya lo pendiente; las pruebas y la paleta de búsqueda pueden esperar a esto. Las
+   * reindexaciones van en fila: quien espera también espera a la que ya estaba en curso (si no,
+   * una búsqueda justo después de un guardado podía ver el índice anterior).
+   */
+  flush(): Promise<void> {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    this.flushing = this.flushing.then(() => this.flushNow());
+    return this.flushing;
+  }
+
+  private async flushNow(): Promise<void> {
     await this.ready;
     const ids = [...this.queue];
     this.queue.clear();
@@ -88,8 +99,7 @@ export class KnowledgeRuntime {
   }
 
   async search(query: string): Promise<{ hits: SearchHit[]; ms: number }> {
-    await this.ready;
-    if (this.queue.size) await this.flush();
+    await this.flush();
     return this.client ? this.client.search(query, 30) : { hits: [], ms: 0 };
   }
 

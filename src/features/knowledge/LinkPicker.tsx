@@ -64,10 +64,13 @@ export function LinkPicker({
 
   const candidates = useMemo(() => {
     const q = normalizeForSearch(query.trim());
-    return documents
-      .filter((d) => !d.deleted && isLinkableKind(d.kind) && d.id !== sourceId)
-      .filter((d) => !q || normalizeForSearch(d.title).includes(q))
-      .slice(0, 30);
+    return (
+      documents
+        // Lo archivado no se ofrece (se sigue pudiendo enlazar con «Enlazar con lo copiado»).
+        .filter((d) => !d.deleted && !d.archived && isLinkableKind(d.kind) && d.id !== sourceId)
+        .filter((d) => !q || normalizeForSearch(d.title).includes(q))
+        .slice(0, 30)
+    );
   }, [documents, query, sourceId]);
   const webUrl = validWebUrl(web);
 

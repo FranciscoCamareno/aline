@@ -17,7 +17,7 @@ import {
 import { gfm, toggleStrikethroughCommand } from '@milkdown/preset-gfm';
 import { Plugin, Selection, TextSelection, type EditorState } from '@milkdown/prose/state';
 import { $prose, callCommand, getMarkdown } from '@milkdown/utils';
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { downloadText } from '../../app/download.ts';
 import { logDiagnostic, registerFlusher } from '../../app/runtime.ts';
@@ -30,6 +30,7 @@ import {
   selectorForRange,
   sourceOffset,
 } from '../../domain/anchors.ts';
+import { assetHashOf } from '../../domain/docAssets.ts';
 import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import { safeFilename } from '../../application/portability.ts';
 import type { KnowledgeService } from '../../application/KnowledgeService.ts';
@@ -45,6 +46,7 @@ import {
   useSelectionLinker,
 } from '../knowledge/useSelectionLinker.tsx';
 import { milkdownBacklinkKey, milkdownBacklinkPlugin } from './backlinkMarksPm.ts';
+import { DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
 import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
 
@@ -82,6 +84,17 @@ const imageWithoutFetch = imageSchema.extendSchema((prev) => (ctx) => {
         ),
     },
     parseDOM: [
+      // Imagen del almacén (fase 8.4): se reconoce por su hash al pegar dentro del editor.
+      {
+        tag: 'img[data-asset]',
+        getAttrs: (dom) => {
+          if (!(dom instanceof HTMLElement)) return false;
+          const src = `mindnote-asset:${dom.dataset['asset'] ?? ''}`;
+          return assetHashOf(src)
+            ? { src, alt: dom.getAttribute('alt') ?? '', title: dom.getAttribute('title') ?? '' }
+            : false;
+        },
+      },
       {
         tag: 'span.md-image[data-src]',
         getAttrs: (dom) =>
@@ -98,6 +111,14 @@ const imageWithoutFetch = imageSchema.extendSchema((prev) => (ctx) => {
     toDOM: (node) => {
       const src = text(node.attrs['src']);
       const alt = text(node.attrs['alt']);
+      // Imagen del almacén: se pinta; su URL local la pone el plugin de la vista (fase 8.4).
+      const hash = assetHashOf(src);
+      if (hash) {
+        return [
+          'img',
+          { class: 'doc-image', 'data-asset': hash, alt, title: text(node.attrs['title']) },
+        ];
+      }
       return [
         'span',
         {
@@ -251,7 +272,20 @@ function MarkdownDocEditor({
   const documentId = opened.document.id;
 
   const [createError, setCreateError] = useState<string | null>(null);
-  const autosave = useAutosave<string>((markdown) => service.saveNote(opened.session, markdown));
+  // Imágenes (fase 8.4): las nuevas se guardan con el documento; las URL locales se liberan al
+  // cerrarlo.
+  const images = useMemo(
+    () => new DocImageStore((hash) => service.loadAsset(hash)),
+    [service],
+  );
+  useEffect(() => () => images.dispose(), [images]);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const [imageError, setImageError] = useState(false);
+  /** Insertar imágenes vigente, para pegar y arrastrar (el editor se crea una sola vez). */
+  const insertImagesRef = useRef<(files: File[], at?: number) => Promise<void>>(async () => {});
+  const autosave = useAutosave<string>((markdown) =>
+    service.saveNote(opened.session, markdown, images.newAssets()),
+  );
   /** «Enlazar selección» vigente, para el atajo del editor (que se crea una sola vez). */
   const openLinkRef = useRef<() => void>(() => undefined);
   const copyLinkRef = useRef<() => void>(() => undefined);
@@ -315,6 +349,45 @@ function MarkdownDocEditor({
           },
         }),
     );
+    // Imágenes del almacén: URL locales para las pintadas, y pegar o arrastrar archivos.
+    const imagePlugin = $prose(
+      () =>
+        new Plugin({
+          view: (view) => {
+            const fill = () => {
+              for (const img of view.dom.querySelectorAll<HTMLImageElement>(
+                'img[data-asset]:not([src])',
+              )) {
+                const hash = img.dataset['asset'] ?? '';
+                img.setAttribute('src', '');
+                void images.url(hash).then((url) => {
+                  if (url) img.src = url;
+                  else img.classList.add('is-missing');
+                });
+              }
+            };
+            fill();
+            return { update: fill };
+          },
+          props: {
+            handlePaste: (_view, event) => {
+              const files = imageFiles(event.clipboardData);
+              if (!files.length) return false;
+              event.preventDefault();
+              void insertImagesRef.current(files);
+              return true;
+            },
+            handleDrop: (view, event) => {
+              const files = imageFiles(event.dataTransfer);
+              if (!files.length) return false;
+              event.preventDefault();
+              const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+              void insertImagesRef.current(files, at);
+              return true;
+            },
+          },
+        }),
+    );
     const markDirty = $prose(
       () =>
         new Plugin({
@@ -358,6 +431,7 @@ function MarkdownDocEditor({
       .use(clipboard)
       .use(markDirty)
       .use(linkShortcut)
+      .use(imagePlugin)
       .use($prose(() => milkdownBacklinkPlugin()))
       .create()
       .then((created) => {
@@ -436,6 +510,27 @@ function MarkdownDocEditor({
     else run(wrapInHeadingCommand.key, Number(block.slice(1)));
   };
   const disabled = readOnly !== null || !editor;
+
+  /** Inserta imágenes del equipo en `at` o en la selección (nodo `image` de Milkdown). */
+  const insertImages = async (files: File[], at?: number) => {
+    if (!editor || readOnly !== null) return;
+    const added = (await Promise.all(files.map((f) => images.add(f)))).filter((a) => a !== null);
+    setImageError(added.length < files.length);
+    if (!added.length) return;
+    const view = editor.ctx.get(editorViewCtx);
+    const type = view.state.schema.nodes['image'];
+    if (!type) return;
+    let tr = view.state.tr;
+    for (const attrs of added) {
+      const node = type.create({ ...attrs, title: '' });
+      tr = at === undefined ? tr.replaceSelectionWith(node, false) : tr.insert(at, node);
+    }
+    view.dispatch(tr.scrollIntoView());
+    view.focus();
+  };
+  useEffect(() => {
+    insertImagesRef.current = insertImages;
+  });
 
   /** «Enlazar selección»: marca `link` sobre la selección, o el título enlazado si no hay texto. */
   const linker = useSelectionLinker({
@@ -547,6 +642,11 @@ function MarkdownDocEditor({
         </p>
       )}
       <AnchorNotice status={anchorStatus} />
+      {imageError && (
+        <p className="notice" role="status" data-testid="doc-image-error">
+          {t('docs.imageRejected')}
+        </p>
+      )}
       <div className="doc-toolbar" role="toolbar" aria-label={t('docs.toolbar')}>
         <div className="doc-toolbar-group">
           <ToolIconButton
@@ -634,6 +734,13 @@ function MarkdownDocEditor({
             disabled={!editor}
             onRun={copyLink}
           />
+          <ToolIconButton
+            id="image"
+            icon="imagen"
+            label={t('docs.insertImage')}
+            disabled={disabled}
+            onRun={() => imageInput.current?.click()}
+          />
           <CopiedNotice />
         </div>
         <span className="doc-toolbar-spacer" />
@@ -645,6 +752,19 @@ function MarkdownDocEditor({
       <div className="doc-scroll">
         <div className="doc-sheet" onClick={onClick}>
           <div ref={host} className="md-doc-host" />
+          <input
+            ref={imageInput}
+            type="file"
+            accept={IMAGE_ACCEPT}
+            multiple
+            hidden
+            data-testid="doc-image-input"
+            onChange={(e) => {
+              const files = [...(e.target.files ?? [])];
+              e.target.value = '';
+              void insertImages(files);
+            }}
+          />
         </div>
       </div>
       {linker.picker}

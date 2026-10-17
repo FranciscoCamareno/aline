@@ -8,10 +8,12 @@ import {
 } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
+import { FontFamily, FontSize, TextStyle } from '@tiptap/extension-text-style';
 import { Placeholder } from '@tiptap/extensions';
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { linkFocus, useUiStore } from '../../app/store.ts';
+import { Icon } from '../../app/ui/Icon.tsx';
 import { useAutosave } from '../../app/useAutosave.ts';
 import type { KnowledgeService } from '../../application/KnowledgeService.ts';
 import type { OpenedRichDoc, VaultService } from '../../application/VaultService.ts';
@@ -25,7 +27,7 @@ import {
 } from '../../domain/anchors.ts';
 import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
-import type { RichDocData } from '../../domain/richDoc.ts';
+import type { DocComment, RichDocData } from '../../domain/richDoc.ts';
 import { AnchorNotice, CopiedNotice, type AnchorStatus } from '../knowledge/anchorUi.tsx';
 import { backlinkRanges, useBacklinkAnchors } from '../knowledge/backlinkMarks.ts';
 import { pmProjection } from '../knowledge/pmProjection.ts';
@@ -36,7 +38,24 @@ import {
 } from '../knowledge/useSelectionLinker.tsx';
 import { tiptapBacklinkKey, tiptapBacklinkPlugin } from './backlinkMarksPm.ts';
 import { BlockAnchors, ensureBlockAnchor, withoutEmptyAnchors } from './blockAnchors.ts';
+import { FontFamilyPicker, FontSizeControl } from './fontControls.tsx';
+import { parsePx } from './typography.ts';
+import { fontStack } from '../../app/fontCatalog.ts';
+import {
+  OutlinePanel,
+  useDocZoom,
+  useOutlineOpen,
+  ZoomControl,
+} from './docPanels.tsx';
+import { CommentMark, setCommentView } from './comments.ts';
+import { DocImage, DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
+import { browserDocxImage, docxBlob } from './exportDocx.ts';
+import { printRichDoc } from './printDoc.ts';
+import { downloadBlob } from '../../app/download.ts';
+import { safeFilename } from '../../application/portability.ts';
+import { CommentsPanel } from './CommentsPanel.tsx';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
+import { Pagination, paginationKey, setPagination } from './pagination.ts';
 import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
 
 interface Props {
@@ -122,13 +141,42 @@ function DocEditor({
   /** El fragmento del último enlace seguido cambió o ya no está. */
   const [anchorStatus, setAnchorStatus] = useState<AnchorStatus>(null);
   const [layout, setLayout] = useDocLayout();
+  // Imágenes (fase 8.4): las nuevas se guardan con el documento; las URL locales se liberan al
+  // cerrarlo.
+  const images = useMemo(
+    () => new DocImageStore((hash) => service.loadAsset(hash)),
+    [service],
+  );
+  useEffect(() => () => images.dispose(), [images]);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const [imageError, setImageError] = useState(false);
+  const [exportError, setExportError] = useState(false);
+  /** Las órdenes de la cabecera anteriores al montaje no se ejecutan. */
+  const handledCommand = useRef(useUiStore.getState().viewCommand?.seq ?? 0);
+  const [zoom, setZoom] = useDocZoom();
+  const [outlineOpen, setOutlineOpen] = useOutlineOpen();
   /** El editor rechazó el contenido guardado: se muestra sin guardar para no perder nada. */
   const [contentError, setContentError] = useState(false);
   const readOnly: ReadOnlyReason | null =
     opened.readOnly ?? (contentError ? 'invalid-content' : null);
 
-  const autosave = useAutosave<RichDocData['content']>((content) =>
-    service.saveRichDoc(opened.session, content, opened.doc),
+  // Comentarios (fase 8.3): se guardan con el contenido, en la misma revisión.
+  const [comments, setComments] = useState<DocComment[]>(() => opened.doc.comments ?? []);
+  const commentsRef = useRef(comments);
+  const [activeComment, setActiveComment] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState<{ from: number; to: number } | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(() => (opened.doc.comments ?? []).length > 0);
+  const commentRef = useRef<() => void>(() => undefined);
+  /** Insertar imágenes vigente, para pegar y arrastrar (el editor se crea una sola vez). */
+  const insertImagesRef = useRef<(files: File[], at?: number) => Promise<void>>(async () => {});
+
+  const autosave = useAutosave<{ content: RichDocData['content']; comments: DocComment[] }>(
+    ({ content, comments: list }) => {
+      const preserved: RichDocData = { ...opened.doc };
+      if (list.length) preserved.comments = list;
+      else delete preserved.comments;
+      return service.saveRichDoc(opened.session, content, preserved, images.newAssets());
+    },
   );
 
   const editor = useEditor({
@@ -148,6 +196,17 @@ function DocEditor({
       Placeholder.configure({ placeholder }),
       BlockAnchors,
       BacklinkMarks,
+      // Fuente y tamaño por fragmento (fase 8.2): una marca `textStyle` con `fontFamily` y
+      // `fontSize` (formato §2.5.3). Las fuentes son las del catálogo, servidas en local.
+      TextStyle,
+      FontFamily,
+      FontSize,
+      // Comentarios (fase 8.3): marca `comment` con el id del hilo.
+      CommentMark,
+      // Imágenes del almacén (fase 8.4), pintadas con URL locales.
+      DocImage.configure({ store: images }),
+      // Páginas de la vista «Hoja» (fase 8.3): decoraciones, el documento no cambia.
+      Pagination.configure({ pageLabel: (page) => t('docs.pageLabel', { page }) }),
     ],
     content: opened.doc.content as JSONContent,
     editable: opened.readOnly === null,
@@ -166,7 +225,29 @@ function DocEditor({
         'data-testid': 'doc-editor',
         spellcheck: 'true',
       },
+      // Pegar o arrastrar imágenes del equipo las añade al documento (nunca desde la web).
+      handlePaste: (_view, event) => {
+        const files = imageFiles(event.clipboardData);
+        if (!files.length) return false;
+        event.preventDefault();
+        void insertImagesRef.current(files);
+        return true;
+      },
+      handleDrop: (view, event) => {
+        const files = imageFiles(event.dataTransfer);
+        if (!files.length) return false;
+        event.preventDefault();
+        const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+        void insertImagesRef.current(files, at);
+        return true;
+      },
       handleKeyDown: (_view, event) => {
+        // Ctrl/⌘+Alt+M: comentar la selección (el atajo de los procesadores de texto).
+        if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyM') {
+          event.preventDefault();
+          commentRef.current();
+          return true;
+        }
         const action = isCopyLinkShortcut(event)
           ? copyLinkRef.current
           : isLinkShortcut(event)
@@ -180,7 +261,10 @@ function DocEditor({
     },
     onUpdate: ({ editor: instance }) => {
       if (!instance.isEditable) return;
-      autosave.push(withoutEmptyAnchors(instance.getJSON()) as RichDocData['content']);
+      autosave.push({
+        content: withoutEmptyAnchors(instance.getJSON()) as RichDocData['content'],
+        comments: commentsRef.current,
+      });
     },
   });
 
@@ -245,6 +329,94 @@ function DocEditor({
     copyLinkRef.current = copyLink;
   });
 
+  /**
+   * Inserta imágenes del equipo (botón, pegar o arrastrar) en `at` o en la selección. Las que no
+   * son imágenes admitidas (tipo o tamaño) se descartan con un aviso.
+   */
+  async function insertImages(files: File[], at?: number) {
+    if (!editor || readOnly !== null) return;
+    const added = (await Promise.all(files.map((f) => images.add(f)))).filter((a) => a !== null);
+    setImageError(added.length < files.length);
+    if (!added.length) return;
+    const nodes = added.map((attrs) => ({ type: 'image', attrs }));
+    const chain = editor.chain().focus();
+    if (at === undefined) chain.insertContent(nodes).run();
+    else chain.insertContentAt(at, nodes).run();
+  }
+
+  // «Exportar» de la cabecera (fase 8.4): Word (.docx) o PDF por la impresión del navegador.
+  useEffect(
+    () =>
+      useUiStore.subscribe(({ viewCommand, documents: docs }) => {
+        if (!editor || viewCommand?.documentId !== opened.document.id) return;
+        if (viewCommand.kind !== 'export-docx' && viewCommand.kind !== 'export-pdf') return;
+        if (viewCommand.seq <= handledCommand.current) return;
+        handledCommand.current = viewCommand.seq;
+        const title = docs.find((d) => d.id === opened.document.id)?.title ?? opened.document.title;
+        if (viewCommand.kind === 'export-pdf') {
+          printRichDoc(editor.view.dom as HTMLElement, title);
+          return;
+        }
+        setExportError(false);
+        const content = withoutEmptyAnchors(editor.getJSON()) as RichDocData['content'];
+        void docxBlob(
+          { ...opened.doc, content },
+          {
+            title,
+            image: async (hash) => {
+              const asset = images.added.get(hash) ?? (await service.loadAsset(hash));
+              return asset ? browserDocxImage(asset) : null;
+            },
+          },
+        )
+          .then((blob) => downloadBlob(safeFilename(title, 'docx'), blob))
+          .catch(() => setExportError(true));
+      }),
+    [editor, images, opened, service],
+  );
+
+  /** Cambiar los hilos: se guardan con el contenido actual. */
+  const changeComments = (next: DocComment[]) => {
+    commentsRef.current = next;
+    setComments(next);
+    if (!editor || readOnly !== null) return;
+    autosave.push({
+      content: withoutEmptyAnchors(editor.getJSON()) as RichDocData['content'],
+      comments: next,
+    });
+  };
+  /** «Comentar»: abre el formulario para la selección actual. */
+  const startComment = () => {
+    if (!editor || readOnly !== null) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) return;
+    setCommentDraft({ from, to });
+    setCommentsOpen(true);
+  };
+  useEffect(() => {
+    commentRef.current = startComment;
+    insertImagesRef.current = insertImages;
+  });
+  // Resaltado: sin los hilos resueltos y con el activo destacado.
+  useEffect(() => {
+    if (!editor) return;
+    setCommentView(editor, {
+      resolved: new Set(comments.filter((c) => c.resolved).map((c) => c.id)),
+      active: activeComment,
+    });
+  }, [editor, comments, activeComment]);
+
+  // Paginación solo en la vista «Hoja» y en pantallas anchas (en las estrechas la hoja no tiene
+  // medidas de A4).
+  useEffect(() => {
+    if (!editor) return;
+    const wide = window.matchMedia('(min-width: 821px)');
+    const apply = () => setPagination(editor.view, layout === 'page' && wide.matches);
+    apply();
+    wide.addEventListener('change', apply);
+    return () => wide.removeEventListener('change', apply);
+  }, [editor, layout]);
+
   // Fragmentos de este documento con backlinks: se resaltan en el editor (fase 7.F).
   const backlinkAnchors = useBacklinkAnchors(knowledge, opened.document.id);
   useEffect(() => {
@@ -285,6 +457,12 @@ function DocEditor({
 
   /** Enlaces: los internos se abren en la app; los externos solo con Ctrl/⌘ y sin opener. */
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
+    // Pulsar un texto comentado abre su hilo.
+    const commented = (event.target as HTMLElement).closest<HTMLElement>('[data-comment-id]');
+    if (commented?.dataset['commentId']) {
+      setActiveComment(commented.dataset['commentId']);
+      setCommentsOpen(true);
+    }
     const anchor = (event.target as HTMLElement).closest('a');
     const href = anchor?.getAttribute('href');
     if (!href) return;
@@ -309,6 +487,16 @@ function DocEditor({
         </p>
       )}
       <AnchorNotice status={anchorStatus} />
+      {exportError && (
+        <p className="notice" role="alert" data-testid="doc-export-error">
+          {t('docs.exportFailed')}
+        </p>
+      )}
+      {imageError && (
+        <p className="notice" role="status" data-testid="doc-image-error">
+          {t('docs.imageRejected')}
+        </p>
+      )}
       <div className="doc-toolbar" role="toolbar" aria-label={t('docs.toolbar')}>
         {editor && (
           <FormatControls
@@ -316,18 +504,101 @@ function DocEditor({
             disabled={readOnly !== null}
             onLink={openLink}
             onCopyLink={copyLink}
+            onComment={startComment}
+            onImage={() => imageInput.current?.click()}
           />
         )}
         <span className="doc-toolbar-spacer" />
+        {editor && <PageCount editor={editor} />}
+        <button
+          type="button"
+          className="icon-button"
+          aria-pressed={outlineOpen}
+          aria-label={t('docs.outline')}
+          title={t('docs.outline')}
+          data-testid="doc-outline-toggle"
+          onClick={() => setOutlineOpen(!outlineOpen)}
+        >
+          <Icon name="panel-lateral" size={18} />
+        </button>
+        <button
+          type="button"
+          className="icon-button doc-comments-toggle"
+          aria-pressed={commentsOpen}
+          aria-label={t('docs.comments')}
+          title={t('docs.comments')}
+          data-testid="doc-comments-toggle"
+          onClick={() => setCommentsOpen(!commentsOpen)}
+        >
+          <Icon name="comentario" size={18} />
+          {comments.some((c) => !c.resolved) && (
+            <span className="doc-comments-count">{comments.filter((c) => !c.resolved).length}</span>
+          )}
+        </button>
+        <ZoomControl zoom={zoom} onChange={setZoom} />
         <LayoutToggle layout={layout} onChange={setLayout} />
       </div>
-      <div className="doc-scroll">
-        <div className="doc-sheet" onClick={onClick}>
-          <EditorContent editor={editor} />
+      <div className="doc-body">
+        {outlineOpen && editor && (
+          <OutlinePanel editor={editor} onClose={() => setOutlineOpen(false)} />
+        )}
+        <div className="doc-scroll">
+          {/* Zoom con la propiedad CSS `zoom`: a diferencia de `transform`, el editor sigue
+              colocando bien el cursor y la selección. */}
+          <div className="doc-sheet" style={{ zoom: zoom / 100 }} onClick={onClick}>
+            <EditorContent editor={editor} />
+            <input
+              ref={imageInput}
+              type="file"
+              accept={IMAGE_ACCEPT}
+              multiple
+              hidden
+              data-testid="doc-image-input"
+              onChange={(e) => {
+                const files = [...(e.target.files ?? [])];
+                e.target.value = '';
+                void insertImages(files);
+              }}
+            />
+          </div>
         </div>
+        {commentsOpen && editor && (
+          <CommentsPanel
+            editor={editor}
+            comments={comments}
+            readOnly={readOnly !== null}
+            active={activeComment}
+            draft={commentDraft}
+            onChange={changeComments}
+            onActivate={setActiveComment}
+            onCancelDraft={() => setCommentDraft(null)}
+            onClose={() => {
+              setCommentsOpen(false);
+              setCommentDraft(null);
+            }}
+          />
+        )}
       </div>
       {linker.picker}
     </div>
+  );
+}
+
+/** Número de páginas de la vista «Hoja» (solo con paginación activa). */
+function PageCount({ editor }: { editor: Editor }) {
+  const { t } = useTranslation();
+  const pages = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      const value = paginationKey.getState(e.state);
+      return value?.enabled ? value.pages : null;
+    },
+  });
+  if (pages === null) return null;
+  return (
+    <span className="doc-page-count" data-testid="doc-page-count">
+      {t('docs.pageCount', { count: pages })}
+    </span>
   );
 }
 
@@ -337,11 +608,15 @@ function FormatControls({
   disabled,
   onLink,
   onCopyLink,
+  onComment,
+  onImage,
 }: {
   editor: Editor;
   disabled: boolean;
   onLink: () => void;
   onCopyLink: () => void;
+  onComment: () => void;
+  onImage: () => void;
 }) {
   const { t } = useTranslation();
   const state = useEditorState({
@@ -364,8 +639,11 @@ function FormatControls({
       left: e.isActive({ textAlign: 'left' }),
       center: e.isActive({ textAlign: 'center' }),
       right: e.isActive({ textAlign: 'right' }),
+      fontFamily: (e.getAttributes('textStyle')['fontFamily'] as string | undefined) ?? null,
+      fontSize: parsePx(e.getAttributes('textStyle')['fontSize']),
       canUndo: e.can().undo(),
       canRedo: e.can().redo(),
+      hasSelection: !e.state.selection.empty,
     }),
   });
   const chain = () => editor.chain().focus();
@@ -395,6 +673,22 @@ function FormatControls({
       </div>
       <div className="doc-toolbar-group">
         <BlockStyleSelect value={state.block} disabled={disabled} onChange={setBlock} />
+      </div>
+      <div className="doc-toolbar-group">
+        <FontFamilyPicker
+          value={state.fontFamily}
+          disabled={disabled}
+          onPick={(font) =>
+            font
+              ? chain().setFontFamily(fontStack(font)).run()
+              : chain().unsetFontFamily().run()
+          }
+        />
+        <FontSizeControl
+          size={state.fontSize}
+          disabled={disabled}
+          onChange={(size) => chain().setFontSize(`${size}px`).run()}
+        />
       </div>
       <div className="doc-toolbar-group">
         <ToolMarkButton
@@ -495,6 +789,20 @@ function FormatControls({
           icon="duplicar"
           label={t('links.copyLink')}
           onRun={onCopyLink}
+        />
+        <ToolIconButton
+          id="comment"
+          icon="comentario"
+          label={t('docs.commentAdd')}
+          disabled={disabled || !state.hasSelection}
+          onRun={onComment}
+        />
+        <ToolIconButton
+          id="image"
+          icon="imagen"
+          label={t('docs.insertImage')}
+          disabled={disabled}
+          onRun={onImage}
         />
         <CopiedNotice />
       </div>

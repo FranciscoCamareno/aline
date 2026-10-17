@@ -190,7 +190,7 @@ export function NoteView({ documentId, title, service, knowledge, onCreateNote }
   const findTargets = (query: string): LinkTarget[] => {
     const q = normalizeForSearch(query.trim());
     return documentsRef.current
-      .filter((d) => !d.deleted && d.id !== documentId)
+      .filter((d) => !d.deleted && !d.archived && d.id !== documentId)
       .flatMap((d) => (isLinkableKind(d.kind) ? [{ id: d.id, title: d.title, kind: d.kind }] : []))
       .filter((d) => !q || normalizeForSearch(d.title).includes(q))
       .slice(0, 20);

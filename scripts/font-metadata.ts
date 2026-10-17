@@ -78,7 +78,8 @@ export interface FontMetadata {
   licenseUrl: string | null;
 }
 
-export function readWoff2Metadata(path: string): FontMetadata {
+/** Tablas de un WOFF2, descomprimidas (glyf y loca pueden venir transformadas; no se usan). */
+function readWoff2Tables(path: string): Map<string, Buffer> {
   const buf = readFileSync(path);
   if (buf.toString('latin1', 0, 4) !== 'wOF2') throw new Error(`${path} no es WOFF2`);
   const numTables = buf.readUInt16BE(12);
@@ -114,12 +115,39 @@ export function readWoff2Metadata(path: string): FontMetadata {
   }
 
   const data = brotliDecompressSync(buf.subarray(pos, pos + totalCompressedSize));
+  const result = new Map<string, Buffer>();
   let offset = 0;
-  let name: Buffer | null = null;
   for (const t of tables) {
-    if (t.tag === 'name') name = data.subarray(offset, offset + t.length);
+    result.set(t.tag, data.subarray(offset, offset + t.length));
     offset += t.length;
   }
+  return result;
+}
+
+/**
+ * Métricas verticales de una fuente (tablas `head` y `hhea`), las que el lienzo necesita para
+ * colocar el texto: unidades por em, ascendente, descendente y separación entre líneas.
+ */
+export function readWoff2Metrics(path: string): {
+  unitsPerEm: number;
+  ascender: number;
+  descender: number;
+  lineGap: number;
+} {
+  const tables = readWoff2Tables(path);
+  const head = tables.get('head');
+  const hhea = tables.get('hhea');
+  if (!head || !hhea) throw new Error(`${path}: faltan las tablas head o hhea`);
+  return {
+    unitsPerEm: head.readUInt16BE(18),
+    ascender: hhea.readInt16BE(4),
+    descender: hhea.readInt16BE(6),
+    lineGap: hhea.readInt16BE(8),
+  };
+}
+
+export function readWoff2Metadata(path: string): FontMetadata {
+  const name = readWoff2Tables(path).get('name');
   if (!name)
     return { family: null, version: null, copyright: null, license: null, licenseUrl: null };
 

@@ -1,6 +1,6 @@
 import { DomainError } from '../../domain/errors.ts';
 import type { Uuid } from '../../domain/ids.ts';
-import type { DocumentRecord, Revision } from '../../domain/revision.ts';
+import { documentExtras, type DocumentRecord, type Revision } from '../../domain/revision.ts';
 import type { VersionPrune } from '../../domain/vault.ts';
 import type { Observation, SyncLocalStore, SyncState } from '../../ports/SyncLocalStore.ts';
 import type { StoredBlob } from '../../ports/VaultRepository.ts';
@@ -27,6 +27,7 @@ function deriveDocument(
     folderId: latest.metadata.folderId,
     tags: latest.metadata.tags,
     deleted: latest.metadata.deleted,
+    ...documentExtras(latest.metadata),
     headRevisionIds: heads.map((r) => r.id),
     generation: (previous?.generation ?? 0) + 1,
     createdAt: previous?.createdAt ?? sorted[0]!.createdAt,

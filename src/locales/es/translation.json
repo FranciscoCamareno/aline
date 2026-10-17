@@ -33,6 +33,10 @@
     "kindNote": "Nota",
     "conflict": "Conflicto",
     "trash": "Enviar a la papelera",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "archive": "Archivar",
+    "archived": "Archivado",
     "trashEmpty": "La papelera está vacía.",
     "restore": "Restaurar",
     "purge": "Eliminar definitivamente",
@@ -352,7 +356,7 @@
       "needs-key": "Necesita contraseña",
       "needs-confirm": "Revisar cifrado"
     },
-    "connectDrive": "Conectar Google Drive…",
+    "connectDrive": "Conectar con Google Drive",
     "driveWarningTitle": "Antes de conectar Google Drive: ¿quieres cifrar el contenido?",
     "driveWarning": "El contenido se guarda en tu Google Drive tal cual: Google y quien tenga acceso a tu cuenta pueden leerlo. A cambio, las notas se pueden abrir y editar desde Drive, y no hay contraseña que perder.",
     "driveAccept": "Continuar",
@@ -477,6 +481,8 @@
     "exportCanvas": "Imagen, PDF o .excalidraw…",
     "more": "Más opciones",
     "exportNote": "Nota en Markdown (.md)",
+    "exportDocx": "Documento de Word (.docx)",
+    "exportPdf": "PDF (imprimir y «Guardar como PDF»)…",
     "exportMarkdownAll": "Todas las notas en Markdown (.zip)",
     "exportMarkdownFolder": "Notas de «{{folder}}» en Markdown (.zip)"
   },
@@ -566,6 +572,47 @@
     "unavailable": "No disponible: este almacén es temporal o la sincronización no está activa."
   },
   "docs": {
+    "exportFailed": "No se pudo exportar el documento.",
+    "insertImage": "Insertar imagen",
+    "imageRejected": "Solo se admiten imágenes PNG, JPEG, GIF o WebP de hasta 10 MB.",
+    "comments": "Comentarios",
+    "commentsClose": "Cerrar comentarios",
+    "commentAdd": "Comentar (Ctrl+Alt+M)",
+    "commentPlaceholder": "Escribe un comentario",
+    "commentSave": "Comentar",
+    "commentReply": "Responder…",
+    "commentResolve": "Resolver",
+    "commentReopen": "Reabrir",
+    "commentDelete": "Eliminar",
+    "commentDeleteConfirm": "¿Eliminar este comentario y sus respuestas?",
+    "commentOrphan": "(el texto comentado se borró)",
+    "commentsEmpty": "Selecciona texto y pulsa «Comentar» para añadir un comentario.",
+    "commentsResolved_one": "{{count}} resuelto",
+    "commentsResolved_other": "{{count}} resueltos",
+    "pageLabel": "Página {{page}}",
+    "pageCount_one": "{{count}} página",
+    "pageCount_other": "{{count}} páginas",
+    "zoom": "Zoom",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "zoomReset": "Volver al 100 %",
+    "outline": "Capítulos",
+    "outlineClose": "Cerrar capítulos",
+    "outlineEmpty": "Añade títulos al documento para ver aquí sus capítulos.",
+    "outlineUntitled": "(título vacío)",
+    "font": "Fuente",
+    "fontDefault": "Predeterminada",
+    "fontSearch": "Buscar fuente",
+    "fontNone": "Ninguna fuente coincide.",
+    "fontSmaller": "Reducir tamaño de letra",
+    "fontLarger": "Aumentar tamaño de letra",
+    "fontCategory": {
+      "sans": "Sin serifa",
+      "serif": "Con serifa",
+      "mono": "Monoespaciadas",
+      "hand": "Manuscritas",
+      "display": "Rótulos"
+    },
     "title": "Documentos",
     "untitled": "Documento sin título",
     "emptyTitle": "Escribe un documento",
@@ -637,10 +684,12 @@
       "storage": "Almacenamiento",
       "appearance": "Apariencia",
       "language": "Idioma",
+      "archive": "Archivo",
       "trash": "Papelera"
     },
     "menu": {
-      "settings": "Configuración",
+      "storage": "Almacenamiento",
+      "archive": "Archivo",
       "themes": "Temas",
       "language": "Idioma",
       "trash": "Papelera"
@@ -650,6 +699,9 @@
       "es": "Español",
       "en": "English"
     },
-    "trashLead": "Lo que envías a la papelera se conserva con su historial hasta que lo borres definitivamente."
+    "trashLead": "Lo que envías a la papelera se conserva con su historial hasta que lo borres definitivamente.",
+    "archiveLead": "Lo archivado no aparece en la barra lateral, pero se encuentra con la búsqueda y sus enlaces siguen funcionando.",
+    "archiveEmpty": "No hay nada archivado.",
+    "unarchive": "Desarchivar"
   }
 }

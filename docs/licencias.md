@@ -8,15 +8,17 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 
 | Licencia | Paquetes |
 | --- | --- |
-| MIT | 349 |
-| ISC | 38 |
-| Apache-2.0 | 11 |
+| MIT | 367 |
+| ISC | 39 |
+| OFL-1.1 | 24 |
+| Apache-2.0 | 12 |
 | BSD-3-Clause | 7 |
 | (MIT AND Zlib) | 1 |
+| (MIT OR GPL-3.0-or-later) | 1 |
 | (MPL-2.0 OR Apache-2.0) | 1 |
 | 0BSD | 1 |
+| BlueOak-1.0.0 | 1 |
 | CC0-1.0 | 1 |
-| OFL-1.1 | 1 |
 | Unlicense | 1 |
 
 ## Por revisar
@@ -98,7 +100,31 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @floating-ui/dom | 1.8.0 | MIT |
 | @floating-ui/react-dom | 2.1.9 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
+| @fontsource/architects-daughter | 5.3.0 | OFL-1.1 |
+| @fontsource/atkinson-hyperlegible | 5.3.0 | OFL-1.1 |
+| @fontsource/bebas-neue | 5.3.0 | OFL-1.1 |
+| @fontsource/caveat | 5.3.0 | OFL-1.1 |
+| @fontsource/eb-garamond | 5.3.0 | OFL-1.1 |
+| @fontsource/fira-code | 5.3.0 | OFL-1.1 |
+| @fontsource/ibm-plex-mono | 5.3.0 | OFL-1.1 |
+| @fontsource/ibm-plex-sans | 5.3.0 | OFL-1.1 |
+| @fontsource/inter | 5.3.0 | OFL-1.1 |
+| @fontsource/jetbrains-mono | 5.3.0 | OFL-1.1 |
+| @fontsource/kalam | 5.3.0 | OFL-1.1 |
+| @fontsource/lato | 5.3.0 | OFL-1.1 |
+| @fontsource/libre-baskerville | 5.3.0 | OFL-1.1 |
+| @fontsource/lora | 5.3.0 | OFL-1.1 |
+| @fontsource/merriweather | 5.3.0 | OFL-1.1 |
+| @fontsource/montserrat | 5.3.0 | OFL-1.1 |
 | @fontsource/nunito | 5.3.0 | OFL-1.1 |
+| @fontsource/open-sans | 5.3.0 | OFL-1.1 |
+| @fontsource/pacifico | 5.3.0 | OFL-1.1 |
+| @fontsource/patrick-hand | 5.3.0 | OFL-1.1 |
+| @fontsource/permanent-marker | 5.3.0 | Apache-2.0 |
+| @fontsource/playfair-display | 5.3.0 | OFL-1.1 |
+| @fontsource/roboto | 5.3.0 | OFL-1.1 |
+| @fontsource/source-serif-4 | 5.3.0 | OFL-1.1 |
+| @fontsource/work-sans | 5.3.0 | OFL-1.1 |
 | @iconify/types | 2.0.0 | MIT |
 | @iconify/utils | 3.1.7 | MIT |
 | @lezer/common | 1.5.3 | MIT |
@@ -158,6 +184,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @tiptap/extension-hard-break | 3.31.4 | MIT |
 | @tiptap/extension-heading | 3.31.4 | MIT |
 | @tiptap/extension-horizontal-rule | 3.31.4 | MIT |
+| @tiptap/extension-image | 3.31.4 | MIT |
 | @tiptap/extension-italic | 3.31.4 | MIT |
 | @tiptap/extension-link | 3.31.4 | MIT |
 | @tiptap/extension-list | 3.31.4 | MIT |
@@ -168,6 +195,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @tiptap/extension-strike | 3.31.4 | MIT |
 | @tiptap/extension-text | 3.31.4 | MIT |
 | @tiptap/extension-text-align | 3.31.4 | MIT |
+| @tiptap/extension-text-style | 3.31.4 | MIT |
 | @tiptap/extension-underline | 3.31.4 | MIT |
 | @tiptap/extensions | 3.31.4 | MIT |
 | @tiptap/pm | 3.31.4 | MIT |
@@ -211,6 +239,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @types/lodash-es | 4.17.12 | MIT |
 | @types/mdast | 4.0.4 | MIT |
 | @types/ms | 2.1.0 | MIT |
+| @types/node | 26.6.5 | MIT |
 | @types/pako | 2.0.4 | MIT |
 | @types/react | 19.3.0 | MIT |
 | @types/react-dom | 19.3.0 | MIT |
@@ -236,6 +265,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | codemirror | 6.0.2 | MIT |
 | comma-separated-tokens | 2.0.3 | MIT |
 | commander | 7.2.0, 8.3.0 | MIT |
+| core-util-is | 1.0.3 | MIT |
 | cose-base | 1.0.3, 2.2.0 | MIT |
 | crc-32 | 0.3.0 | Apache-2.0 |
 | crelt | 1.0.7 | MIT |
@@ -289,6 +319,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | detect-node-es | 1.1.0 | MIT |
 | devlop | 1.1.0 | MIT |
 | dexie | 4.4.6 | Apache-2.0 |
+| docx | 9.8.1 | MIT |
 | dompurify | 3.4.16 | (MPL-2.0 OR Apache-2.0) |
 | es-toolkit | 1.52.0 | MIT |
 | es6-promise-pool | 2.5.0 | MIT |
@@ -306,6 +337,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | glob-parent | 5.1.2 | ISC |
 | glur | 1.1.2 | MIT |
 | hachure-fill | 0.5.2 | MIT |
+| hash.js | 1.1.7 | MIT |
 | hast-util-sanitize | 5.0.2 | MIT |
 | hast-util-to-html | 9.0.5 | MIT |
 | hast-util-whitespace | 3.0.0 | MIT |
@@ -314,6 +346,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | i18next | 26.4.3 | MIT |
 | iconv-lite | 0.6.3 | MIT |
 | image-blob-reduce | 3.0.1 | MIT |
+| immediate | 3.0.6 | MIT |
 | immutable | 4.3.9 | MIT |
 | import-meta-resolve | 4.2.0 | MIT |
 | inherits | 2.0.4 | ISC |
@@ -324,14 +357,17 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | is-glob | 4.0.3 | MIT |
 | is-number | 7.0.0 | MIT |
 | is-plain-obj | 4.1.0 | MIT |
+| isarray | 1.0.0 | MIT |
 | isexe | 2.0.0 | ISC |
 | jotai | 2.11.0 | MIT |
 | jotai-scope | 0.7.2 | MIT |
 | jspdf | 4.2.1 | MIT |
+| jszip | 3.10.2 | (MIT OR GPL-3.0-or-later) |
 | katex | 0.16.47 | MIT |
 | khroma | 2.1.0 | MIT |
 | langium | 3.3.1 | MIT |
 | layout-base | 1.0.2, 2.0.1 | MIT |
+| lie | 3.3.0 | MIT |
 | linkifyjs | 4.3.3 | MIT |
 | lodash-es | 4.18.1 | MIT |
 | lodash.debounce | 4.0.8 | MIT |
@@ -382,6 +418,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | micromark-util-subtokenize | 2.1.0 | MIT |
 | micromark-util-symbol | 2.0.1 | MIT |
 | micromark-util-types | 2.0.3 | MIT |
+| minimalistic-assert | 1.0.1 | ISC |
 | minisearch | 7.2.0 | MIT |
 | ms | 2.1.3 | MIT |
 | multimath | 2.0.0 | MIT |
@@ -391,7 +428,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | open-color | 1.9.1 | MIT |
 | orderedmap | 2.1.1 | MIT |
 | package-manager-detector | 1.9.0 | MIT |
-| pako | 2.0.3, 2.2.0 | (MIT AND Zlib) |
+| pako | 1.0.11, 2.0.3, 2.2.0 | (MIT AND Zlib) |
 | path-data-parser | 0.1.0 | MIT |
 | path-key | 3.1.1 | MIT |
 | perfect-freehand | 1.2.0 | MIT |
@@ -402,6 +439,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | png-chunks-extract | 1.0.0 | MIT |
 | points-on-curve | 0.2.0, 1.0.1 | MIT |
 | points-on-path | 0.2.1 | MIT |
+| process-nextick-args | 2.0.1 | MIT |
 | property-information | 7.2.0 | MIT |
 | prosemirror-changeset | 2.4.4 | MIT |
 | prosemirror-commands | 1.7.2 | MIT |
@@ -424,6 +462,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | react-remove-scroll | 2.7.2 | MIT |
 | react-remove-scroll-bar | 2.3.8 | MIT |
 | react-style-singleton | 2.2.3 | MIT |
+| readable-stream | 2.3.8 | MIT |
 | readdirp | 3.6.0 | MIT |
 | rehype-sanitize | 6.0.0 | MIT |
 | rehype-stringify | 10.0.1 | MIT |
@@ -437,15 +476,19 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | rope-sequence | 1.3.4 | MIT |
 | roughjs | 4.6.4, 4.6.6 | MIT |
 | rw | 1.3.3 | BSD-3-Clause |
+| safe-buffer | 5.1.2 | MIT |
 | safer-buffer | 2.1.2 | MIT |
 | sass | 1.51.0 | MIT |
+| sax | 1.6.1 | BlueOak-1.0.0 |
 | scheduler | 0.28.0 | MIT |
+| setimmediate | 1.0.5 | MIT |
 | shebang-command | 2.0.0 | MIT |
 | shebang-regex | 3.0.0 | MIT |
 | sliced | 1.0.1 | MIT |
 | source-map-js | 1.2.2 | BSD-3-Clause |
 | space-separated-tokens | 2.0.2 | MIT |
 | strictdom | 1.0.1 | MIT |
+| string_decoder | 1.1.1 | MIT |
 | stringify-entities | 4.0.4 | MIT |
 | style-mod | 4.1.4 | MIT |
 | stylis | 4.4.0 | MIT |
@@ -456,6 +499,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | ts-dedent | 2.3.0 | MIT |
 | tslib | 2.8.1 | 0BSD |
 | tunnel-rat | 0.1.2 | MIT |
+| undici-types | 8.9.0 | MIT |
 | unified | 11.0.5 | MIT |
 | unist-util-is | 6.0.1 | MIT |
 | unist-util-position | 5.0.0 | MIT |
@@ -465,6 +509,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | use-callback-ref | 1.3.3 | MIT |
 | use-sidecar | 1.1.3 | MIT |
 | use-sync-external-store | 1.7.0 | MIT |
+| util-deprecate | 1.0.2 | MIT |
 | uuid | 14.0.3 | MIT |
 | vfile | 6.0.3 | MIT |
 | vfile-message | 4.0.3 | MIT |
@@ -477,6 +522,8 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | w3c-keyname | 2.2.8 | MIT |
 | webworkify | 1.5.0 | MIT |
 | which | 2.0.2 | ISC |
+| xml | 1.0.1 | MIT |
+| xml-js | 1.6.11 | MIT |
 | zod | 4.6.6 | MIT |
 | zustand | 4.5.7, 5.0.15 | MIT |
 | zwitch | 2.0.4 | MIT |

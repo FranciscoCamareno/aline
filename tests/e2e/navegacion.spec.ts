@@ -69,18 +69,19 @@ test('biblioteca: Nuevo, buscador, pestañas, menú de fila y pie', async ({ pag
   await expect(page.getByTestId('recent-item')).toHaveCount(2);
   await page.getByRole('tab', { name: 'Todos' }).click();
 
-  // Pie: solo Perfil, con su menú (configuración, temas, idioma, papelera con recuento y
-  // estado). Cada opción abre Configuración en su sección. La ayuda ya no está aquí.
+  // Pie: solo Perfil, con su menú (almacenamiento, temas, idioma, archivo y papelera con su
+  // recuento). Cada opción abre Configuración en su sección; «Estado y diagnóstico» está en «⋯».
+  // La ayuda ya no está aquí.
   await expect(page.getByTestId('open-help')).toHaveCount(0);
   await expect(library.getByTestId('trash-toggle')).toHaveCount(0);
   await expect(page.getByTestId('open-profile')).toContainText('Perfil');
   await page.getByTestId('open-profile').click();
   await expect(page.getByRole('menuitem')).toHaveText([
-    'Configuración',
+    'Almacenamiento',
     'Temas',
     /^Idioma/,
+    /^Archivo\s*0$/,
     /^Papelera\s*0$/,
-    'Estado y diagnóstico',
   ]);
   await page.getByTestId('settings-language').click();
   await expect(page.getByTestId('settings-section-language').getByLabel('Idioma')).toBeVisible();

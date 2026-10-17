@@ -397,6 +397,35 @@ export function App() {
     [services, upsertDocument, reportError],
   );
 
+  /** Orden manual de la barra lateral (y movimiento de carpeta, si lo hay). */
+  const reorderDocuments = useCallback(
+    async (
+      changes: ReadonlyMap<string, string>,
+      move?: { documentId: string; folderId: string | null },
+    ) => {
+      try {
+        await services!.service.reorderDocuments(changes, move);
+        const ids = new Set([...changes.keys(), ...(move ? [move.documentId] : [])]);
+        const fresh = await services!.service.listDocuments();
+        for (const doc of fresh) if (ids.has(doc.id)) upsertDocument(doc);
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, upsertDocument, reportError],
+  );
+
+  const setArchived = useCallback(
+    async (documentId: string, archived: boolean) => {
+      try {
+        upsertDocument((await services!.service.setArchived(documentId, archived)).document);
+      } catch (error) {
+        reportError(error);
+      }
+    },
+    [services, upsertDocument, reportError],
+  );
+
   const setTags = useCallback(
     async (documentId: string, tags: string[]) => {
       try {
@@ -547,6 +576,22 @@ export function App() {
                     },
                   ]
                 : []),
+              ...(active?.kind === 'doc'
+                ? [
+                    {
+                      id: 'doc-export-docx',
+                      label: t('nav.exportDocx'),
+                      icon: 'documento' as const,
+                      onSelect: () => sendViewCommand(active.id, 'export-docx'),
+                    },
+                    {
+                      id: 'doc-export-pdf',
+                      label: t('nav.exportPdf'),
+                      icon: 'descargar' as const,
+                      onSelect: () => sendViewCommand(active.id, 'export-pdf'),
+                    },
+                  ]
+                : []),
               ...(active?.kind === 'note' || active?.kind === 'mddoc'
                 ? [
                     {
@@ -566,7 +611,10 @@ export function App() {
                   : t('nav.exportMarkdownAll'),
                 icon: 'descargar',
                 separated:
-                  active?.kind === 'canvas' || active?.kind === 'note' || active?.kind === 'mddoc',
+                  active?.kind === 'canvas' ||
+                  active?.kind === 'note' ||
+                  active?.kind === 'mddoc' ||
+                  active?.kind === 'doc',
                 onSelect: () => void exportMarkdown(exportFolder),
               },
             ]}
@@ -645,8 +693,9 @@ export function App() {
           onTrash={trashDocument}
           onImport={importDocuments}
           onMove={moveDocument}
+          onReorder={reorderDocuments}
+          onArchive={setArchived}
           onOpenSettings={openSettings}
-          onOpenStatus={() => setPanel('status')}
           onCreateDoc={createDocsDocument}
           onCreateCalendar={(title) =>
             useCalendarStore
@@ -786,6 +835,7 @@ export function App() {
           sync={sync}
           onRestoreFromTrash={restoreFromTrash}
           onPurge={purgeDocument}
+          onUnarchive={(documentId) => setArchived(documentId, false)}
           onClose={() => setPanel(null)}
           onError={reportError}
         />

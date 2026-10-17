@@ -61,12 +61,15 @@ export default defineConfig({
         // que se cargan después (locales de Excalidraw, subsetting de fuentes).
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,json,txt}'],
         // Xiaolai (CJK, ~13 MB) se excluye del precache y se cachea al primer uso.
-        globIgnores: ['**/fonts/Xiaolai/**'],
+        // Las fuentes adicionales (fase 8.2) tampoco: se descargan y se cachean al usarse.
+        globIgnores: ['**/fonts/Xiaolai/**', '**/fonts-extra/**'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/fonts/'),
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin &&
+              (url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/fonts-extra/')),
             handler: 'CacheFirst',
             options: { cacheName: 'engine-fonts', expiration: { maxEntries: 400 } },
           },

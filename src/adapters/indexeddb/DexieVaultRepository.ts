@@ -1,6 +1,7 @@
 import { DomainError } from '../../domain/errors.ts';
 import { newId, type Uuid } from '../../domain/ids.ts';
 import {
+  documentExtras,
   REVISION_SCHEMA_VERSION,
   revisionSchema,
   sameHeads,
@@ -183,6 +184,7 @@ export class DexieVaultRepository implements VaultRepository, VaultReader {
             folderId: revision.metadata.folderId,
             tags: revision.metadata.tags,
             deleted: revision.metadata.deleted,
+            ...documentExtras(revision.metadata),
             headRevisionIds: heads,
             generation: (existing?.generation ?? 0) + 1,
             createdAt: existing?.createdAt ?? nowIso,

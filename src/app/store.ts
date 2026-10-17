@@ -54,7 +54,8 @@ export function linkFocus(target: InternalTarget): FocusTarget {
 export interface ViewCommand {
   seq: number;
   documentId: string;
-  kind: 'export';
+  /** `export`: el formato propio de cada vista; `export-docx` y `export-pdf`: documentos con formato. */
+  kind: 'export' | 'export-docx' | 'export-pdf';
 }
 
 /**
@@ -126,7 +127,10 @@ export const useUiStore = create<UiState>()((set, get) => ({
       const active = state.documents.find((d) => d.id === state.activeId);
       if (active && sectionFor(state.documents, active.id) === section) return { section };
       const recent = state.documents.find(
-        (d) => !d.deleted && (section === 'documents' ? isDocsKind(d.kind) : isContentKind(d.kind)),
+        (d) =>
+          !d.deleted &&
+          !d.archived &&
+          (section === 'documents' ? isDocsKind(d.kind) : isContentKind(d.kind)),
       );
       return { section, activeId: recent?.id ?? null };
     }),

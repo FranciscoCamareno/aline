@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../app/store.ts';
 import { KindIcon } from '../../app/ui/Icon.tsx';
@@ -17,6 +17,11 @@ export function SearchPalette({ search, onClose }: Props) {
   const { t } = useTranslation();
   const navigate = useUiStore((s) => s.navigate);
   const indexing = useUiStore((s) => s.indexing);
+  const documents = useUiStore((s) => s.documents);
+  const archivedIds = useMemo(
+    () => new Set(documents.filter((d) => d.archived).map((d) => d.id)),
+    [documents],
+  );
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<{ hits: SearchHit[]; ms: number; query: string } | null>(
     null,
@@ -107,6 +112,11 @@ export function SearchPalette({ search, onClose }: Props) {
               >
                 <strong>
                   <KindIcon kind={hit.kind} /> {hit.title}
+                  {archivedIds.has(hit.documentId) && (
+                    <span className="badge" data-testid="search-archived">
+                      {t('library.archived')}
+                    </span>
+                  )}
                 </strong>
                 <span className="muted">{hit.snippet}</span>
               </button>

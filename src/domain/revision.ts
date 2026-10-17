@@ -88,6 +88,13 @@ export const revisionSchema = z.object({
     folderId: z.uuid().nullable(),
     tags: z.array(z.string()),
     deleted: z.boolean(),
+    /**
+     * Orden manual entre sus hermanos de carpeta (desde el 17/10/2026): clave fraccional que se
+     * compara como texto (`domain/order.ts`). Sin ella, el orden por defecto.
+     */
+    sortKey: z.string().min(1).max(200).optional(),
+    /** Archivado (desde el 17/10/2026): fuera de la barra lateral, pero buscable y enlazable. */
+    archived: z.boolean().optional(),
   }),
   contentRefs: z.object({
     body: sha256Schema.nullable(),
@@ -140,11 +147,24 @@ export interface DocumentRecord {
   folderId: Uuid | null;
   tags: string[];
   deleted: boolean;
+  /** Orden manual y archivado; ausentes en los documentos que nunca los tuvieron. */
+  sortKey?: string;
+  archived?: boolean;
   headRevisionIds: Uuid[];
   /** Generación local que aumenta en cada commit; sirve para detectar escrituras concurrentes. */
   generation: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Campos opcionales de los metadatos que pasan tal cual a la proyección del documento. */
+export function documentExtras(
+  metadata: Pick<RevisionMetadata, 'sortKey' | 'archived'>,
+): Pick<DocumentRecord, 'sortKey' | 'archived'> {
+  return {
+    ...(metadata.sortKey ? { sortKey: metadata.sortKey } : {}),
+    ...(metadata.archived ? { archived: true } : {}),
+  };
 }
 
 export function hasConflict(doc: Pick<DocumentRecord, 'headRevisionIds'>): boolean {

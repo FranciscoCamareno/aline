@@ -35,12 +35,37 @@ const nodeSchema: z.ZodType<RichNode> = z.lazy(() =>
   }),
 );
 
+/** Id de un comentario: el de la marca `comment` que señala su texto. */
+const commentIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
+
+const commentReplySchema = z.looseObject({
+  id: commentIdSchema,
+  text: z.string().max(10_000),
+  createdAt: z.iso.datetime(),
+});
+
+/**
+ * Comentario de un documento con formato (desde el 17/10/2026): un hilo con su texto, sus
+ * respuestas y si está resuelto. El fragmento comentado lleva la marca `comment` con su `id`;
+ * si ese texto se borra, el hilo se conserva hasta que se elimine (formato §2.5.3).
+ */
+export const docCommentSchema = z.looseObject({
+  id: commentIdSchema,
+  text: z.string().max(10_000),
+  createdAt: z.iso.datetime(),
+  resolved: z.boolean().optional(),
+  replies: z.array(commentReplySchema).max(500).optional(),
+});
+export type DocComment = z.infer<typeof docCommentSchema>;
+
 export const richDocSchema = z.looseObject({
   schemaVersion: z.literal(RICH_DOC_SCHEMA_VERSION),
   content: z.looseObject({
     type: z.literal('doc'),
     content: z.array(nodeSchema).max(100_000).optional(),
   }),
+  /** Comentarios (opcional; sin comentarios, la clave no se escribe). */
+  comments: z.array(docCommentSchema).max(2_000).optional(),
 });
 export type RichDocData = z.infer<typeof richDocSchema>;
 

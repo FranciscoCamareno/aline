@@ -1,6 +1,11 @@
 import { checkRevision } from '../domain/compat.ts';
 import { catalogSchema, headsFileSchema } from '../domain/format.ts';
-import type { DocumentRecord, Revision, RevisionKind } from '../domain/revision.ts';
+import {
+  documentExtras,
+  type DocumentRecord,
+  type Revision,
+  type RevisionKind,
+} from '../domain/revision.ts';
 import { vaultSchema, versionPruneSchema, type VersionPrune } from '../domain/vault.ts';
 import { sha256Hex, utf8Decode, utf8Encode } from '../shared/hash.ts';
 import type { ObjectRole } from '../ports/RemoteStore.ts';
@@ -250,6 +255,7 @@ export function deriveDocuments(revisions: Revision[]): DocumentRecord[] {
       folderId: latest.metadata.folderId,
       tags: latest.metadata.tags,
       deleted: latest.metadata.deleted,
+      ...documentExtras(latest.metadata),
       headRevisionIds: heads.map((r) => r.id),
       generation: revs.length,
       createdAt: sorted[0]!.createdAt,

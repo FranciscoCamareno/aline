@@ -24,11 +24,14 @@ import {
 import {
   folderKindFor,
   isMarkdownKind,
+  type ContentRefs,
   type DocumentKind,
   type DocumentRecord,
   type Revision,
   type RevisionKind,
+  type RevisionMetadata,
 } from '../domain/revision.ts';
+import { markdownAssetRefs, richDocAssetRefs } from '../domain/docAssets.ts';
 import { emptyRichDoc, parseRichDoc, type RichDocData } from '../domain/richDoc.ts';
 import { emptyCanvasExtensions, type CanvasExtensions } from '../domain/sidecar.ts';
 import { wouldCreateCycle } from '../domain/folders.ts';
@@ -150,6 +153,23 @@ async function toBlob(bytes: Uint8Array, mimeType: string): Promise<StoredBlob> 
  * Casos de uso del núcleo local (diseño §15): CreateDocument, SaveNote, SaveCanvas y
  * RenameDocument. Todas las modificaciones de contenido pasan por aquí.
  */
+/** Cambio de metadatos: `sortKey: null` quita el orden manual; `archived: false`, el archivado. */
+interface MetadataPatch {
+  title?: string;
+  tags?: string[];
+  folderId?: Uuid | null;
+  sortKey?: string | null;
+  archived?: boolean;
+}
+
+/** Metadatos con los campos opcionales del cambio; los valores por defecto no se escriben. */
+function withOptional(metadata: RevisionMetadata, patch: MetadataPatch): RevisionMetadata {
+  const { sortKey: oldKey, archived: oldArchived, ...rest } = metadata;
+  const sortKey = patch.sortKey === undefined ? oldKey : patch.sortKey;
+  const archived = patch.archived ?? oldArchived;
+  return { ...rest, ...(sortKey ? { sortKey } : {}), ...(archived ? { archived: true } : {}) };
+}
+
 export class VaultService {
   private readonly repo: VaultRepository & VaultReader;
   /** Una sesión compartida por documento: editor y biblioteca avanzan las mismas cabezas. */
@@ -342,13 +362,12 @@ export class VaultService {
       const head = await this.currentHead(session);
       const body = await toBlob(utf8Encode(JSON.stringify(checked)), MIME.calendar);
       if (body.hash === head.contentRefs.body) return this.unchanged(session, head);
-      const { title, tags, folderId } = head.metadata;
       return this.commitAndAdvance(session, {
         documentId: session.documentId,
         kind: 'calendar',
         operation: 'save',
         knownHeads: session.knownHeads,
-        metadata: { kind: 'calendar', title, tags, folderId, deleted: false },
+        metadata: { ...head.metadata, kind: 'calendar', deleted: false },
         contentRefs: { body: body.hash, extensions: null, assets: [] },
         blobs: [body],
       });
@@ -430,6 +449,7 @@ export class VaultService {
     session: EditSession,
     content: RichDocData['content'],
     preserved?: RichDocData,
+    newAssets: CanvasAsset[] = [],
   ): Promise<CommitResult> {
     return this.serialized(session.documentId, async () => {
       assertWritable(session);
@@ -438,15 +458,13 @@ export class VaultService {
       const head = await this.currentHead(session);
       const body = await toBlob(utf8Encode(JSON.stringify(parsed.doc)), MIME.richDoc);
       if (body.hash === head.contentRefs.body) return this.unchanged(session, head);
-      const { title, tags, folderId } = head.metadata;
       return this.commitAndAdvance(session, {
         documentId: session.documentId,
         kind: 'doc',
         operation: 'save',
         knownHeads: session.knownHeads,
-        metadata: { kind: 'doc', title, tags, folderId, deleted: false },
-        contentRefs: { body: body.hash, extensions: null, assets: [] },
-        blobs: [body],
+        metadata: { ...head.metadata, kind: 'doc', deleted: false },
+        ...(await this.withAssets(richDocAssetRefs(parsed.doc.content), head, newAssets, body)),
       });
     });
   }
@@ -572,14 +590,26 @@ export class VaultService {
   }
 
   /** SaveNote: el frontmatter se vuelve a serializar desde los metadatos vigentes. */
-  saveNote(session: EditSession, body: string): Promise<CommitResult> {
-    return this.serialized(session.documentId, () => this.saveNoteNow(session, body));
+  /**
+   * `newAssets`: imágenes añadidas en el editor (documentos Markdown, fase 8.4). Solo se guardan
+   * las que el cuerpo cita; las citadas que ya están en el almacén no hace falta volver a darlas.
+   */
+  saveNote(
+    session: EditSession,
+    body: string,
+    newAssets: CanvasAsset[] = [],
+  ): Promise<CommitResult> {
+    return this.serialized(session.documentId, () => this.saveNoteNow(session, body, newAssets));
   }
 
-  private async saveNoteNow(session: EditSession, body: string): Promise<CommitResult> {
+  private async saveNoteNow(
+    session: EditSession,
+    body: string,
+    newAssets: CanvasAsset[],
+  ): Promise<CommitResult> {
     assertWritable(session);
     const head = await this.currentHead(session);
-    const { title, tags, folderId } = head.metadata;
+    const { title, tags } = head.metadata;
     const markdown = await toBlob(
       utf8Encode(this.noteMarkdown(session.documentId, title, tags, body)),
       MIME.markdown,
@@ -591,10 +621,41 @@ export class VaultService {
       kind,
       operation: 'save',
       knownHeads: session.knownHeads,
-      metadata: { kind, title, tags, folderId, deleted: false },
-      contentRefs: { body: markdown.hash, extensions: null, assets: [] },
-      blobs: [markdown],
+      metadata: { ...head.metadata, kind, deleted: false },
+      ...(await this.withAssets(markdownAssetRefs(body), head, newAssets, markdown)),
     });
+  }
+
+  /**
+   * Imágenes de un documento (fase 8.4): las citadas que existen (en la revisión anterior, entre
+   * las nuevas o ya en el almacén). Una cita a una imagen que no existe (texto escrito a mano,
+   * edición externa) se ignora en lugar de impedir el guardado.
+   */
+  private async withAssets(
+    refs: string[],
+    head: Revision,
+    newAssets: CanvasAsset[],
+    body: StoredBlob,
+  ): Promise<{ contentRefs: ContentRefs; blobs: StoredBlob[] }> {
+    const provided = new Map(newAssets.map((a) => [a.hash, a]));
+    const known = new Set(head.contentRefs.assets);
+    const assets: string[] = [];
+    const blobs: StoredBlob[] = [body];
+    for (const hash of refs) {
+      const fresh = provided.get(hash);
+      if (fresh) {
+        blobs.push({
+          hash,
+          mimeType: fresh.mimeType,
+          byteLength: fresh.bytes.byteLength,
+          bytes: fresh.bytes,
+        });
+        assets.push(hash);
+      } else if (known.has(hash) || (await this.repo.getBlob(hash))) {
+        assets.push(hash);
+      }
+    }
+    return { contentRefs: { body: body.hash, extensions: null, assets }, blobs };
   }
 
   /** SaveCanvas: la escena es opaca para la aplicación; los assets llegan con hash calculado. */
@@ -636,13 +697,12 @@ export class VaultService {
     ) {
       return this.unchanged(session, head);
     }
-    const { title, tags, folderId } = head.metadata;
     return this.commitAndAdvance(session, {
       documentId: session.documentId,
       kind: 'canvas',
       operation: 'save',
       knownHeads: session.knownHeads,
-      metadata: { kind: 'canvas', title, tags, folderId, deleted: false },
+      metadata: { ...head.metadata, kind: 'canvas', deleted: false },
       contentRefs: {
         body: scene.hash,
         extensions: extensionsHash,
@@ -686,6 +746,29 @@ export class VaultService {
     return this.updateMetadata(documentId, { folderId });
   }
 
+  /**
+   * Orden manual de la barra lateral (desde el 17/10/2026): aplica las claves nuevas de
+   * `planReorder` y, si se suelta en otra carpeta, la mueve. Cada documento que cambia recibe una
+   * revisión de metadatos; los que no cambian, ninguna.
+   */
+  async reorderDocuments(
+    changes: ReadonlyMap<Uuid, string>,
+    move?: { documentId: Uuid; folderId: Uuid | null },
+  ): Promise<void> {
+    if (move) await this.moveDocument(move.documentId, move.folderId);
+    for (const [documentId, sortKey] of changes) {
+      await this.updateMetadata(documentId, { sortKey });
+    }
+  }
+
+  /**
+   * Archivar (desde el 17/10/2026): sale de la barra lateral, de Recientes y de los selectores de
+   * enlaces, pero sigue en la búsqueda y sus enlaces funcionan. No es la papelera: no hay borrado.
+   */
+  setArchived(documentId: Uuid, archived: boolean): Promise<CommitResult> {
+    return this.updateMetadata(documentId, { archived });
+  }
+
   /** CreateFolder: entidad revisionada, sin contenido (diseño §5). */
   /** Carpeta de «Notas» (`folder`) o de «Documentos» (`docfolder`); cada sección tiene su árbol. */
   async createFolder(
@@ -708,10 +791,7 @@ export class VaultService {
     return result.document;
   }
 
-  private updateMetadata(
-    documentId: Uuid,
-    patch: { title?: string; tags?: string[]; folderId?: Uuid | null },
-  ): Promise<CommitResult> {
+  private updateMetadata(documentId: Uuid, patch: MetadataPatch): Promise<CommitResult> {
     return this.serialized(documentId, async () =>
       this.metadataNow(await this.sessionFor(documentId), patch),
     );
@@ -721,10 +801,7 @@ export class VaultService {
    * Revisión de metadatos (diseño §5.1): conserva el UUID y el contenido; en notas vuelve a
    * serializar el frontmatter para que coincida con los metadatos nuevos.
    */
-  private async metadataNow(
-    session: EditSession,
-    patch: { title?: string; tags?: string[]; folderId?: Uuid | null },
-  ): Promise<CommitResult> {
+  private async metadataNow(session: EditSession, patch: MetadataPatch): Promise<CommitResult> {
     assertWritable(session);
     const head = await this.currentHead(session);
     const doc = await this.requireDocument(session.documentId);
@@ -754,13 +831,17 @@ export class VaultService {
       kind: doc.kind,
       operation: 'save',
       knownHeads: session.knownHeads,
-      metadata: {
-        kind: doc.kind,
-        title,
-        tags: dedupeTags(tags),
-        folderId,
-        deleted: head.metadata.deleted,
-      },
+      metadata: withOptional(
+        {
+          ...head.metadata,
+          kind: doc.kind,
+          title,
+          tags: dedupeTags(tags),
+          folderId,
+          deleted: head.metadata.deleted,
+        },
+        patch,
+      ),
       contentRefs,
       blobs,
     });
@@ -1085,7 +1166,14 @@ export class VaultService {
         operation: 'external',
         knownHeads: [parentRevisionId],
         metadata: { ...parent.metadata, title, tags, deleted: false },
-        contentRefs: { body: blob.hash, extensions: null, assets: [] },
+        contentRefs: {
+          body: blob.hash,
+          extensions: null,
+          // La copia legible solo cita las imágenes: se conservan las que siguen citadas.
+          assets: markdownAssetRefs(parsed.body).filter((h) =>
+            parent.contentRefs.assets.includes(h),
+          ),
+        },
         blobs: [blob],
       });
       for (const listener of this.listeners) listener(result);

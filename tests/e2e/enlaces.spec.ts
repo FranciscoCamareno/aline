@@ -201,6 +201,8 @@ test('enlazar con un evento del calendario y abrirlo desde la nota', async ({ pa
   await page.getByTestId('event-title').fill('Entrega portada');
   await page.getByTestId('event-all-day').check();
   await page.getByTestId('event-save').click();
+  // El estado ya puede decir «Guardado» por un cambio anterior: se espera al cierre del diálogo.
+  await expect(page.getByTestId('event-dialog')).toBeHidden();
   await saved(page);
 
   await page.getByRole('tab', { name: 'Notas' }).click();
@@ -319,6 +321,8 @@ test('anclas: copiar el enlace a un evento desde su diálogo', async ({ page }) 
   await page.getByTestId('event-title').fill('Rodaje');
   await page.getByTestId('event-all-day').check();
   await page.getByTestId('event-save').click();
+  // El estado ya puede decir «Guardado» por un cambio anterior: se espera al cierre del diálogo.
+  await expect(page.getByTestId('event-dialog')).toBeHidden();
   await saved(page);
   await page.getByTestId('event-chip').filter({ hasText: 'Rodaje' }).click();
   await page.getByTestId('event-copy-link').click();
@@ -357,6 +361,8 @@ test('eventos con enlaces: añadir, guardar, quitar y seguir uno (guarda antes l
   // El selector se cierra sin cerrar el diálogo del evento.
   await expect(page.getByTestId('event-dialog')).toBeVisible();
   await page.getByTestId('event-save').click();
+  // El estado ya puede decir «Guardado» por un cambio anterior: se espera al cierre del diálogo.
+  await expect(page.getByTestId('event-dialog')).toBeHidden();
   await saved(page);
   const chip = page.getByTestId('event-chip').filter({ hasText: 'Rodaje' });
   await expect(chip.getByTestId('event-link-mark')).toContainText('2 enlaces');
@@ -368,6 +374,8 @@ test('eventos con enlaces: añadir, guardar, quitar y seguir uno (guarda antes l
   await expect(page.getByTestId('event-link')).toHaveCount(2);
   await page.getByTestId('event-link-remove').nth(1).click();
   await page.getByTestId('event-save').click();
+  // El estado ya puede decir «Guardado» por un cambio anterior: se espera al cierre del diálogo.
+  await expect(page.getByTestId('event-dialog')).toBeHidden();
   await saved(page);
   await expect(chip.getByTestId('event-link-mark')).toContainText('1 enlace');
 
@@ -403,6 +411,8 @@ test('índice: backlinks desde un documento con formato y un evento, con su cont
   await page.getByTestId('event-add-link').click();
   await pick(page, 'Dest', 'Destino');
   await page.getByTestId('event-save').click();
+  // El estado ya puede decir «Guardado» por un cambio anterior: se espera al cierre del diálogo.
+  await expect(page.getByTestId('event-dialog')).toBeHidden();
   await saved(page);
 
   // Los backlinks de la nota incluyen el documento (con la frase) y el calendario.
@@ -437,6 +447,9 @@ test('índice: backlinks desde un documento con formato y un evento, con su cont
 test('resaltado: un documento Markdown marca la frase que otra nota enlaza', async ({ page }) => {
   await freshStart(page);
   await newDocument(page, 'Documento Markdown', 'Hablamos del presupuesto anual hoy.');
+  // Con el texto ya en el editor, el cursor al final de la línea antes de seleccionar.
+  await expect(page.getByTestId('doc-editor')).toContainText('presupuesto anual hoy.');
+  await page.keyboard.press('End');
   for (let i = 0; i < ' hoy.'.length; i++) await page.keyboard.press('ArrowLeft');
   await selectBack(page, 'presupuesto anual'.length);
   await page.keyboard.press('ControlOrMeta+Shift+k');

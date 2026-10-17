@@ -27,7 +27,13 @@ const ALLOWED = new Set([
   'Zlib',
   '(MIT AND Zlib)',
   '(MPL-2.0 OR Apache-2.0)',
-  // Solo fuentes (Nunito de la interfaz): la misma licencia que las fuentes del motor.
+  // Blue Oak Model License: permisiva y aprobada por la OSI, del estilo de MIT (exige conservar
+  // el aviso). La usa `sax`, dependencia de `docx` (exportación DOCX, fase 8.4).
+  'BlueOak-1.0.0',
+  // Doble licencia a elegir: se usa bajo MIT (`jszip`, dependencia de `docx`).
+  '(MIT OR GPL-3.0-or-later)',
+  // Solo fuentes (Nunito de la interfaz y el catálogo de fuentes): la misma licencia que las
+  // fuentes del motor.
   'OFL-1.1',
 ]);
 

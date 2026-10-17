@@ -13,16 +13,18 @@ import { useUiStore } from '../../app/store.ts';
 import type { SyncRuntime } from '../../app/syncRuntime.ts';
 import { setScheme, setThemePreference, useTheme } from '../../app/theme.ts';
 import { Icon, KindIcon, type IconName } from '../../app/ui/Icon.tsx';
+import { isFolderKind } from '../../domain/revision.ts';
 import { StorageSection } from './StorageSection.tsx';
 
 /** Secciones de la configuración, en el orden de la navegación lateral. */
-export const SETTINGS_SECTIONS = ['storage', 'appearance', 'language', 'trash'] as const;
+export const SETTINGS_SECTIONS = ['storage', 'appearance', 'language', 'archive', 'trash'] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 const SECTION_ICONS: Record<SettingsSection, IconName> = {
   storage: 'nube',
   appearance: 'tema-sistema',
   language: 'idioma',
+  archive: 'archivar',
   trash: 'eliminar',
 };
 
@@ -33,6 +35,7 @@ interface Props {
   sync: SyncRuntime | null;
   onRestoreFromTrash: (documentId: string) => Promise<void>;
   onPurge: (documentId: string) => Promise<void>;
+  onUnarchive: (documentId: string) => Promise<void>;
   onClose: () => void;
   onError: (error: unknown) => void;
 }
@@ -50,6 +53,7 @@ export function SettingsDialog({
   sync,
   onRestoreFromTrash,
   onPurge,
+  onUnarchive,
   onClose,
   onError,
 }: Props) {
@@ -119,6 +123,9 @@ export function SettingsDialog({
             )}
             {section === 'appearance' && <AppearanceSettings />}
             {section === 'language' && <LanguageSettings />}
+            {section === 'archive' && (
+              <ArchiveSettings onUnarchive={onUnarchive} onOpen={onClose} />
+            )}
             {section === 'trash' && (
               <TrashSettings onRestore={onRestoreFromTrash} onPurge={onPurge} />
             )}
@@ -212,6 +219,60 @@ function LanguageSettings() {
 }
 
 /** Papelera (RN-03): restaurar o borrar definitivamente, con confirmación. */
+/**
+ * Archivo (desde el 17/10/2026): lo archivado no está en la barra lateral, pero sigue en la
+ * búsqueda y sus enlaces funcionan. Desde aquí se abre o se devuelve a la barra.
+ */
+function ArchiveSettings({
+  onUnarchive,
+  onOpen,
+}: {
+  onUnarchive: (documentId: string) => Promise<void>;
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  const archived = useUiStore((s) => s.documents).filter((d) => d.archived && !d.deleted);
+  const navigate = useUiStore((s) => s.navigate);
+  return (
+    <>
+      <p className="muted">{t('settings.archiveLead')}</p>
+      <ul className="library-list trash-list" data-testid="archive-list">
+        {archived.length === 0 && <li className="muted">{t('settings.archiveEmpty')}</li>}
+        {archived.map((doc) => (
+          <li key={doc.id} data-testid="archive-item" data-document-id={doc.id}>
+            <KindIcon kind={doc.kind} />
+            {isFolderKind(doc.kind) ? (
+              <span className="renameable-text">{doc.title}</span>
+            ) : (
+              <button
+                type="button"
+                className="renameable-text link-button"
+                data-testid="archive-open"
+                onClick={() => {
+                  navigate({ documentId: doc.id });
+                  onOpen();
+                }}
+              >
+                {doc.title}
+              </button>
+            )}
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={`${t('settings.unarchive')}: ${doc.title}`}
+              title={t('settings.unarchive')}
+              data-testid="archive-restore"
+              onClick={() => void onUnarchive(doc.id)}
+            >
+              <Icon name="restaurar" size={18} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function TrashSettings({
   onRestore,
   onPurge,

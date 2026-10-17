@@ -4,7 +4,8 @@ import { useUiStore, type Section } from '../../app/store.ts';
 import { useTheme } from '../../app/theme.ts';
 import { Icon, KindIcon, type IconName } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
-import { effectiveFolder, RECOVERY_FOLDER } from '../../domain/folders.ts';
+import { effectiveFolder, RECOVERY_FOLDER, wouldCreateCycle } from '../../domain/folders.ts';
+import { planReorder, sortByKey } from '../../domain/order.ts';
 import type { DocumentKind, DocumentRecord } from '../../domain/revision.ts';
 import { hasConflict, isContentKind, isDocsKind, isFolderKind } from '../../domain/revision.ts';
 import { tagKey } from '../../domain/tags.ts';
@@ -24,16 +25,20 @@ interface Props {
   onTrash: (documentId: string) => Promise<void>;
   /** RF-34, RF-35: archivos sueltos o una carpeta, dentro de la carpeta seleccionada. */
   onImport: (files: File[], folderId: string | null) => Promise<void>;
-  /** Mover un lienzo o una nota a una carpeta (o a la raíz con null), arrastrándolo. */
+  /** Mover un documento o una carpeta a una carpeta (o a la raíz con null), arrastrándolo. */
   onMove: (documentId: string, folderId: string | null) => Promise<void>;
+  /** Orden manual: claves nuevas (`planReorder`) y, si cambia de carpeta, el movimiento. */
+  onReorder: (
+    changes: ReadonlyMap<string, string>,
+    move?: { documentId: string; folderId: string | null },
+  ) => Promise<void>;
+  /** Archivar o desarchivar desde el menú «⋯» de la fila. */
+  onArchive: (documentId: string, archived: boolean) => Promise<void>;
   onCreateCalendar: (title: string) => Promise<void>;
   /** Documento nuevo de la sección «Documentos»: con formato (Tiptap) o Markdown (Milkdown). */
   onCreateDoc: (editor: DocEditorKind, folderId: string | null) => Promise<void>;
-  /** Abre el perfil: conexión con Google Drive y estado del almacenamiento. */
   /** Abre Configuración en una sección (menú de Perfil del pie). */
   onOpenSettings: (section: SettingsSection) => void;
-  /** Abre «Estado y diagnóstico». */
-  onOpenStatus: () => void;
 }
 
 /** Editor de un documento nuevo: Tiptap (formato libre, JSON) o Milkdown (Markdown). */
@@ -48,7 +53,17 @@ const SECTION_ICONS = {
 /** Tipo del arrastre de un documento dentro de la biblioteca. */
 const DOCUMENT_DRAG_TYPE = 'application/x-aline-document';
 /** Destino del arrastre: el id de una carpeta o la raíz. */
-type DropTarget = string | 'root';
+/**
+ * Destino de un arrastre: dentro de una carpeta (o de la raíz), o antes o después de una fila
+ * para colocarla en ese lugar (orden manual).
+ */
+interface DropTarget {
+  id: string | 'root';
+  place: 'into' | 'before' | 'after';
+}
+
+const sameTarget = (a: DropTarget | null, b: DropTarget) =>
+  a !== null && a.id === b.id && a.place === b.place;
 
 /**
  * Biblioteca (diseño §4.1, RF-25): carpetas, etiquetas, recientes y papelera. Las carpetas no
@@ -56,7 +71,7 @@ type DropTarget = string | 'root';
  *
  * Estructura (DESIGN.md §6): logotipo y botón para plegarla; «Nuevo» como único botón principal,
  * con un desplegable (lienzo, nota, carpeta, importar); buscador de títulos; pestañas «Todos» y
- * «Recientes»; acciones de cada fila en su menú «⋯»; y, abajo, papelera, preferencias y ayuda.
+ * «Recientes»; acciones de cada fila en su menú «⋯»; y, abajo, el menú de Perfil.
  */
 export function LibrarySidebar({
   onCreate,
@@ -65,10 +80,11 @@ export function LibrarySidebar({
   onTrash,
   onImport,
   onMove,
+  onReorder,
+  onArchive,
   onCreateCalendar,
   onCreateDoc,
   onOpenSettings,
-  onOpenStatus,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -106,15 +122,18 @@ export function LibrarySidebar({
   const [renaming, setRenaming] = useState<{ id: string; seq: number } | null>(null);
 
   const live = useMemo(() => documents.filter((d) => !d.deleted), [documents]);
+  /** Lo archivado no aparece en la barra (sigue en la búsqueda y en Configuración → Archivo). */
+  const visible = useMemo(() => live.filter((d) => !d.archived), [live]);
   const folders = useMemo(
     () => new Map(documents.filter((d) => d.kind === folderKind).map((d) => [d.id, d])),
     [documents, folderKind],
   );
   const content = useMemo(
-    () => live.filter((d) => (inDocs ? isDocsKind(d.kind) : isContentKind(d.kind))),
-    [live, inDocs],
+    () => visible.filter((d) => (inDocs ? isDocsKind(d.kind) : isContentKind(d.kind))),
+    [visible, inDocs],
   );
   const trashed = documents.filter((d) => d.deleted);
+  const archivedCount = live.filter((d) => d.archived).length;
   const recent = content.slice(0, RECENT_COUNT);
 
   const tags = useMemo(() => {
@@ -124,11 +143,18 @@ export function LibrarySidebar({
     return [...byKey].sort((a, b) => a[1].localeCompare(b[1]));
   }, [content]);
 
+  /** Orden por defecto de los documentos: el de la lista (recientes primero). */
+  const position = useMemo(() => new Map(content.map((d, i) => [d.id, i])), [content]);
+  // Orden manual primero (clave fraccional); sin él, carpetas por título y documentos por fecha.
   const childrenOf = (parent: string | null) => ({
-    folders: live
-      .filter((d) => d.kind === folderKind && effectiveFolder(d, folders) === parent)
-      .sort((a, b) => a.title.localeCompare(b.title)),
-    docs: content.filter((d) => effectiveFolder(d, folders) === parent),
+    folders: sortByKey(
+      visible.filter((d) => d.kind === folderKind && effectiveFolder(d, folders) === parent),
+      (a, b) => a.title.localeCompare(b.title),
+    ),
+    docs: sortByKey(
+      content.filter((d) => effectiveFolder(d, folders) === parent),
+      (a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0),
+    ),
   });
   const recovery = content.filter((d) => effectiveFolder(d, folders) === RECOVERY_FOLDER);
   const selected =
@@ -148,36 +174,137 @@ export function LibrarySidebar({
     setDropTarget(null);
   };
 
+  /** ¿Puede ir `doc` dentro de `folderId`? Una carpeta no entra en sí misma ni en sus hijas. */
+  const canMoveInto = (doc: DocumentRecord, folderId: string | null) =>
+    !folderId ||
+    (folderId !== doc.id &&
+      (!isFolderKind(doc.kind) || !wouldCreateCycle(documents, doc.id, folderId)));
+
   const moveTo = (documentId: string, folderId: string | null) => {
     const doc = documents.find((d) => d.id === documentId);
-    if (!doc || isFolderKind(doc.kind) || doc.folderId === folderId) return;
+    if (!doc || doc.folderId === folderId || !canMoveInto(doc, folderId)) return;
     if (folderId) setExpanded((prev) => new Set(prev).add(folderId));
     void onMove(documentId, folderId);
   };
 
-  /** Propiedades de un destino: una carpeta (su fila y su contenido) o la raíz. */
-  const dropZone = (target: DropTarget) => ({
+  /** Carpeta en la que se ve una fila (la raíz si su carpeta no existe). */
+  const parentOf = (doc: DocumentRecord) => {
+    const parent = effectiveFolder(doc, folders);
+    return parent === RECOVERY_FOLDER ? null : parent;
+  };
+
+  /** Hermanos del mismo grupo (carpetas o documentos) en el orden en que se ven. */
+  const groupOf = (doc: DocumentRecord, parent: string | null) => {
+    const children = childrenOf(parent);
+    return isFolderKind(doc.kind) ? children.folders : children.docs;
+  };
+
+  /**
+   * Colocar `moving` en el lugar `index` de su grupo dentro de `parent`, moviéndolo de carpeta si
+   * hace falta. Solo se crean revisiones para lo que cambia.
+   */
+  const place = (moving: DocumentRecord, parent: string | null, index: number) => {
+    if (!canMoveInto(moving, parent)) return;
+    const siblings = groupOf(moving, parent).filter((d) => d.id !== moving.id);
+    const changes = planReorder(siblings, moving.id, index);
+    const move =
+      parentOf(moving) !== parent ? { documentId: moving.id, folderId: parent } : undefined;
+    if (!changes.size && !move) return;
+    if (parent) setExpanded((prev) => new Set(prev).add(parent));
+    void onReorder(changes, move);
+  };
+
+  /** Soltar junto a una fila: antes o después de ella, en su carpeta. */
+  const dropBeside = (movingId: string, target: DocumentRecord, side: 'before' | 'after') => {
+    const moving = documents.find((d) => d.id === movingId);
+    if (!moving || moving.id === target.id) return;
+    const parent = parentOf(target);
+    const siblings = groupOf(moving, parent).filter((d) => d.id !== moving.id);
+    let index: number;
+    if (isFolderKind(moving.kind) === isFolderKind(target.kind)) {
+      index = siblings.findIndex((d) => d.id === target.id) + (side === 'after' ? 1 : 0);
+    } else {
+      // Carpetas y documentos van en grupos separados: al lado de una fila del otro grupo,
+      // la carpeta queda al final de las carpetas y el documento al principio de los documentos.
+      index = isFolderKind(moving.kind) ? siblings.length : 0;
+    }
+    place(moving, parent, index);
+  };
+
+  /** Subir o bajar una fila entre sus hermanos (menú «⋯»; alternativa táctil al arrastre). */
+  const shift = (doc: DocumentRecord, step: -1 | 1) => {
+    const parent = parentOf(doc);
+    const siblings = groupOf(doc, parent);
+    const at = siblings.findIndex((d) => d.id === doc.id);
+    const index = at + step;
+    if (at < 0 || index < 0 || index >= siblings.length) return;
+    place(doc, parent, index);
+  };
+
+  /** Propiedades de una fila que acepta arrastres junto a ella (y dentro, si es carpeta). */
+  const rowDrop = (target: DocumentRecord) => ({
     onDragOver: (e: DragEvent) => {
       if (!e.dataTransfer.types.includes(DOCUMENT_DRAG_TYPE)) return;
       e.preventDefault();
-      // La carpeta más interior gana: el evento no sube a la carpeta padre ni a la raíz.
       e.stopPropagation();
       e.dataTransfer.dropEffect = 'move';
-      if (dropTarget !== target) setDropTarget(target);
-    },
-    onDragLeave: (e: DragEvent) => {
-      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-      setDropTarget((current) => (current === target ? null : current));
+      const box = e.currentTarget.getBoundingClientRect();
+      const y = (e.clientY - box.top) / Math.max(box.height, 1);
+      const where: DropTarget['place'] = isFolderKind(target.kind)
+        ? y < 0.25
+          ? 'before'
+          : y > 0.75
+            ? 'after'
+            : 'into'
+        : y < 0.5
+          ? 'before'
+          : 'after';
+      const next = { id: target.id, place: where };
+      if (!sameTarget(dropTarget, next)) setDropTarget(next);
     },
     onDrop: (e: DragEvent) => {
       const id = e.dataTransfer.getData(DOCUMENT_DRAG_TYPE);
+      const where = dropTarget?.id === target.id ? dropTarget.place : 'into';
       if (!id) return;
       e.preventDefault();
       e.stopPropagation();
       endDrag();
-      moveTo(id, target === 'root' ? null : target);
+      if (where === 'into') moveTo(id, target.id);
+      else dropBeside(id, target, where);
     },
   });
+
+  const dropClass = (id: string) =>
+    dropTarget?.id === id
+      ? ` drop-${dropTarget.place === 'into' ? 'target' : dropTarget.place}`
+      : '';
+
+  /** Propiedades de un destino: una carpeta (su fila y su contenido) o la raíz. */
+  const dropZone = (id: string | 'root') => {
+    const target: DropTarget = { id, place: 'into' };
+    return {
+      onDragOver: (e: DragEvent) => {
+        if (!e.dataTransfer.types.includes(DOCUMENT_DRAG_TYPE)) return;
+        e.preventDefault();
+        // La carpeta más interior gana: el evento no sube a la carpeta padre ni a la raíz.
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        if (!sameTarget(dropTarget, target)) setDropTarget(target);
+      },
+      onDragLeave: (e: DragEvent) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setDropTarget((current) => (current?.id === id ? null : current));
+      },
+      onDrop: (e: DragEvent) => {
+        const dragged = e.dataTransfer.getData(DOCUMENT_DRAG_TYPE);
+        if (!dragged) return;
+        e.preventDefault();
+        e.stopPropagation();
+        endDrag();
+        moveTo(dragged, id === 'root' ? null : id);
+      },
+    };
+  };
 
   const kindIcon = (kind: DocumentRecord['kind'], isActive = false) => (
     <span
@@ -199,7 +326,7 @@ export function LibrarySidebar({
     </span>
   );
 
-  /** Menú «⋯» de una fila: renombrar y enviar a la papelera. */
+  /** Menú «⋯» de una fila: renombrar, subir y bajar, archivar y enviar a la papelera. */
   const rowMenu = (doc: DocumentRecord, prefix: 'library' | 'folder') => (
     <Menu
       className="row-menu"
@@ -216,6 +343,24 @@ export function LibrarySidebar({
           onSelect: () => setRenaming((r) => ({ id: doc.id, seq: (r?.seq ?? 0) + 1 })),
         },
         {
+          id: `${prefix}-move-up`,
+          label: t('library.moveUp'),
+          icon: 'chevron-arriba',
+          onSelect: () => shift(doc, -1),
+        },
+        {
+          id: `${prefix}-move-down`,
+          label: t('library.moveDown'),
+          icon: 'chevron-abajo',
+          onSelect: () => shift(doc, 1),
+        },
+        {
+          id: `${prefix}-archive`,
+          label: t('library.archive'),
+          icon: 'archivar',
+          onSelect: () => void onArchive(doc.id, true),
+        },
+        {
           id: `${prefix}-trash`,
           label: prefix === 'folder' ? t('library.trashFolder') : t('library.trash'),
           icon: 'eliminar',
@@ -229,7 +374,7 @@ export function LibrarySidebar({
   const docItem = (doc: DocumentRecord, depth: number) => (
     <li
       key={doc.id}
-      className={`${doc.id === activeId ? 'active' : ''}${dragging === doc.id ? ' dragging' : ''}`}
+      className={`${doc.id === activeId ? 'active' : ''}${dragging === doc.id ? ' dragging' : ''}${dropClass(doc.id)}`}
       data-testid="library-item"
       data-document-id={doc.id}
       style={{ paddingLeft: 8 + depth * 14 }}
@@ -240,6 +385,7 @@ export function LibrarySidebar({
         setDragging(doc.id);
       }}
       onDragEnd={endDrag}
+      {...rowDrop(doc)}
       onFocus={(e) => {
         if (e.target instanceof HTMLInputElement) setEditingId(doc.id);
       }}
@@ -273,10 +419,25 @@ export function LibrarySidebar({
         {...dropZone(folder.id)}
       >
         <div
-          className={`folder-row ${selected === folder.id ? 'selected' : ''}${
-            dropTarget === folder.id ? ' drop-target' : ''
+          className={`folder-row ${selected === folder.id ? 'selected' : ''}${dropClass(folder.id)}${
+            dragging === folder.id ? ' dragging' : ''
           }`}
           style={{ paddingLeft: 4 + depth * 14 }}
+          draggable={editingId !== folder.id}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData(DOCUMENT_DRAG_TYPE, folder.id);
+            e.dataTransfer.effectAllowed = 'move';
+            setDragging(folder.id);
+          }}
+          onDragEnd={endDrag}
+          onFocus={(e) => {
+            if (e.target instanceof HTMLInputElement) setEditingId(folder.id);
+          }}
+          onBlur={(e) => {
+            if (e.target instanceof HTMLInputElement) setEditingId(null);
+          }}
+          {...rowDrop(folder)}
         >
           <button
             type="button"
@@ -438,9 +599,9 @@ export function LibrarySidebar({
         </button>
       </div>
 
-      {/* Secciones: biblioteca (lienzos y notas), calendario y documentos. */}
+      {/* Secciones: notas (lienzos y notas), documentos y calendario. */}
       <div className="library-sections" role="tablist" aria-label={t('library.sections')}>
-        {(['library', 'calendar', 'documents'] as const).map((key) => (
+        {(['library', 'documents', 'calendar'] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -632,7 +793,7 @@ export function LibrarySidebar({
                 ))}
               </div>
               <div
-                className={`library-scroll${dropTarget === 'root' ? ' drop-target' : ''}`}
+                className={`library-scroll${dropTarget?.id === 'root' ? ' drop-target' : ''}`}
                 role="tabpanel"
                 id="library-tabpanel"
                 aria-labelledby={`library-tab-${tab}`}
@@ -665,8 +826,8 @@ export function LibrarySidebar({
           items={[
             {
               id: 'settings-storage',
-              label: t('settings.menu.settings'),
-              icon: 'ajustes',
+              label: t('settings.menu.storage'),
+              icon: 'nube',
               onSelect: () => onOpenSettings('storage'),
             },
             {
@@ -683,18 +844,18 @@ export function LibrarySidebar({
               onSelect: () => onOpenSettings('language'),
             },
             {
+              id: 'settings-archive',
+              label: t('settings.menu.archive'),
+              icon: 'archivar',
+              hint: String(archivedCount),
+              onSelect: () => onOpenSettings('archive'),
+            },
+            {
               id: 'settings-trash',
               label: t('settings.menu.trash'),
               icon: 'eliminar',
               hint: String(trashed.length),
               onSelect: () => onOpenSettings('trash'),
-            },
-            {
-              id: 'profile-status',
-              label: t('app.openStatus'),
-              icon: 'info',
-              separated: true,
-              onSelect: onOpenStatus,
             },
           ]}
         />

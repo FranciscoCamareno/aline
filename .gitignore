@@ -9,6 +9,8 @@ test-results
 .env.*.local
 # Copiado desde node_modules por scripts/copy-excalidraw-assets.mjs
 public/fonts
+# Copiado desde @fontsource por scripts/copy-fonts.ts
+public/fonts-extra
 dist-spike
 # Generados por pnpm assets (scripts/third-party-notices.ts)
 public/THIRD-PARTY-NOTICES.txt

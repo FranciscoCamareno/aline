@@ -555,6 +555,21 @@ a {
   outline-offset: -2px;
   border-radius: 8px;
 }
+/* Orden manual: una línea marca dónde quedará la fila soltada (antes o después). */
+.library-list li.drop-before,
+.folder-row.drop-before {
+  box-shadow: inset 0 2px 0 var(--focus);
+}
+.library-list li.drop-after,
+.folder-row.drop-after {
+  box-shadow: inset 0 -2px 0 var(--focus);
+}
+.library-list li.drop-target {
+  background: var(--selection-soft);
+}
+.folder-row.dragging {
+  opacity: 0.5;
+}
 
 /* Menú «⋯» de cada fila: visible al pasar por encima, con el foco, en la fila activa o abierto. */
 .row-menu {
@@ -3326,4 +3341,425 @@ a,
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
   cursor: help;
+}
+
+/*
+ * Botón de Google Drive con la marca de Google (normas de sus botones de inicio de sesión):
+ * colores neutros fijos de Google, no los del esquema, en claro y en oscuro.
+ */
+.google-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #747775;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.25px;
+}
+.google-button:hover:not(:disabled) {
+  background: #f8f9fa;
+  box-shadow: 0 1px 2px rgb(60 64 67 / 30%);
+}
+.google-button:disabled {
+  opacity: 0.6;
+}
+.google-button img {
+  flex: none;
+}
+:root[data-theme='dark'] .google-button {
+  border-color: #8e918f;
+  background: #131314;
+  color: #e3e3e3;
+}
+:root[data-theme='dark'] .google-button:hover:not(:disabled) {
+  background: #1f1f1f;
+}
+
+/* Tipografía de los documentos con formato (fase 8.2): fuente con búsqueda y tamaño A− / A+. */
+.doc-font-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 150px;
+  min-height: 34px;
+  padding: 0 8px;
+}
+.doc-font-name {
+  overflow: hidden;
+  max-width: 130px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doc-font-panel {
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  max-height: min(420px, calc(100vh - 120px));
+  padding: 8px;
+  background: var(--bg-popover);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+}
+.doc-font-panel > ul {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.doc-font-panel ul ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.doc-font-panel button {
+  width: 100%;
+  min-height: 34px;
+  justify-content: flex-start;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 16px;
+  text-align: start;
+}
+.doc-font-panel button:hover,
+.doc-font-panel button[aria-selected='true'] {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+}
+.doc-font-category {
+  display: block;
+  padding: 8px 10px 2px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.doc-size-step span {
+  font-weight: 700;
+  font-size: 13px;
+}
+.doc-size-value {
+  min-width: 2ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* Documentos con formato (fase 8.3): panel de capítulos a la izquierda de la hoja y zoom. */
+.doc-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.doc-body > .doc-scroll {
+  flex: 1;
+  min-width: 0;
+}
+.doc-outline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 230px;
+  flex: none;
+  overflow-y: auto;
+  padding: 12px;
+  border-right: 1px solid var(--border-soft);
+  background: var(--bg-panel);
+}
+.doc-outline header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.doc-outline h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.doc-outline ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.doc-outline button {
+  width: 100%;
+  min-height: 30px;
+  justify-content: flex-start;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.doc-outline .doc-outline-level-1 button {
+  font-weight: 700;
+}
+.doc-outline .doc-outline-level-2 button {
+  padding-left: 20px;
+}
+.doc-outline .doc-outline-level-3 button {
+  padding-left: 32px;
+  color: var(--text-secondary);
+}
+.doc-outline button.is-current {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+}
+.doc-zoom {
+  display: inline-flex;
+  align-items: center;
+}
+.doc-zoom-value {
+  min-width: 52px;
+  min-height: 30px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 820px) {
+  .doc-outline {
+    position: absolute;
+    z-index: 5;
+    inset: auto auto 0 0;
+    top: 0;
+    box-shadow: var(--shadow-panel);
+  }
+  .doc-body {
+    position: relative;
+  }
+}
+
+/* Paginación de la vista «Hoja» (fase 8.3): saltos de página pintados como decoraciones. */
+.doc-page-break {
+  position: relative;
+  pointer-events: none;
+  user-select: none;
+}
+.doc-page-gap {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-panel);
+  box-sizing: border-box;
+}
+.doc-page-number {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.doc-page-end {
+  pointer-events: none;
+}
+.doc-page-count {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Comentarios de los documentos con formato (fase 8.3): resaltado y panel a la derecha. */
+.doc-comment {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  border-bottom: 2px solid var(--brand);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.doc-comment.is-active {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.doc-comments-toggle {
+  position: relative;
+}
+.doc-comments-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--focus);
+  color: var(--bg-canvas);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+}
+.doc-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  flex: none;
+  overflow-y: auto;
+  padding: 12px;
+  border-left: 1px solid var(--border-soft);
+  background: var(--bg-panel);
+}
+.doc-comments header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.doc-comments h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.doc-comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.doc-comment-thread,
+.doc-comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--bg-canvas);
+}
+.doc-comment-thread.is-active {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+}
+.doc-comment-thread p {
+  margin: 0;
+}
+.doc-comment-quote {
+  justify-content: flex-start;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: italic;
+  text-align: start;
+}
+.doc-comment-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.doc-comment-reply {
+  padding-left: 10px;
+  border-left: 2px solid var(--border-soft);
+}
+.doc-comment-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.doc-comment-form textarea,
+.doc-comment-reply-form input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.doc-comments-resolved summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+@media (max-width: 820px) {
+  .doc-comments {
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    box-shadow: var(--shadow-panel);
+  }
+}
+
+/* Imágenes de los documentos (fase 8.4): archivos del almacén mostrados con URL locales. */
+.doc-content img.doc-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 4px;
+}
+.md-doc .doc-content img.doc-image {
+  display: inline-block;
+  vertical-align: bottom;
+}
+.doc-content img.doc-image.ProseMirror-selectednode {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.doc-content img.doc-image.is-missing {
+  min-width: 120px;
+  min-height: 60px;
+  border: 1px dashed var(--border-soft);
+}
+
+/* Exportar a PDF un documento con formato (fase 8.4): solo la copia del contenido, en A4. */
+.print-root {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 25mm 22mm;
+  }
+  html.printing-doc body > *:not(.print-root) {
+    display: none !important;
+  }
+  html.printing-doc,
+  html.printing-doc body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  html.printing-doc .print-root {
+    --text-primary: #1f1f1f;
+    --text-secondary: #555;
+    --link: #1a5d66;
+    --border-soft: #ccc;
+    display: block;
+    color: #1f1f1f;
+    background: #fff;
+  }
+  html.printing-doc .print-doc {
+    min-height: 0;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  html.printing-doc .print-doc .doc-comment,
+  html.printing-doc .print-doc .backlink-mark {
+    background: none !important;
+    border: none !important;
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  html.printing-doc .print-doc img {
+    max-width: 100%;
+    break-inside: avoid;
+  }
+  html.printing-doc .print-doc h1,
+  html.printing-doc .print-doc h2,
+  html.printing-doc .print-doc h3 {
+    break-after: avoid;
+  }
 }

@@ -64,6 +64,7 @@ Una revisión es una instantánea inmutable de un documento:
 - `extensions` es el sidecar del lienzo (`objects/<hash>.json`).
 - `assets` son los archivos de `assets/`.
 - `operation: "delete"` envía el documento a la papelera y conserva el contenido.
+- **Orden manual y archivado** (desde el 17/10/2026, opcionales). `metadata.sortKey` es una clave fraccional (dígitos `0-9A-Za-z`, comparada como texto) que ordena el documento o la carpeta entre sus hermanos de la barra lateral; sin ella vale el orden por defecto (carpetas por título, documentos por fecha). `metadata.archived: true` saca el documento de la barra lateral sin enviarlo a la papelera; sigue en la búsqueda y sus enlaces funcionan. Los valores por defecto no se escriben. Cada cambio es una revisión de metadatos del documento afectado. Una versión anterior de la aplicación descarta estas claves al guardar el documento: hay que actualizar todos los dispositivos.
 
 ### 2.3 Notas Markdown (`objects/<hash>.md` y `readable/…`)
 
@@ -86,6 +87,7 @@ Ver [Mapa principal](aline://document/UUID-del-mapa).
 - **Frontmatter.** Es un subconjunto de YAML: claves simples, valores de texto escritos como cadenas JSON y listas en línea. Las claves desconocidas se conservan textualmente al volver a guardar.
 - **Enlaces internos.** Usan `aline://document/<UUID>[#fragmento]` (§2.3.1) y apuntan siempre al identificador, nunca al título (RN-01, RN-02).
 - **Títulos.** Cambiar el título crea una revisión nueva con el frontmatter actualizado; el cuerpo no cambia.
+- **Imágenes de los documentos Markdown** (desde el 17/10/2026). Un `mddoc` cita sus imágenes como `![texto](mindnote-asset:<sha256>)`; los bytes están en `assets/` y en `contentRefs.assets` de la revisión, como las del lienzo. Solo imágenes PNG, JPEG, GIF o WebP de hasta 10 MB, subidas o pegadas desde el equipo; nunca imágenes remotas. En la copia legible de `readable/` se ven como esa cita: un editor externo no las muestra. Una edición externa conserva las imágenes que sigue citando.
 
 ### 2.3.1 Enlaces internos y anclas
 
@@ -114,6 +116,8 @@ Ver [la decisión](aline://document/UUID-del-doc#b=k3Xa9&t=el%20equipo-,usar%20I
 Son el JSON `.excalidraw` del motor fijado (`"type": "excalidraw", "version": 2`), con una única diferencia: el `dataURL` de cada archivo de `files` se sustituye por `mindnote-asset:<sha256>`, y los bytes están en `assets/<sha256>.<extensión>`.
 
 Para abrir la escena en Excalidraw hay que volver a incrustar cada archivo como `data:<mimeType>;base64,…`. La exportación `.excalidraw` autocontenida (plan 5.2) lo hará de forma automática.
+
+- **Fuentes del catálogo** (desde el 17/10/2026). Un texto con `fontFamily` igual o mayor que 2001 usa una fuente del catálogo de la aplicación (`src/app/fontCatalog.ts`: 2001 = Inter … 2024 = Pacifico). Esos números no se reutilizan nunca. Otras aplicaciones de Excalidraw no los conocen y muestran ese texto con su fuente por defecto; el texto no se pierde.
 
 ### 2.5 Sidecar del lienzo (`objects/<hash>.json`) — [esquema](formato/schemas/v1/canvas-extensions.schema.json)
 
@@ -176,8 +180,11 @@ Desde el 15/10/2026. Un documento `doc` guarda el documento entero en JSON y cad
 ```
 
 - El esquema solo fija la forma general del árbol; qué nodos y marcas existen lo decide el editor. Un árbol que el editor no acepta se abre en solo lectura y no se reescribe.
-- Nodos actuales: `paragraph`, `heading` (niveles 1–3), `bulletList`, `orderedList`, `listItem`, `blockquote`, `codeBlock`, `horizontalRule`, `hardBreak` y `text`; marcas `bold`, `italic`, `underline`, `strike`, `code` y `link`; atributo `textAlign` en párrafos y títulos.
+- Nodos actuales: `paragraph`, `heading` (niveles 1–3), `bulletList`, `orderedList`, `listItem`, `blockquote`, `codeBlock`, `horizontalRule`, `hardBreak` y `text`; marcas `bold`, `italic`, `underline`, `strike`, `code`, `link` y, desde el 17/10/2026, `textStyle` (atributos `fontFamily`, una familia del catálogo de fuentes en CSS como `"Lora", serif`, y `fontSize` en píxeles, como `"18px"`); atributo `textAlign` en párrafos y títulos.
 - **Anclas de bloque.** Desde el 16/10/2026, un `paragraph`, `heading` o `codeBlock` puede llevar `attrs.anchor` (1 a 64 caracteres `[A-Za-z0-9_-]`, único dentro del documento): es el destino de los enlaces `#b=<id>` (§2.3.1). Solo se añade al crear un ancla a ese bloque, nunca al abrir el documento. Si al partir o pegar un bloque el id se repite, la aplicación lo conserva en el primero y lo retira de los demás.
+- **Imágenes** (desde el 17/10/2026). Nodo `image` con `attrs.src` = `mindnote-asset:<sha256>` (y `alt`, `title`); los bytes, en `assets/` y en `contentRefs.assets`, como en el lienzo. Mismos límites que en los documentos Markdown (§2.3); nunca imágenes remotas.
+- **Comentarios** (desde el 17/10/2026, opcional). `comments` es la lista de hilos: `{ "id", "text", "createdAt", "resolved"?, "replies"?: [{ "id", "text", "createdAt" }] }` (id de 1 a 64 caracteres `[A-Za-z0-9_-]`, fechas ISO 8601). El texto comentado lleva la marca `comment` con `attrs.id` igual al del hilo; dos comentarios pueden solaparse. Si el texto comentado se borra, el hilo se conserva hasta que se elimina. Sin comentarios la clave no se escribe. Una versión anterior de la aplicación conserva `comments` al guardar (clave desconocida), pero no muestra los hilos.
+- **Presentación.** Zoom, panel de capítulos y paginación de la vista «Hoja» no se guardan en el documento: son preferencias de cada navegador o se calculan al pintar.
 - No hay copia legible en `readable/`: se edita solo dentro de la aplicación. Va en las carpetas de «Documentos» (`docfolder`) o en la raíz.
 - Las claves desconocidas se conservan. Un `schemaVersion` posterior se abre en solo lectura.
 

@@ -343,6 +343,17 @@ Cambio de arquitectura registrado en la cabecera del diseño; sintaxis en `docs/
 | 7.E | Índice: documentos con formato (texto mostrado y bloques anclados) y calendarios (eventos como elementos buscables) indexados; `StoredLink` con ancla de destino y contexto de origen; estados `approximate` y `anchor-lost` (solo el segundo cuenta como roto), calculados al consultar contra el texto indexado del destino, así que no hace falta reindexar a quien enlaza; ancla del lienzo en el sidecar (`fragment`); backlinks con contexto y apertura en el sitio del enlace; la búsqueda abre eventos | `KNOWLEDGE_INDEX_FORMAT` 2: se reconstruye el índice una vez | Hecha (16/10/2026) |
 | 7.F | Resaltar en el destino los fragmentos con backlinks: subrayado de puntos con «Enlazado desde: …» al pasar, en notas (CodeMirror), documentos Markdown (Milkdown) y con formato (Tiptap); decoraciones que siguen al texto al editar y se recalculan con el índice; solo las anclas encontradas tal cual | Nueva dependencia directa `@codemirror/view` (ya estaba como transitiva, MIT) | Hecha (16/10/2026) |
 
+### Fase 8 — Mejoras de organización, tipografía y documentos (decidida el 17/10/2026)
+
+Decisiones del propietario: fuentes nuevas también en el lienzo parcheando el motor; imágenes de los documentos Markdown como archivos del almacén (en la copia legible, un enlace); PDF desde la impresión del navegador; lo archivado sale de la barra pero sigue en la búsqueda.
+
+| # | Tarea | Notas | Estado |
+| --- | --- | --- | --- |
+| 8.1 | Barra lateral y perfil: secciones Notas → Documentos → Calendario; arrastrar carpetas dentro y fuera de otras; orden manual arrastrando (mitad de arriba o de abajo de una fila; en una carpeta, su cuarto superior o inferior) o con «Subir»/«Bajar» en «⋯»; «Archivar» en «⋯» y Configuración → Archivo; Perfil con «Almacenamiento» y «Archivo» (Estado y diagnóstico queda en «⋯»); botones de Google Drive con la marca de Google | Cambio de arquitectura: `sortKey` y `archived` en los metadatos (formato §2.2) | Hecha (17/10/2026) |
+| 8.2 | Tipografía: 24 fuentes (`@fontsource`, OFL y una Apache-2.0) servidas desde el origen y cargadas al usarse; fuente con búsqueda y tamaño (A−/A+) en la barra de los documentos con formato; parche del motor para que salgan en el selector de fuentes del lienzo | Fuera de la precarga del PWA; métricas comprobadas contra los archivos | Hecha (17/10/2026) |
+| 8.3 | Documentos con formato: zoom de la hoja (50–200 %), panel de capítulos, paginación A4 propia de la vista «Hoja» con contador de páginas (se descartó `tiptap-pagination-plus`: inyecta su propia hoja de estilos con colores fijos y rehace la maquetación de la hoja) y comentarios propios (hilos con respuestas, resolver o reabrir, eliminar; Ctrl/⌘+Alt+M) | Comentarios en el JSON del documento (formato §2.5.3); lo demás es presentación | Hecha (17/10/2026) |
+| 8.4 | Imágenes en documentos con formato y Markdown (subir, pegar o arrastrar; archivos del almacén, nunca remotas); exportar a Word (`docx` 9.8.1, MIT, carga diferida; listas, títulos, fuentes, enlaces web e imágenes) y a PDF (impresión del navegador de una copia del contenido, A4) desde «Exportar» | Cambio de formato: assets en `doc` y `mddoc`; licencias BlueOak-1.0.0 (`sax`) y `(MIT OR GPL-3.0-or-later)` (`jszip`, usada bajo MIT) añadidas a la lista permitida | Hecha (17/10/2026) |
+
 ## 4. Dependencias y ruta crítica
 
 ```text

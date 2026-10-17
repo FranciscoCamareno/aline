@@ -33,6 +33,10 @@
     "kindNote": "Note",
     "conflict": "Conflict",
     "trash": "Move to trash",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "archive": "Archive",
+    "archived": "Archived",
     "trashEmpty": "The trash is empty.",
     "restore": "Restore",
     "purge": "Delete permanently",
@@ -352,7 +356,7 @@
       "needs-key": "Needs password",
       "needs-confirm": "Review encryption"
     },
-    "connectDrive": "Connect Google Drive…",
+    "connectDrive": "Connect with Google Drive",
     "driveWarningTitle": "Before connecting Google Drive: do you want to encrypt the content?",
     "driveWarning": "Content is stored in your Google Drive as is: Google and anyone with access to your account can read it. In exchange, notes can be opened and edited from Drive, and there is no password to lose.",
     "driveAccept": "Continue",
@@ -477,6 +481,8 @@
     "exportCanvas": "Image, PDF or .excalidraw…",
     "more": "More options",
     "exportNote": "Note as Markdown (.md)",
+    "exportDocx": "Word document (.docx)",
+    "exportPdf": "PDF (print and “Save as PDF”)…",
     "exportMarkdownAll": "All notes as Markdown (.zip)",
     "exportMarkdownFolder": "Notes in “{{folder}}” as Markdown (.zip)"
   },
@@ -566,6 +572,47 @@
     "unavailable": "Not available: this vault is temporary or sync is not active."
   },
   "docs": {
+    "exportFailed": "The document could not be exported.",
+    "insertImage": "Insert image",
+    "imageRejected": "Only PNG, JPEG, GIF or WebP images up to 10 MB are supported.",
+    "comments": "Comments",
+    "commentsClose": "Close comments",
+    "commentAdd": "Comment (Ctrl+Alt+M)",
+    "commentPlaceholder": "Write a comment",
+    "commentSave": "Comment",
+    "commentReply": "Reply…",
+    "commentResolve": "Resolve",
+    "commentReopen": "Reopen",
+    "commentDelete": "Delete",
+    "commentDeleteConfirm": "Delete this comment and its replies?",
+    "commentOrphan": "(the commented text was deleted)",
+    "commentsEmpty": "Select text and press “Comment” to add a comment.",
+    "commentsResolved_one": "{{count}} resolved",
+    "commentsResolved_other": "{{count}} resolved",
+    "pageLabel": "Page {{page}}",
+    "pageCount_one": "{{count}} page",
+    "pageCount_other": "{{count}} pages",
+    "zoom": "Zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomReset": "Back to 100%",
+    "outline": "Chapters",
+    "outlineClose": "Close chapters",
+    "outlineEmpty": "Add headings to the document to see its chapters here.",
+    "outlineUntitled": "(empty heading)",
+    "font": "Font",
+    "fontDefault": "Default",
+    "fontSearch": "Search fonts",
+    "fontNone": "No font matches.",
+    "fontSmaller": "Decrease font size",
+    "fontLarger": "Increase font size",
+    "fontCategory": {
+      "sans": "Sans serif",
+      "serif": "Serif",
+      "mono": "Monospace",
+      "hand": "Handwriting",
+      "display": "Display"
+    },
     "title": "Documents",
     "untitled": "Untitled document",
     "emptyTitle": "Write a document",
@@ -637,10 +684,12 @@
       "storage": "Storage",
       "appearance": "Appearance",
       "language": "Language",
+      "archive": "Archive",
       "trash": "Trash"
     },
     "menu": {
-      "settings": "Settings",
+      "storage": "Storage",
+      "archive": "Archive",
       "themes": "Themes",
       "language": "Language",
       "trash": "Trash"
@@ -650,6 +699,9 @@
       "es": "Español",
       "en": "English"
     },
-    "trashLead": "What you send to the trash keeps its history until you delete it permanently."
+    "trashLead": "What you send to the trash keeps its history until you delete it permanently.",
+    "archiveLead": "Archived items are not shown in the sidebar, but search still finds them and their links keep working.",
+    "archiveEmpty": "Nothing is archived.",
+    "unarchive": "Unarchive"
   }
 }

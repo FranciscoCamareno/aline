@@ -7,9 +7,11 @@ import '@fontsource/nunito/latin-400-italic.css';
 import '@fontsource/nunito/latin-600.css';
 import '@fontsource/nunito/latin-700.css';
 import { App } from './app/App.tsx';
+import { installFontFaces } from './app/fonts.ts';
 import './app/i18n.ts';
 import { initTheme } from './app/theme.ts';
 import './app/styles.css';
+import { registerCanvasFonts } from './features/canvas/canvasFonts.ts';
 
 declare global {
   interface Window {
@@ -19,6 +21,11 @@ declare global {
 
 // Fuentes de Excalidraw desde el mismo origen (copiadas a public/fonts), nunca desde un CDN.
 window.EXCALIDRAW_ASSET_PATH = import.meta.env.BASE_URL;
+
+// Fuentes adicionales (fase 8.2): declaradas para documentos y registradas en el lienzo antes
+// de montar el motor. No se descarga ninguna hasta que un texto la usa.
+installFontFaces();
+registerCanvasFonts();
 
 initTheme();
 
