@@ -24,6 +24,8 @@ Versión 1.2 | 14 de octubre de 2026 | Base: documento de requerimientos de 34 p
 
 > **Cambio registrado (17/10/2026): pestañas, barra de herramientas y burbuja de selección en los documentos con formato.** A petición del propietario, y siguiendo la estructura de Google Docs con el diseño de la aplicación: un documento con formato puede tener varias **pestañas** (crear, renombrar, duplicar, eliminar), guardadas en el propio documento (`tabs`, formato §2.5.3; la principal sigue siendo el `content` raíz, así los documentos existentes no cambian). El panel «Pestañas del documento» sustituye al de capítulos y muestra los capítulos de la pestaña activa. Cada pestaña se edita con su propio editor (el deshacer no mezcla pestañas). Índice, enlaces con ancla, comentarios, imágenes y la exportación a Word cubren todas las pestañas; un enlace o comentario de otra pestaña cambia a ella. La impresión a PDF imprime la pestaña activa. La barra de herramientas pasa a una sola fila compacta (zoom y tamaño de letra editables, alineación y vista en menús) y, al seleccionar texto, una **burbuja flotante** ofrece comentar y enlazar (solo enlazar en los documentos Markdown). Cambio de formato compatible: el formato sigue siendo la v1.
 
+> **Cambio registrado (17/10/2026): licencia en tres niveles.** A petición del propietario se revisa DP-09. El código propio pasa de MIT a **GNU AGPLv3** (`AGPL-3.0-only`, `LICENSE`); los motores y librerías de terceros conservan sus licencias permisivas (`THIRD-PARTY-NOTICES.md`, `docs/licencias.md`; `pnpm licenses:check` solo admite licencias compatibles); el nombre «aline», el logotipo, los iconos, los stickers y demás recursos de `brand/` (y sus copias en `public/`) quedan con todos los derechos reservados, fuera de la AGPLv3 (`TRADEMARKS_AND_ASSETS.md`, `brand/LICENSE.md`). Las versiones ya publicadas con MIT siguen siendo MIT para quien las obtuvo. La aplicación enlaza su código fuente desde «Estado y diagnóstico → Licencias» (AGPLv3 §13).
+
 Este diseño convierte los requisitos en decisiones de implementación. Es una especificación para comenzar a construir; no certifica que las pruebas de hardware, rendimiento o integración ya hayan pasado. Se distinguen los requisitos heredados, las decisiones técnicas propuestas y las verificaciones pendientes.
 
 ## 1. Decisión de arquitectura
@@ -94,7 +96,7 @@ Los Podría se mantienen opcionales: cuadrícula y ajuste, distribución automá
 
 Fijar versiones exactas después de la prueba de integración, registrar pnpm-lock.yaml y usar instalación congelada en CI. No tomar latest como política de producción. Confirmar la compatibilidad React/Excalidraw con el manifiesto del paquete elegido. Mantener inventario de dependencias y sus licencias, incluidas fuentes e iconos; no asumir que una licencia del motor cubre todos sus recursos.
 
-Se propone MIT para el código propio si se publica, sujeto a decisión del propietario. No se necesita Python, Java, C#, PHP, PostgreSQL ni una base de grafos para ejecutar esta versión.
+El código propio se publica bajo GNU AGPLv3 y la marca con todos los derechos reservados (cambio registrado el 17/10/2026; antes se proponía MIT). No se necesita Python, Java, C#, PHP, PostgreSQL ni una base de grafos para ejecutar esta versión.
 
 ## 4. Componentes y responsabilidades
 
@@ -644,7 +646,7 @@ No dar una fecha de entrega sin conocer dedicación y experiencia. La fase 0 y l
 | Volumen real y tamaños | Supuesto S-04; bytes aún sin confirmar | Cuota, memoria, copias y benchmark |
 | Esquema abierto por revisión | Propuesto en este diseño | Evita sobrescrituras; aumenta número de archivos |
 | Empaquetado de escritorio | Diferido | No bloquea Windows web ni iPad |
-| Licencia del código propio | MIT propuesta | Decidir antes de publicar; bibliotecas se revisan aparte |
+| Licencia del código propio | GNU AGPLv3; marca y recursos de `brand/` con todos los derechos reservados | Decidida el 17/10/2026 (DP-09); bibliotecas se revisan aparte (`pnpm licenses:check`) |
 | Colaboración simultánea futura | Fuera de v1 | Requiere nuevo protocolo; Drive actual no es base de coedición |
 | Cifrado de la copia en Drive | Opcional desde el 13/10/2026 (§13.1) | Sin contraseña ni código, la copia de Drive es irrecuperable; el equipo y la carpeta siguen legibles |
 

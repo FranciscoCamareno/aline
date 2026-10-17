@@ -9,6 +9,9 @@ import { VaultsSection } from './VaultsSection.tsx';
 /** Umbral de aviso de cuota alta (diseño §7.1). */
 export const QUOTA_WARNING_RATIO = 0.8;
 
+/** Repositorio público del código (licencia GNU AGPLv3, `LICENSE`). */
+const SOURCE_URL = 'https://github.com/FranciscoCamareno/aline';
+
 export function quotaRatio(report: StorageReport): number | null {
   return report.usage !== null && report.quota ? report.usage / report.quota : null;
 }
@@ -167,6 +170,12 @@ export function StatusPanel({ services, onClose, onError }: Props) {
               data-testid="third-party-notices"
             >
               {t('statusPanel.thirdParty')}
+            </a>
+          </li>
+          <li>
+            {/* AGPLv3 §13: la aplicación ofrece su código fuente a quien la usa en red. */}
+            <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
+              {t('statusPanel.sourceCode')}
             </a>
           </li>
         </ul>

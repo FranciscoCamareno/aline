@@ -118,9 +118,10 @@
     "diagnosticsEmpty": "No entries.",
     "exportDiagnostics": "Export diagnostics",
     "licenses": "Licenses",
-    "licensesHint": "This app is free software under the MIT license and includes third-party software and fonts.",
-    "ownLicense": "App license (MIT)",
-    "thirdParty": "Third-party notices and licenses"
+    "licensesHint": "This app is free software under the GNU AGPLv3 and includes third-party software and fonts. The aline name, logo, icons and stickers are not under that license: all rights reserved.",
+    "ownLicense": "App license (GNU AGPLv3)",
+    "thirdParty": "Third-party notices and licenses",
+    "sourceCode": "Source code (GNU AGPLv3)"
   },
   "storageAlert": {
     "quotaHigh": "Browser storage is almost full.",

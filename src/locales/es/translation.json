@@ -118,9 +118,10 @@
     "diagnosticsEmpty": "Sin entradas.",
     "exportDiagnostics": "Exportar diagnóstico",
     "licenses": "Licencias",
-    "licensesHint": "Esta aplicación es software libre con licencia MIT e incluye software y fuentes de terceros.",
-    "ownLicense": "Licencia de la aplicación (MIT)",
-    "thirdParty": "Avisos y licencias de terceros"
+    "licensesHint": "Esta aplicación es software libre con licencia GNU AGPLv3 e incluye software y fuentes de terceros. El nombre, el logotipo, los iconos y los stickers de aline no están bajo esa licencia: todos los derechos reservados.",
+    "ownLicense": "Licencia de la aplicación (GNU AGPLv3)",
+    "thirdParty": "Avisos y licencias de terceros",
+    "sourceCode": "Código fuente (GNU AGPLv3)"
   },
   "storageAlert": {
     "quotaHigh": "El almacenamiento del navegador está casi lleno.",

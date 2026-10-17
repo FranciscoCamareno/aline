@@ -406,13 +406,34 @@ El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-
 - **Conflictos:** al abrir un documento con dos cabezas se edita la más reciente y la sesión
   solo sigue esa rama, así que un guardado nunca fusiona un conflicto sin una decisión explícita.
 
-## Licencias
+## Licencia y derechos de autor
 
-El código propio es software libre con licencia **MIT** (`LICENSE`, Copyright (c) 2026 F. C.).
+aline se publica en **tres niveles de licencia**, separados por carpeta:
+
+| Nivel                                  | Qué cubre                                                                                                                                                                                                                                          | Licencia                                                                                                                                                                                                |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Código propio**                   | Todo el código fuente original del proyecto: `src/`, `tests/`, `scripts/`, `spikes/`, configuración (`*.config.ts`, `index.html`, `public/_headers`…) y documentación (`docs/`, `*.md`)                                                            | **GNU AGPLv3** (`AGPL-3.0-only`), [LICENSE](LICENSE). Copyright (C) 2026 F. C.                                                                                                                          |
+| **2. Motores y librerías de terceros** | Excalidraw, Milkdown, Tiptap, ProseMirror, CodeMirror, React, unified/remark, Dexie y el resto de dependencias de `package.json`; las fuentes tipográficas; el parche del motor (`patches/`) y los textos de `licenses/`                           | **Su propia licencia** (MIT, Apache-2.0, OFL-1.1, BSD, ISC…), conservada sin cambios. Resumen en [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); inventario en [docs/licencias.md](docs/licencias.md) |
+| **3. Marca y recursos gráficos**       | El nombre «aline», el logotipo, los iconos de la aplicación y de la interfaz, los **stickers** del lienzo, las notas adhesivas, las ilustraciones y los esquemas de color: [brand/](brand/) (salvo `brand/third-party/`) y sus copias en `public/` | **Todos los derechos reservados** © 2026 ALINE. Marca (™) **fuera de la AGPLv3**: ver [TRADEMARKS_AND_ASSETS.md](TRADEMARKS_AND_ASSETS.md)                                                              |
+
+**Qué significa en la práctica.** Puedes usar, estudiar, modificar y redistribuir el código según la
+AGPLv3; si ofreces una versión modificada como servicio en red, debes ofrecer su código fuente a sus
+usuarios (sección 13). Las librerías de terceros siguen bajo sus licencias permisivas. En cambio, la
+marca y los recursos gráficos no se pueden redistribuir: un fork o una versión de terceros debe
+**cambiar el nombre y sustituir** logotipos, iconos y stickers por los suyos. Los stickers y las
+notas adhesivas sí se pueden usar libremente dentro de los documentos que crees con la aplicación y
+en lo que exportes de ellos.
+
+**Contribuciones y elementos futuros.** Cada archivo nuevo hereda la licencia de su carpeta: el
+código nuevo es AGPLv3; un motor o librería nueva entra como dependencia con su licencia (debe
+pasar `pnpm licenses:check` y aparecer en THIRD-PARTY-NOTICES.md); un recurso gráfico nuevo de la
+marca va en `brand/` y queda con todos los derechos reservados.
+
+### Cumplimiento en la aplicación compilada
 
 La aplicación compilada incluye Excalidraw (MIT), otras dependencias y fuentes de terceros. Para cumplir sus licencias, `pnpm assets` genera dos archivos que se publican en `dist/` y se enlazan desde «Estado y diagnóstico → Licencias»:
 
 - `THIRD-PARTY-NOTICES.txt`: los avisos de copyright y el texto de licencia de cada paquete y de cada fuente;
-- `LICENSE.txt`: la licencia MIT de la aplicación.
+- `LICENSE.txt`: la licencia GNU AGPLv3 de la aplicación.
 
 Los textos que los paquetes npm no incluyen están en [licenses/](licenses/). El inventario y la verificación de las fuentes están en [docs/licencias.md](docs/licencias.md). La fuente Liberation Sans 1.05 no se distribuye porque su licencia (GPLv2 con excepción y cláusulas añadidas) no encaja con el proyecto.

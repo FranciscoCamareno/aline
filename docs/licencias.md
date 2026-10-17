@@ -31,14 +31,16 @@ Comprobadas a mano (el paquete no declara licencia y pnpm la deduce de su archiv
 
 ## Licencia del código propio
 
-MIT, `Copyright (c) 2026 F. C.` (archivo `LICENSE` del repositorio; decisión DP-09). Se distribuye con la aplicación como `LICENSE.txt`.
+GNU AGPLv3 (`AGPL-3.0-only`), `Copyright (C) 2026 F. C.` (archivo `LICENSE` del repositorio; decisión DP-09, revisada el 17/10/2026). Se distribuye con la aplicación como `LICENSE.txt`. Las dependencias admitidas son permisivas y compatibles con la AGPLv3; conservan su propia licencia (resumen en `THIRD-PARTY-NOTICES.md`).
+
+La marca y los recursos gráficos (`brand/` y sus copias en `public/`) no están bajo la AGPLv3: todos los derechos reservados (`TRADEMARKS_AND_ASSETS.md`).
 
 ## Cumplimiento en la aplicación compilada
 
 Las licencias MIT, BSD, Apache-2.0 y OFL-1.1 exigen que los avisos de copyright y de permiso acompañen a cada copia distribuida. El repositorio no contiene código de terceros (`node_modules` y `public/fonts` no se versionan), pero `dist/` sí. Por eso `pnpm assets` (antes de `dev` y `build`) genera:
 
 - `THIRD-PARTY-NOTICES.txt`: licencia de cada dependencia de producción y del código de Workbox y Vite incluido en el Service Worker y el cargador. Si un paquete npm no trae archivo de licencia, se usa la del repositorio de origen (`licenses/`) o la sección de licencia de su README. También incluye el aviso de copyright de cada fuente, leído de su propio archivo WOFF2, con su licencia.
-- `LICENSE.txt`: la licencia MIT de la aplicación.
+- `LICENSE.txt`: la licencia AGPLv3 de la aplicación.
 
 Ambos se enlazan desde «Estado y diagnóstico → Licencias» y se precachean para el uso sin conexión.
 
@@ -58,13 +60,15 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | Xiaolai SC | 3.11 | OFL-1.1 | El archivo no la declara; el paquete LXGW en CTAN la publica bajo OFL-1.1 | Sí |
 | Liberation Sans | 1.05 | GPLv2 con excepción de fuentes y cláusulas añadidas de Red Hat (serie 1.x) | Remite a «the license agreement»; la serie 2.x, bajo OFL, es otra versión | **No**: se excluye de la copia y de `dist/` |
 
-**Liberation Sans 1.05.** El motor la usa para el estilo de letra antiguo «Normal» (Helvetica). Su licencia no encaja con un proyecto MIT que podría venderse. Debian llegó a considerarla no redistribuible. No se distribuye: los textos con ese estilo se muestran con la fuente sin serifa del sistema. Si hiciera falta, la alternativa es la serie 2.x (OFL), sustituyendo el archivo.
+**Liberation Sans 1.05.** El motor la usa para el estilo de letra antiguo «Normal» (Helvetica). Su licencia no encaja con la política del proyecto (código AGPLv3 que su titular podría ofrecer también con licencia comercial). Debian llegó a considerarla no redistribuible. No se distribuye: los textos con ese estilo se muestran con la fuente sin serifa del sistema. Si hiciera falta, la alternativa es la serie 2.x (OFL), sustituyendo el archivo.
 
 ## Otros recursos
 
 | Recurso | Origen | Licencia |
 | --- | --- | --- |
-| Marca: logotipo, iconos de la PWA, iconos de interfaz y stickers (`brand/`, copiados a `public/`) | Propio | MIT (la del código propio) |
+| Marca: nombre, logotipo, iconos de la PWA, iconos de interfaz, stickers, notas adhesivas y esquemas (`brand/`, copiados a `public/`) | Propio | Todos los derechos reservados, fuera de la AGPLv3 (`TRADEMARKS_AND_ASSETS.md`) |
+| Logotipo «G» de Google (`brand/third-party/`) | Google LLC | Marca de Google; uso según sus normas |
+| Parche del motor (`patches/`) | Modificación de Excalidraw | MIT (la del motor) |
 | Iconos de la interfaz del motor | Incluidos en el código de `@excalidraw/excalidraw` | MIT (licencia del paquete) |
 
 ## Paquetes

@@ -73,7 +73,7 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **Estado:** completada. Las tareas 1.2 a 1.9 están implementadas y probadas (38 pruebas unitarias y 12 recorridos E2E; ver README, «Verificación»).
 
-**1.1:** repositorio publicado en https://github.com/FranciscoCamareno/aline (rama `main`, licencia MIT). El CI se ejecuta en cada envío.
+**1.1:** repositorio publicado en https://github.com/FranciscoCamareno/aline (rama `main`, licencia MIT; desde el 17/10/2026, GNU AGPLv3). El CI se ejecuta en cada envío.
 
 **Lo que queda fuera de la fase:**
 
@@ -379,7 +379,7 @@ La ruta crítica hasta la beta es: **serializador (2.1) → Drive (4.5) → Sync
 | Crear la cuenta de alojamiento (Cloudflare Pages propuesto) y fijar el origen de producción | PWA en el iPad, 4.x | Durante las fases 2–3 |
 | Crear el proyecto de Google Cloud, Drive API, cliente OAuth web y pantalla de consentimiento en pruebas | 4.4–4.7 | Durante las fases 2–3 |
 | Cuenta o carpeta de Drive de prueba, separada del contenido personal | 4.7 | Fase 4 |
-| ~~Decidir la licencia del código~~ | Hecho: MIT, `Copyright (c) 2026 F. C.` | — |
+| ~~Decidir la licencia del código~~ | Hecho: MIT, `Copyright (c) 2026 F. C.`; revisada el 17/10/2026: código GNU AGPLv3, marca y recursos de `brand/` con todos los derechos reservados (`TRADEMARKS_AND_ASSETS.md`) | — |
 | Dedicación disponible (D-09) | Calcular fechas | Cuando se quiera un calendario |
 
 Ninguna de estas acciones se ejecuta de forma automática: crear cuentas, publicar o modificar una cuenta de Google requiere la decisión del propietario (diseño §1.1).
