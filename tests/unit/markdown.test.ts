@@ -20,10 +20,11 @@ describe('vista previa Markdown', () => {
     expect(html).not.toContain('javascript:');
   });
 
-  it('conserva enlaces internos mindnote://', () => {
+  it('conserva enlaces internos aline:// y los anteriores mindnote://', () => {
     const html = renderMarkdownPreview(
-      '[Mapa](mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c)',
+      '[Mapa](aline://document/8b53f815-9d38-4313-a1ad-cb690fabf23c) [Antes](mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c)',
     );
+    expect(html).toContain('href="aline://document/8b53f815-9d38-4313-a1ad-cb690fabf23c"');
     expect(html).toContain('href="mindnote://document/8b53f815-9d38-4313-a1ad-cb690fabf23c"');
   });
 

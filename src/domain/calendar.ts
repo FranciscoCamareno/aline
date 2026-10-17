@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ReadOnlyReason } from './compat.ts';
+import { parseInternalLink } from './links.ts';
 
 /**
  * Calendario (DESIGN.md §8): un documento por calendario con sus eventos en JSON. Las fechas son
@@ -15,6 +16,23 @@ export type EventColor = (typeof EVENT_COLORS)[number];
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 
+/**
+ * Enlace de un evento (desde el 16/10/2026): a cualquier documento o fragmento
+ * (`aline://document/…`, formato §2.3.1) o a una web (http/https). Nada más: ni `javascript:` ni
+ * otros esquemas (diseño §13).
+ */
+export const eventLinkSchema = z.looseObject({
+  url: z
+    .string()
+    .max(4000)
+    .refine((url) => parseInternalLink(url) !== null || /^https?:\/\/[^\s]+$/i.test(url)),
+  label: z.string().max(500),
+});
+export type EventLink = z.infer<typeof eventLinkSchema>;
+
+/** Máximo de enlaces por evento. */
+export const MAX_EVENT_LINKS = 50;
+
 export const calendarEventSchema = z.looseObject({
   id: z.uuid(),
   title: z.string().max(500),
@@ -26,6 +44,8 @@ export const calendarEventSchema = z.looseObject({
   start: timeSchema.nullable(),
   end: timeSchema.nullable(),
   color: z.enum(EVENT_COLORS),
+  /** Enlaces del evento. Opcional: los eventos anteriores no lo tienen. */
+  links: z.array(eventLinkSchema).max(MAX_EVENT_LINKS).optional(),
 });
 export type CalendarEvent = z.infer<typeof calendarEventSchema>;
 

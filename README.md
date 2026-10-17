@@ -7,7 +7,8 @@ automático en IndexedDB (Dexie). No necesita cuenta ni servidor; Google Drive y
 local son opcionales.
 
 > El nombre visible es **aline**. Los identificadores internos siguen siendo `mindnote` (base
-> `mindnote-vault`, enlaces `mindnote://`, formato del almacén) para no romper datos existentes.
+> `mindnote-vault`, formato del almacén) para no romper datos existentes. Los enlaces internos
+> se escriben como `aline://` desde el 16/10/2026; los anteriores `mindnote://` se siguen leyendo.
 
 **Diseño visual:** [docs/DESIGN.md](docs/DESIGN.md). Los recursos de marca (logotipo, iconos,
 stickers, notas adhesivas) están en [brand/](brand/); los tokens de color viven en
@@ -70,7 +71,7 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   direccionados por SHA-256 y se rehidratan al abrir.
 - **Notas Markdown:** CodeMirror 6, vista previa saneada (unified + remark + rehype-sanitize,
   sin HTML crudo ni carga de imágenes remotas), frontmatter con `schema_version`, `id`, `title`
-  y `tags`. Los enlaces `mindnote://document/<UUID>` abren el documento dentro de la app.
+  y `tags`. Los enlaces `aline://document/<UUID>` (y los anteriores `mindnote://`) abren el documento dentro de la app.
 - **Crear, abrir y renombrar** notas y lienzos desde la biblioteca o desde el título de la
   cabecera. Renombrar conserva el UUID y crea una revisión nueva; en notas vuelve a serializar
   el frontmatter y conserva el cuerpo.
@@ -99,10 +100,10 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   stickers) e insertarla con un clic o arrastrándola. Sustituyen a la biblioteca de Excalidraw.
 - **Biblioteca y cabecera** (DESIGN.md §6): «Nuevo» con desplegable (lienzo, nota, carpeta,
   importar), lienzos y notas que se arrastran dentro y fuera de las carpetas, buscador de títulos, pestañas «Todos» y «Recientes», acciones de cada fila en «⋯» y,
-  abajo, papelera y perfil (con las preferencias dentro). La cabecera deja a la vista Historial, Enlaces y
+  abajo, solo Perfil: su menú abre Configuración (almacenamiento, temas, idioma y papelera). La cabecera deja a la vista Historial, Enlaces y
   Exportar; Buscar y Estado y diagnóstico están en «⋯».
 - **Tema y esquemas de color:** 8 esquemas en 4 pares (Papel/Noche, Blanco/Negro, Bruma/Marea,
-  Salvia/Bosque). En Perfil → Preferencias se elige uno claro y uno oscuro; el interruptor de la
+  Salvia/Bosque). En Perfil → Temas se elige uno claro y uno oscuro; el interruptor de la
   cabecera alterna entre ellos y «Seguir al sistema» usa el que toque (preferencias de este
   navegador). El lienzo pinta el fondo del esquema sin guardarlo. Fuente Nunito servida desde el
   propio origen.

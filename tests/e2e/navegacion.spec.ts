@@ -69,16 +69,26 @@ test('biblioteca: Nuevo, buscador, pestañas, menú de fila y pie', async ({ pag
   await expect(page.getByTestId('recent-item')).toHaveCount(2);
   await page.getByRole('tab', { name: 'Todos' }).click();
 
-  // Pie: papelera con su recuento y perfil; las preferencias (idioma) se abren desde Perfil, en
-  // un modal. La ayuda ya no está aquí.
-  await expect(page.getByTestId('trash-toggle')).toContainText('(0)');
+  // Pie: solo Perfil, con su menú (configuración, temas, idioma, papelera con recuento y
+  // estado). Cada opción abre Configuración en su sección. La ayuda ya no está aquí.
   await expect(page.getByTestId('open-help')).toHaveCount(0);
-  await expect(library.getByTestId('open-preferences')).toHaveCount(0);
+  await expect(library.getByTestId('trash-toggle')).toHaveCount(0);
   await expect(page.getByTestId('open-profile')).toContainText('Perfil');
   await page.getByTestId('open-profile').click();
-  await page.getByTestId('open-preferences').click();
-  await expect(page.getByTestId('preferences').getByLabel('Idioma')).toBeVisible();
-  await page.getByTestId('preferences-close').click();
+  await expect(page.getByRole('menuitem')).toHaveText([
+    'Configuración',
+    'Temas',
+    /^Idioma/,
+    /^Papelera\s*0$/,
+    'Estado y diagnóstico',
+  ]);
+  await page.getByTestId('settings-language').click();
+  await expect(page.getByTestId('settings-section-language').getByLabel('Idioma')).toBeVisible();
+  // La navegación lateral cambia de sección sin cerrar el modal.
+  await page.getByTestId('settings-tab-trash').click();
+  await expect(page.getByTestId('trash-list')).toContainText('La papelera está vacía');
+  await page.getByTestId('settings-close').click();
+  await expect(page.getByTestId('settings-dialog')).toHaveCount(0);
   await page.getByTestId('library-title-text').filter({ hasText: 'Lienzo sin título' }).click();
   // La ayuda es el botón «?» del lienzo, abajo a la derecha, y solo existe con un lienzo abierto.
   await page.locator('.excalidraw .help-icon').click();
@@ -211,4 +221,39 @@ test('arrastrar un documento dentro y fuera de una carpeta, y que se guarde', as
   await expect(inFolder).toHaveCount(0);
   await page.reload();
   await expect(inRoot).toBeVisible();
+});
+
+test('el menú «⋯» de una carpeta y de lo que contiene cabe en la ventana', async ({ page }) => {
+  await freshStart(page);
+  await page.getByTestId('new-menu').click();
+  await page.getByTestId('new-folder').click();
+  await page.getByTestId('new-folder-input').fill('Proyectos');
+  await page.getByTestId('new-folder-input').press('Enter');
+  const folder = page.getByTestId('folder-item').filter({ hasText: 'Proyectos' });
+  // Un documento dentro de la carpeta: con la carpeta seleccionada, lo nuevo se crea dentro.
+  await page.getByRole('button', { name: 'Proyectos', exact: true }).click();
+  await page.getByTestId('new-menu').click();
+  await page.getByTestId('new-note').click();
+  await expect(folder.getByTestId('library-item')).toHaveCount(1);
+
+  const viewport = page.viewportSize()!;
+  const fitsInWindow = async () => {
+    const box = (await page.getByRole('menu').boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    // Cada opción se ve entera (el texto largo salta de línea en vez de cortarse).
+    for (const item of await page.getByRole('menuitem').all()) {
+      const label = item.locator('.menu-label');
+      expect(await label.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    }
+  };
+  await folder.getByTestId('folder-actions').first().click();
+  await expect(
+    page.getByRole('menuitem', { name: /Enviar la carpeta a la papelera/ }),
+  ).toBeVisible();
+  await fitsInWindow();
+  await page.keyboard.press('Escape');
+  await folder.getByTestId('library-item').getByTestId('library-actions').click();
+  await expect(page.getByRole('menuitem', { name: 'Enviar a la papelera' })).toBeVisible();
+  await fitsInWindow();
 });

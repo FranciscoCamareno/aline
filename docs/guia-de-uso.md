@@ -54,7 +54,7 @@ _English version: [user-guide.md](user-guide.md)._
 
 ## 3 quater. Apariencia y modo Zen
 
-- **Esquemas de color:** en **Perfil → Preferencias** eliges un esquema claro (Papel, Blanco, Bruma o Salvia) y uno oscuro (Noche, Negro, Marea o Bosque). El interruptor de arriba a la derecha alterna entre los dos y recuerda cuál dejaste; «Seguir al sistema» usa el claro de día y el oscuro de noche. El idioma también está ahí.
+- **Esquemas de color:** en **Perfil → Temas** eliges un esquema claro (Papel, Blanco, Bruma o Salvia) y uno oscuro (Noche, Negro, Marea o Bosque). El interruptor de arriba a la derecha alterna entre los dos y recuerda cuál dejaste; «Seguir al sistema» usa el claro de día y el oscuro de noche. El idioma está en **Perfil → Idioma**.
 - El lienzo se pinta con el fondo del esquema, pero lo guardado y lo exportado conservan su propio fondo.
 - **Modo Zen** (clic derecho en el lienzo → «Modo zen», o Alt+Z): oculta también la barra lateral y la cabecera. Las herramientas del lienzo siguen a la vista; al salir, vuelve todo.
 
@@ -82,7 +82,7 @@ Importar siempre crea documentos nuevos; nunca sobrescribe los existentes.
 ## 6. Historial, papelera y conflictos
 
 - **Historial:** cada guardado es una versión. Desde «Historial de versiones» (botón del reloj de la barra superior) se ve una versión anterior, se compara y se restaura. Restaurar crea una versión nueva; no se pierde nada.
-- **Papelera:** borrar envía a la papelera («Papelera», abajo en la biblioteca), desde donde se puede restaurar. «Eliminar definitivamente» pide confirmación.
+- **Papelera:** borrar envía a la papelera (**Perfil → Papelera**, abajo en la barra lateral), desde donde se puede restaurar. «Eliminar definitivamente» pide confirmación.
 - **Conflictos:** si dos equipos editan lo mismo sin conexión, se conservan ambas versiones y se avisa. Se resuelve eligiendo una, combinándolas o guardando las dos como documentos separados.
 
 ## 7. Copias y almacenes

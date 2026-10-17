@@ -1,6 +1,6 @@
 # Inventario de licencias
 
-Generado con `node scripts/licenses.ts` el 2026-10-16 a partir de `pnpm licenses list --prod`. No editar a mano.
+Generado con `node scripts/licenses.ts` el 2026-10-17 a partir de `pnpm licenses list --prod`. No editar a mano.
 
 Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso previsto. Se admiten las licencias permisivas de la lista del script; cualquier otra aparece en «Por revisar» y hace fallar `--check`.
 

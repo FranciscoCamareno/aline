@@ -34,6 +34,19 @@ const HOUR = 56;
 const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase() + text.slice(1);
 const asDate = (date: IsoDate) => new Date(`${date}T12:00:00`);
 
+/** Marca de «tiene enlaces» en un evento de la vista; el número se anuncia y aparece al pasar. */
+function LinkMark({ count }: { count: number }) {
+  const { t } = useTranslation();
+  if (count === 0) return null;
+  const label = t('calendar.hasLinks', { count });
+  return (
+    <span className="event-link-mark" title={label} data-testid="event-link-mark">
+      <Icon name="enlace" size={12} />
+      <span className="visually-hidden">{label}</span>
+    </span>
+  );
+}
+
 /** El primer calendario se crea solo, la primera vez que se abre la sección. */
 let creatingDefault: Promise<void> | null = null;
 
@@ -71,6 +84,21 @@ export function CalendarView({ service }: { service: VaultService }) {
     }
     void sync(service, documents);
   }, [documents, service, sync, t]);
+
+  // Al seguir un enlace a un evento, se muestra su día y se abre. Se espera a que su calendario
+  // esté cargado; un enlace al calendario entero solo trae a esta sección.
+  const focus = useUiStore((s) => s.focus);
+  useEffect(() => {
+    const calendar = focus ? calendars[focus.documentId] : undefined;
+    if (!focus || !calendar) return;
+    useUiStore.getState().consumeFocus(focus.documentId);
+    const event = calendar.data.events.find((e) => e.id === focus.eventId);
+    if (!event) return;
+    // Sincroniza con una orden externa (la navegación), una sola vez por enlace seguido.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelected(event.date);
+    openDraft({ mode: 'edit', calendarId: focus.documentId, event });
+  }, [focus, calendars, openDraft]);
 
   // Semana y día se abren a las 8:00.
   useEffect(() => {
@@ -252,6 +280,7 @@ export function CalendarView({ service }: { service: VaultService }) {
                 >
                   {s.event.start && <span className="event-time">{s.event.start}</span>}{' '}
                   <span className="event-name">{s.event.title || t('calendar.untitled')}</span>
+                  <LinkMark count={s.event.links?.length ?? 0} />
                 </button>
               ))}
               {layout.hidden.map((n, col) =>
@@ -327,6 +356,7 @@ export function CalendarView({ service }: { service: VaultService }) {
                 onClick={() => edit(s.event as ShownEvent)}
               >
                 <span className="event-name">{s.event.title || t('calendar.untitled')}</span>
+                <LinkMark count={s.event.links?.length ?? 0} />
               </button>
             ))}
           </div>
@@ -365,7 +395,10 @@ export function CalendarView({ service }: { service: VaultService }) {
                     data-testid="event-block"
                     onClick={() => edit(b.event as ShownEvent)}
                   >
-                    <span className="event-name">{b.event.title || t('calendar.untitled')}</span>
+                    <span className="event-name">
+                      {b.event.title || t('calendar.untitled')}
+                      <LinkMark count={b.event.links?.length ?? 0} />
+                    </span>
                     <span className="event-range">
                       {b.event.start} – {b.event.end}
                     </span>

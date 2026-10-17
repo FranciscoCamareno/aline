@@ -43,10 +43,13 @@ export function SearchPalette({ search, onClose }: Props) {
   const hits = query.trim() && result?.query === query.trim() ? result.hits : [];
 
   const open = (hit: SearchHit, elementId?: string) => {
+    const element = elementId ?? hit.elementIds[0] ?? null;
     navigate({
       documentId: hit.documentId,
-      elementId: hit.kind === 'canvas' ? (elementId ?? hit.elementIds[0] ?? null) : null,
-      text: hit.kind === 'note' || hit.kind === 'mddoc' ? query.trim() : null,
+      elementId: hit.kind === 'canvas' ? element : null,
+      // En un calendario, los «elementos» son sus eventos.
+      eventId: hit.kind === 'calendar' ? element : null,
+      text: hit.kind === 'note' || hit.kind === 'mddoc' || hit.kind === 'doc' ? query.trim() : null,
     });
     onClose();
   };

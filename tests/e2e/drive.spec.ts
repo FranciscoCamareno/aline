@@ -118,6 +118,7 @@ test('el aviso RN-12 aparece antes de todo y cancelarlo no contacta con Google (
   );
   await freshStart(page);
   await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
   await page.getByTestId('connect-drive').click();
   // Elegir modo es obligatorio: ninguna opción viene marcada y se explican ambas.
   await expect(page.getByTestId('drive-warning')).toContainText('Google y quien tenga acceso');
@@ -146,6 +147,7 @@ test('conectar Drive, sincronizar y abrir el almacén desde otro «equipo» (pla
   const noteId = await newNote(page, 'escrito en el equipo A');
 
   await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-plain').check();
   await page.getByTestId('drive-accept').click();
@@ -166,6 +168,7 @@ test('conectar Drive, sincronizar y abrir el almacén desde otro «equipo» (pla
   await clickAndWaitForReload(page, page.getByRole('button', { name: 'Crear y abrir' }));
   await expect(page.locator('.excalidraw')).toBeVisible();
   await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-plain').check();
   await page.getByTestId('drive-accept').click();
@@ -180,7 +183,7 @@ test('conectar Drive, sincronizar y abrir el almacén desde otro «equipo» (pla
   await page.getByTestId('drive-reconnect').click();
   await page.getByTestId('drive-authorize').click();
   await expect(page.getByTestId('storage-phase')).toHaveText('sincronizado');
-  await page.getByTestId('profile-close').click();
+  await page.getByTestId('settings-close').click();
   const item = page.locator(`[data-testid="library-item"][data-document-id="${noteId}"]`);
   await expect(item).toBeVisible();
   await item.getByTestId('library-title-text').click();
@@ -207,6 +210,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
 
   // Equipo A: elige cifrar, crea la contraseña y guarda el código de recuperación.
   await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-encrypted').check();
   await page.getByTestId('drive-password').fill('una contraseña larga');
@@ -233,7 +237,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await page.getByTestId('drive-authorize').click();
   await expect(page.getByTestId('storage-phase')).toHaveText('sincronizado');
 
-  await page.getByTestId('profile-close').click();
+  await page.getByTestId('settings-close').click();
 
   // Equipo B: abre el almacén cifrado; una contraseña errónea no sirve, el código sí.
   await page.getByTestId('more-menu').click();
@@ -242,6 +246,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await clickAndWaitForReload(page, page.getByRole('button', { name: 'Crear y abrir' }));
   await expect(page.locator('.excalidraw')).toBeVisible();
   await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
   await page.getByTestId('connect-drive').click();
   await page.getByTestId('drive-mode-plain').check();
   await page.getByTestId('drive-accept').click();
@@ -261,7 +266,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await page.getByTestId('drive-unlock-secret').fill(code.toLowerCase());
   await page.getByTestId('drive-unlock-submit').click();
   await expect(page.getByTestId('storage-phase')).toHaveText('sincronizado');
-  await page.getByTestId('profile-close').click();
+  await page.getByTestId('settings-close').click();
   const item = page.locator(`[data-testid="library-item"][data-document-id="${noteId}"]`);
   await item.getByTestId('library-title-text').click();
   await expect(page.locator('.cm-content')).toContainText('nota confidencial del equipo A');
@@ -278,7 +283,7 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await expect(page.getByTestId('drive-previous')).toBeHidden();
   expect(allText()).toContain('nota confidencial del equipo A'); // copia legible en Drive
   expect(drive.byProperty('mindnote', 'vault').filter((f) => !f.trashed)).toHaveLength(1);
-  await page.getByTestId('profile-close').click();
+  await page.getByTestId('settings-close').click();
   await page.getByTestId('more-menu').click();
   await page.getByTestId('open-status').click();
 

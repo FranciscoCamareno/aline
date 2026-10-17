@@ -33,7 +33,6 @@
     "kindNote": "Nota",
     "conflict": "Conflicto",
     "trash": "Enviar a la papelera",
-    "trashTitle": "Papelera ({{count}})",
     "trashEmpty": "La papelera está vacía.",
     "restore": "Restaurar",
     "purge": "Eliminar definitivamente",
@@ -56,7 +55,6 @@
     "actions": "Acciones",
     "searchPlaceholder": "Buscar archivos…",
     "noResults": "Ningún título coincide.",
-    "trashShort": "Papelera",
     "importFiles": "Importar archivos…",
     "importFolder": "Importar carpeta…",
     "sections": "Secciones",
@@ -231,7 +229,21 @@
     "pickerTitle": "Vincular elemento",
     "current": "Enlace actual:",
     "remove": "Quitar enlace",
-    "searchPlaceholder": "Buscar nota o lienzo por título",
+    "searchPlaceholder": "Buscar por título (notas, lienzos, documentos, calendarios)",
+    "selectionTitle": "Enlazar selección",
+    "linkSelection": "Enlazar selección (Ctrl+K)",
+    "back": "← Volver",
+    "searchEvents": "Buscar evento",
+    "wholeCalendar": "Calendario entero",
+    "noEvents": "Este calendario no tiene eventos.",
+    "eventsError": "No se pudo abrir el calendario.",
+    "copyLink": "Copiar enlace a la selección (Ctrl+Mayús+K)",
+    "linkedFrom": "Enlazado desde: {{sources}}",
+    "copyEventLink": "Copiar enlace al evento",
+    "copied": "Enlace copiado: «{{label}}»",
+    "useCopied": "Enlazar con lo copiado: «{{label}}» ({{title}})",
+    "anchorApproximate": "El texto enlazado cambió: se muestra el párrafo donde estaba.",
+    "anchorLost": "El fragmento enlazado ya no está en el documento.",
     "createNote": "Crear nota «{{title}}»",
     "web": "Dirección web",
     "webAction": "Enlazar web",
@@ -241,7 +253,9 @@
       "missing": "destino inexistente",
       "trashed": "destino en la papelera",
       "unresolved": "sin destino",
-      "ambiguous": "título ambiguo"
+      "ambiguous": "título ambiguo",
+      "approximate": "el texto enlazado cambió",
+      "anchor-lost": "fragmento perdido"
     }
   },
   "details": {
@@ -452,7 +466,6 @@
     }
   },
   "preferences": {
-    "title": "Preferencias",
     "followSystem": "Seguir al sistema",
     "lightSchemes": "Esquema claro",
     "darkSchemes": "Esquema oscuro",
@@ -496,6 +509,12 @@
     "week": "Semana",
     "month": "Mes",
     "newEvent": "Nuevo evento",
+    "links": "Enlaces",
+    "noLinks": "Sin enlaces.",
+    "addLink": "Añadir enlace",
+    "removeLink": "Quitar el enlace «{{label}}»",
+    "hasLinks_one": "{{count}} enlace",
+    "hasLinks_other": "{{count}} enlaces",
     "untitled": "Sin título",
     "more_one": "+{{count}} más",
     "more_other": "+{{count}} más",
@@ -545,8 +564,7 @@
   "profile": {
     "title": "Perfil",
     "lead": "Tu almacén empieza en este navegador. Aquí puedes guardarlo además en Google Drive o en una carpeta de tu equipo. Nada sale de este dispositivo hasta que lo confirmes.",
-    "unavailable": "No disponible: este almacén es temporal o la sincronización no está activa.",
-    "preferencesHint": "Idioma y esquemas de color"
+    "unavailable": "No disponible: este almacén es temporal o la sincronización no está activa."
   },
   "docs": {
     "title": "Documentos",
@@ -613,5 +631,26 @@
       "name": "Bosque",
       "note": "Verde noche"
     }
+  },
+  "settings": {
+    "title": "Configuración",
+    "sections": {
+      "storage": "Almacenamiento",
+      "appearance": "Apariencia",
+      "language": "Idioma",
+      "trash": "Papelera"
+    },
+    "menu": {
+      "settings": "Configuración",
+      "themes": "Temas",
+      "language": "Idioma",
+      "trash": "Papelera"
+    },
+    "languageHint": "Idioma de la interfaz en este navegador.",
+    "languages": {
+      "es": "Español",
+      "en": "English"
+    },
+    "trashLead": "Lo que envías a la papelera se conserva con su historial hasta que lo borres definitivamente."
   }
 }

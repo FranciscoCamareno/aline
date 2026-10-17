@@ -54,7 +54,7 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 
 ## 3 quater. Appearance and Zen mode
 
-- **Colour schemes:** in **Profile → Preferences** you choose a light scheme (Paper, White, Mist or Sage) and a dark one (Night, Black, Tide or Forest). The switch at the top right toggles between them and remembers your choice; "Follow system" uses the light one by day and the dark one by night. The language is there too.
+- **Colour schemes:** in **Profile → Themes** you choose a light scheme (Paper, White, Mist or Sage) and a dark one (Night, Black, Tide or Forest). The switch at the top right toggles between them and remembers your choice; "Follow system" uses the light one by day and the dark one by night. The language is in **Profile → Language**.
 - The canvas is painted with the scheme's background, but what is saved and exported keeps its own background.
 - **Zen mode** (right-click the canvas → "Zen mode", or Alt+Z): it also hides the sidebar and the header. The canvas tools stay visible; leaving it brings everything back.
 
@@ -82,7 +82,7 @@ Importing always creates new documents; it never overwrites existing ones.
 ## 6. History, trash and conflicts
 
 - **History:** every save is a version. From "Version history" (clock button in the top bar) you can view an earlier version, compare it and restore it. Restoring creates a new version; nothing is lost.
-- **Trash:** deleting sends a document to the trash ("Trash", at the bottom of the library), from where it can be restored. "Delete permanently" asks for confirmation.
+- **Trash:** deleting sends a document to the trash (**Profile → Trash**, at the bottom of the sidebar), from where it can be restored. "Delete permanently" asks for confirmation.
 - **Conflicts:** if two devices edit the same thing offline, both versions are kept and you are notified. You resolve it by choosing one, merging them or keeping both as separate documents.
 
 ## 7. Backups and vaults

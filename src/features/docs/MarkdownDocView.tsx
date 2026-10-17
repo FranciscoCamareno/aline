@@ -5,6 +5,7 @@ import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import {
   commonmark,
   imageSchema,
+  linkSchema,
   toggleEmphasisCommand,
   toggleStrongCommand,
   turnIntoTextCommand,
@@ -14,18 +15,36 @@ import {
   wrapInOrderedListCommand,
 } from '@milkdown/preset-commonmark';
 import { gfm, toggleStrikethroughCommand } from '@milkdown/preset-gfm';
-import { Plugin, Selection, type EditorState } from '@milkdown/prose/state';
+import { Plugin, Selection, TextSelection, type EditorState } from '@milkdown/prose/state';
 import { $prose, callCommand, getMarkdown } from '@milkdown/utils';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { downloadText } from '../../app/download.ts';
 import { logDiagnostic, registerFlusher } from '../../app/runtime.ts';
-import { useUiStore } from '../../app/store.ts';
+import { linkFocus, useUiStore } from '../../app/store.ts';
 import { useAutosave } from '../../app/useAutosave.ts';
-import { parseInternalLink } from '../../application/knowledge.ts';
+import {
+  projectionOffset,
+  quoteLabel,
+  resolveAnchor,
+  selectorForRange,
+  sourceOffset,
+} from '../../domain/anchors.ts';
+import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import { safeFilename } from '../../application/portability.ts';
+import type { KnowledgeService } from '../../application/KnowledgeService.ts';
 import type { OpenedNote, VaultService } from '../../application/VaultService.ts';
+import type { DocumentRecord } from '../../domain/revision.ts';
 import { describeError } from '../../ports/Diagnostics.ts';
+import { AnchorNotice, CopiedNotice, type AnchorStatus } from '../knowledge/anchorUi.tsx';
+import { backlinkRanges, useBacklinkAnchors } from '../knowledge/backlinkMarks.ts';
+import { pmProjection } from '../knowledge/pmProjection.ts';
+import {
+  isCopyLinkShortcut,
+  isLinkShortcut,
+  useSelectionLinker,
+} from '../knowledge/useSelectionLinker.tsx';
+import { milkdownBacklinkKey, milkdownBacklinkPlugin } from './backlinkMarksPm.ts';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
 import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
 
@@ -34,6 +53,10 @@ interface Props {
   /** Título vigente, para el nombre del archivo exportado. */
   title: string;
   service: VaultService;
+  /** Backlinks con ancla, para resaltar los fragmentos enlazados. */
+  knowledge: KnowledgeService;
+  /** FA-03a: crear la nota de destino desde «Enlazar selección». */
+  onCreateNote: (title: string) => Promise<DocumentRecord>;
 }
 
 /**
@@ -86,6 +109,26 @@ const imageWithoutFetch = imageSchema.extendSchema((prev) => (ctx) => {
         },
         `[${alt || src}]`,
       ];
+    },
+  };
+});
+
+/**
+ * Enlaces internos: el esquema de Milkdown vacía en el DOM todo `href` cuyo esquema no esté en
+ * su lista (http, mailto…), así que `aline://` (y el anterior `mindnote://`) quedaban sin
+ * destino, ni para seguirlos ni al copiar y pegar dentro del editor. Solo los enlaces internos
+ * válidos conservan su `href`; el resto sigue pasando por el saneado de Milkdown.
+ */
+const linkKeepingInternal = linkSchema.extendSchema((prev) => (ctx) => {
+  const base = prev(ctx);
+  return {
+    ...base,
+    toDOM: (mark, inline) => {
+      const spec = base.toDOM!(mark, inline);
+      const href: unknown = mark.attrs['href'];
+      if (typeof href !== 'string' || !parseInternalLink(href) || !Array.isArray(spec)) return spec;
+      const [tag, attrs, ...rest] = spec as unknown as [string, Record<string, unknown>];
+      return [tag, { ...attrs, href }, ...rest];
     },
   };
 });
@@ -144,7 +187,7 @@ function formatState(state: EditorState): FormatState {
  * Markdown, con el mismo formato que una nota (frontmatter, copia legible, edición externa).
  * Se abre y guarda con openNote/saveNote; cada cambio es una revisión nueva.
  */
-export function MarkdownDocView({ documentId, title, service }: Props) {
+export function MarkdownDocView({ documentId, title, service, knowledge, onCreateNote }: Props) {
   const { t } = useTranslation();
   const [opened, setOpened] = useState<OpenedNote | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -173,6 +216,8 @@ export function MarkdownDocView({ documentId, title, service }: Props) {
       opened={opened}
       title={title}
       service={service}
+      knowledge={knowledge}
+      onCreateNote={onCreateNote}
       placeholder={t('docs.placeholder')}
     />
   );
@@ -182,11 +227,15 @@ function MarkdownDocEditor({
   opened,
   title,
   service,
+  knowledge,
+  onCreateNote,
   placeholder,
 }: {
   opened: OpenedNote;
   title: string;
   service: VaultService;
+  knowledge: KnowledgeService;
+  onCreateNote: (title: string) => Promise<DocumentRecord>;
   placeholder: string;
 }) {
   const { t } = useTranslation();
@@ -203,6 +252,13 @@ function MarkdownDocEditor({
 
   const [createError, setCreateError] = useState<string | null>(null);
   const autosave = useAutosave<string>((markdown) => service.saveNote(opened.session, markdown));
+  /** «Enlazar selección» vigente, para el atajo del editor (que se crea una sola vez). */
+  const openLinkRef = useRef<() => void>(() => undefined);
+  const copyLinkRef = useRef<() => void>(() => undefined);
+  const focus = useUiStore((s) => s.focus);
+  const copyToStore = useUiStore((s) => s.copyLink);
+  /** El fragmento del último enlace seguido cambió o ya no está. */
+  const [anchorStatus, setAnchorStatus] = useState<AnchorStatus>(null);
   const autosaveRef = useRef(autosave);
   useEffect(() => {
     autosaveRef.current = autosave;
@@ -240,6 +296,25 @@ function MarkdownDocEditor({
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onPageHide);
     const unregister = registerFlusher(syncNow);
+    // Ctrl/⌘+K: enlazar la selección (la función vigente está en openLinkRef).
+    const linkShortcut = $prose(
+      () =>
+        new Plugin({
+          props: {
+            handleKeyDown: (_view, event) => {
+              const action = isCopyLinkShortcut(event)
+                ? copyLinkRef.current
+                : isLinkShortcut(event)
+                  ? openLinkRef.current
+                  : null;
+              if (!action) return false;
+              event.preventDefault();
+              action();
+              return true;
+            },
+          },
+        }),
+    );
     const markDirty = $prose(
       () =>
         new Plugin({
@@ -276,11 +351,14 @@ function MarkdownDocEditor({
       })
       .use(commonmark)
       .use(imageWithoutFetch)
+      .use(linkKeepingInternal)
       .use(gfm)
       .use(history)
       .use(listener)
       .use(clipboard)
       .use(markDirty)
+      .use(linkShortcut)
+      .use($prose(() => milkdownBacklinkPlugin()))
       .create()
       .then((created) => {
         if (destroyed) {
@@ -339,7 +417,7 @@ function MarkdownDocEditor({
     const target = parseInternalLink(href);
     if (target) {
       if (documents.some((d) => d.id === target.documentId && !d.deleted)) {
-        navigate({ documentId: target.documentId, elementId: target.elementId });
+        navigate(linkFocus(target));
       }
       return;
     }
@@ -359,6 +437,98 @@ function MarkdownDocEditor({
   };
   const disabled = readOnly !== null || !editor;
 
+  /** «Enlazar selección»: marca `link` sobre la selección, o el título enlazado si no hay texto. */
+  const linker = useSelectionLinker({
+    sourceId: documentId,
+    service,
+    onCreateNote,
+    apply: (range, pick) => {
+      if (!editor) return;
+      const view = editor.ctx.get(editorViewCtx);
+      const { state } = view;
+      const type = state.schema.marks['link'];
+      if (!type) return;
+      const size = state.doc.content.size;
+      const from = Math.min(range.from, size);
+      const to = Math.min(range.to, size);
+      const mark = type.create({ href: pick.url });
+      const tr = state.tr;
+      if (state.doc.textBetween(from, to).trim()) tr.removeMark(from, to, type).addMark(from, to, mark);
+      else tr.insert(to, state.schema.text(pick.title, [mark]));
+      view.dispatch(tr.scrollIntoView());
+      view.focus();
+    },
+    onClose: () => editor?.ctx.get(editorViewCtx).focus(),
+  });
+  const openLink = () => {
+    if (!editor || readOnly !== null) return;
+    const { from, to } = editor.ctx.get(editorViewCtx).state.selection;
+    linker.open({ from, to });
+  };
+  /** «Copiar enlace a la selección»: cita del texto seleccionado (o del bloque del cursor). */
+  const copyLink = () => {
+    if (!editor) return;
+    const { state } = editor.ctx.get(editorViewCtx);
+    const projection = pmProjection(state.doc);
+    const selector = selectorForRange(
+      projection,
+      projectionOffset(projection, state.selection.from, 'start'),
+      projectionOffset(projection, state.selection.to, 'end'),
+    );
+    copyToStore({
+      url: internalLink(documentId, selector ? { text: selector } : null),
+      label: selector ? quoteLabel(selector) : title,
+      documentTitle: title,
+    });
+  };
+  useEffect(() => {
+    openLinkRef.current = openLink;
+    copyLinkRef.current = copyLink;
+  });
+
+  // Fragmentos de este documento con backlinks: se resaltan en el editor (fase 7.F).
+  const backlinkAnchors = useBacklinkAnchors(knowledge, documentId);
+  useEffect(() => {
+    if (!editor) return;
+    const view = editor.ctx.get(editorViewCtx);
+    const ranges = backlinkRanges(pmProjection(view.state.doc), backlinkAnchors).map((r) => ({
+      ...r,
+      title: t('links.linkedFrom', { sources: r.sources.join(', ') }),
+    }));
+    view.dispatch(
+      view.state.tr.setMeta(milkdownBacklinkKey, ranges).setMeta('addToHistory', false),
+    );
+  }, [editor, backlinkAnchors, t]);
+
+  // Seguir un enlace con ancla a este documento: seleccionar y mostrar el fragmento citado.
+  useEffect(() => {
+    if (!editor || focus?.documentId !== documentId) return;
+    const target = useUiStore.getState().consumeFocus(documentId);
+    // Un texto buscado (búsqueda, backlinks) se busca como una cita, sin aviso si no está.
+    const searched = target?.text?.trim();
+    const quote =
+      target?.quote ?? (searched ? { prefix: '', start: searched, end: '', suffix: '' } : null);
+    if (!target || (!quote && !target.blockId)) return;
+    const fromLink = Boolean(target.quote || target.blockId);
+    const view = editor.ctx.get(editorViewCtx);
+    const projection = pmProjection(view.state.doc);
+    const result = resolveAnchor(projection, {
+      blockId: target.blockId ?? null,
+      text: quote,
+    });
+    // Sincroniza con una orden externa (la navegación), una vez por enlace seguido.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAnchorStatus(!fromLink || !result || result.status === 'found' ? null : result.status);
+    if (!result || result.status === 'lost') return;
+    const from = sourceOffset(projection, result.from, 'start');
+    const to = sourceOffset(projection, result.to, 'end');
+    if (from === null || to === null) return;
+    view.dispatch(
+      view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)).scrollIntoView(),
+    );
+    view.focus();
+  }, [editor, focus, documentId]);
+
   return (
     <div className={`doc-view md-doc layout-${layout}`} data-testid="md-doc-view">
       {readOnly && (
@@ -376,6 +546,7 @@ function MarkdownDocEditor({
           {t('notes.invalidFrontmatter')}
         </p>
       )}
+      <AnchorNotice status={anchorStatus} />
       <div className="doc-toolbar" role="toolbar" aria-label={t('docs.toolbar')}>
         <div className="doc-toolbar-group">
           <ToolIconButton
@@ -448,6 +619,23 @@ function MarkdownDocEditor({
             onRun={() => run(wrapInBlockquoteCommand.key)}
           />
         </div>
+        <div className="doc-toolbar-group">
+          <ToolIconButton
+            id="link"
+            icon="enlace"
+            label={t('links.linkSelection')}
+            disabled={disabled}
+            onRun={openLink}
+          />
+          <ToolIconButton
+            id="copy-link"
+            icon="duplicar"
+            label={t('links.copyLink')}
+            disabled={!editor}
+            onRun={copyLink}
+          />
+          <CopiedNotice />
+        </div>
         <span className="doc-toolbar-spacer" />
         <span className="doc-format-badge" title={t('docs.markdownHint')}>
           Markdown
@@ -459,6 +647,7 @@ function MarkdownDocEditor({
           <div ref={host} className="md-doc-host" />
         </div>
       </div>
+      {linker.picker}
     </div>
   );
 }

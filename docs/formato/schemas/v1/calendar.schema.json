@@ -73,6 +73,28 @@
               "durazno",
               "lavanda"
             ]
+          },
+          "links": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "maxLength": 4000
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "url",
+                "label"
+              ],
+              "additionalProperties": {}
+            }
           }
         },
         "required": [

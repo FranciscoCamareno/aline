@@ -32,6 +32,12 @@ export function isContentKind(kind: RevisionKind): kind is DocumentKind {
   return kind === 'note' || kind === 'canvas';
 }
 
+/** Lo que puede enlazarse y ser destino de un enlace (diseño §10): todo menos carpetas y plantillas. */
+export type LinkableKind = 'note' | 'canvas' | 'doc' | 'mddoc' | 'calendar';
+export function isLinkableKind(kind: RevisionKind): kind is LinkableKind {
+  return isContentKind(kind) || isDocsKind(kind) || kind === 'calendar';
+}
+
 /** Documentos de la sección «Documentos»: con formato (Tiptap) o Markdown (Milkdown). */
 export type DocsKind = 'doc' | 'mddoc';
 export function isDocsKind(kind: RevisionKind): kind is DocsKind {
@@ -58,9 +64,9 @@ export function isMarkdownKind(kind: RevisionKind): kind is 'note' | 'mddoc' {
   return kind === 'note' || kind === 'mddoc';
 }
 
-/** Lo que entra en el índice de enlaces y búsqueda: notas, lienzos y documentos Markdown. */
-export function isIndexedKind(kind: RevisionKind): kind is 'note' | 'canvas' | 'mddoc' {
-  return isContentKind(kind) || kind === 'mddoc';
+/** Lo que entra en el índice de enlaces y búsqueda: todo lo enlazable (desde la fase 7.E). */
+export function isIndexedKind(kind: RevisionKind): kind is LinkableKind {
+  return isLinkableKind(kind);
 }
 
 export const revisionOperationSchema = z.enum(['save', 'delete', 'restore', 'resolve', 'external']);

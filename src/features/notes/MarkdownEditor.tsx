@@ -1,11 +1,13 @@
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { markdown } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec, type Extension } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import { basicSetup, EditorView } from 'codemirror';
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { internalLink } from '../../application/knowledge.ts';
+import type { LinkableKind } from '../../domain/revision.ts';
+import { isCopyLinkShortcut, isLinkShortcut } from '../knowledge/useSelectionLinker.tsx';
+import { markdownLink, markdownLinkChange } from './markdownLinks.ts';
 
 /**
  * Resaltado del Markdown con los tokens de la interfaz (docs/DESIGN.md §2): sigue al tema sin
@@ -28,7 +30,7 @@ const markdownHighlight = HighlightStyle.define([
 export interface LinkTarget {
   id: string;
   title: string;
-  kind: 'note' | 'canvas';
+  kind: LinkableKind;
 }
 
 interface Props {
@@ -44,12 +46,26 @@ interface Props {
   createLabel?: (title: string) => string;
   kindLabel?: (kind: LinkTarget['kind']) => string;
   onReady?: (view: EditorView) => void;
+  /** Ctrl/⌘+K: enlazar la selección. */
+  onLinkCommand?: () => void;
+  /** Ctrl/⌘+Mayús+K: copiar un enlace a la selección. */
+  onCopyLinkCommand?: () => void;
+  /** Extensiones adicionales; solo se leen al montar. */
+  extensions?: Extension[];
 }
 
-/** Texto de enlace Markdown seguro: se escapan los corchetes y la barra invertida. */
-export function markdownLink(target: Pick<LinkTarget, 'id' | 'title'>): string {
-  const text = target.title.replace(/[\\[\]]/g, (c) => `\\${c}`);
-  return `[${text}](${internalLink(target.id)})`;
+/** Aplica `markdownLinkChange` en el editor y deja el cursor tras el enlace. */
+export function linkSelection(
+  view: EditorView,
+  range: { from: number; to: number },
+  pick: { url: string; title: string },
+): void {
+  const change = markdownLinkChange(view.state.doc.toString(), range, pick);
+  view.dispatch({
+    changes: change,
+    selection: { anchor: change.from + change.insert.length },
+  });
+  view.focus();
 }
 
 /**
@@ -67,11 +83,32 @@ export function MarkdownEditor({
   createLabel,
   kindLabel,
   onReady,
+  onLinkCommand,
+  onCopyLinkCommand,
+  extensions = [],
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const latest = useRef({ onChange, findTargets, onCreateTarget, createLabel, kindLabel, onReady });
+  const latest = useRef({
+    onChange,
+    findTargets,
+    onCreateTarget,
+    createLabel,
+    kindLabel,
+    onReady,
+    onLinkCommand,
+    onCopyLinkCommand,
+  });
   useLayoutEffect(() => {
-    latest.current = { onChange, findTargets, onCreateTarget, createLabel, kindLabel, onReady };
+    latest.current = {
+      onChange,
+      findTargets,
+      onCreateTarget,
+      createLabel,
+      kindLabel,
+      onReady,
+      onLinkCommand,
+      onCopyLinkCommand,
+    };
   });
 
   useEffect(() => {
@@ -126,6 +163,24 @@ export function MarkdownEditor({
         EditorState.readOnly.of(readOnly),
         EditorView.editable.of(!readOnly),
         EditorState.languageData.of(() => [{ autocomplete: wikiCompletion }]),
+        Prec.highest(
+          EditorView.domEventHandlers({
+            keydown: (event) => {
+              const copy = latest.current.onCopyLinkCommand;
+              if (copy && isCopyLinkShortcut(event)) {
+                event.preventDefault();
+                copy();
+                return true;
+              }
+              const link = latest.current.onLinkCommand;
+              if (!link || readOnly || !isLinkShortcut(event)) return false;
+              event.preventDefault();
+              link();
+              return true;
+            },
+          }),
+        ),
+        ...extensions,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) latest.current.onChange(update.state.doc.toString());
         }),

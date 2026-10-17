@@ -4,17 +4,13 @@ import { VaultDatabase } from '../../src/adapters/indexeddb/db.ts';
 import { DexieKnowledgeStore } from '../../src/adapters/indexeddb/DexieKnowledgeStore.ts';
 import { DexieVaultRepository } from '../../src/adapters/indexeddb/DexieVaultRepository.ts';
 import { currentBindings, deriveExtensions } from '../../src/adapters/excalidraw/sidecar.ts';
-import {
-  extractCanvas,
-  extractNote,
-  internalLink,
-  parseInternalLink,
-} from '../../src/application/knowledge.ts';
+import { extractCanvas, extractNote } from '../../src/application/knowledge.ts';
 import { KnowledgeService } from '../../src/application/KnowledgeService.ts';
 import { normalizeForSearch, SearchIndex } from '../../src/application/searchIndex.ts';
 import { VaultService } from '../../src/application/VaultService.ts';
 import { effectiveFolder, RECOVERY_FOLDER, wouldCreateCycle } from '../../src/domain/folders.ts';
 import { parseNoteMarkdown } from '../../src/domain/frontmatter.ts';
+import { internalLink, parseInternalLink } from '../../src/domain/links.ts';
 import { emptyCanvasExtensions } from '../../src/domain/sidecar.ts';
 import type { SearchDocument } from '../../src/ports/KnowledgeStore.ts';
 import { utf8Decode } from '../../src/shared/hash.ts';
@@ -80,22 +76,30 @@ describe('extracción de enlaces y texto (§10)', () => {
   const target = '8b53f815-9d38-4313-a1ad-cb690fabf23c';
 
   it('reconoce enlaces internos y [[Título]] fuera del código', () => {
-    const body = `Ver [el mapa](${internalLink(target, 'nodo 1')}) y [[Ideas]].\n\n\`[[no]]\`\n\n\`\`\`\n[[tampoco]]\n\`\`\`\n[web](https://example.com)`;
+    const body = `Ver [el mapa](${internalLink(target, { elementId: 'nodo 1' })}) y [[Ideas]].\n\n\`[[no]]\`\n\n\`\`\`\n[[tampoco]]\n\`\`\`\n[web](https://example.com)`;
     const { links, text } = extractNote(body);
     expect(links).toEqual([
       {
         sourceElementId: null,
         targetDocumentId: target,
         targetElementId: 'nodo 1',
+        targetBlockId: null,
+        targetEventId: null,
+        targetQuote: null,
         kind: 'markdown',
         label: 'el mapa',
+        context: 'Ver el mapa y [[Ideas]].',
       },
       {
         sourceElementId: null,
         targetDocumentId: null,
         targetElementId: null,
+        targetBlockId: null,
+        targetEventId: null,
+        targetQuote: null,
         kind: 'wiki',
         label: 'Ideas',
+        context: 'Ver el mapa y [[Ideas]].',
       },
     ]);
     expect(text).toContain('tampoco'); // el código sí se indexa para buscar
@@ -121,8 +125,12 @@ describe('extracción de enlaces y texto (§10)', () => {
         sourceElementId: 'R',
         targetDocumentId: target,
         targetElementId: null,
+        targetBlockId: null,
+        targetEventId: null,
+        targetQuote: null,
         kind: 'element',
         label: 'Raíz del mapa',
+        context: 'Raíz del mapa',
       },
     ]);
   });

@@ -1,3 +1,4 @@
+import { resolveAnchor } from '../domain/anchors.ts';
 import { parseNoteMarkdown } from '../domain/frontmatter.ts';
 import type { Uuid } from '../domain/ids.ts';
 import {
@@ -9,9 +10,32 @@ import {
 import { utf8Decode } from '../shared/hash.ts';
 import type { KnowledgeStore, SearchDocument, StoredLink } from '../ports/KnowledgeStore.ts';
 import type { VaultReader, VaultRepository } from '../ports/VaultRepository.ts';
-import { extractCanvas, extractNote, titleKey } from './knowledge.ts';
+import {
+  extractCalendar,
+  extractCanvas,
+  extractNote,
+  extractRichDoc,
+  titleKey,
+  type Extracted,
+} from './knowledge.ts';
 
-export type LinkStatus = 'ok' | 'missing' | 'trashed' | 'unresolved' | 'ambiguous';
+/**
+ * `approximate`: el bloque enlazado sigue, pero la cita ya no está en él ni en el documento.
+ * `anchor-lost`: ni la cita ni el bloque (o el evento) siguen en el destino.
+ */
+export type LinkStatus =
+  'ok' | 'approximate' | 'anchor-lost' | 'missing' | 'trashed' | 'unresolved' | 'ambiguous';
+
+/** El enlace llega a su documento (aunque su fragmento haya cambiado o ya no esté). */
+export function reachesTarget(status: LinkStatus): boolean {
+  return status === 'ok' || status === 'approximate' || status === 'anchor-lost';
+}
+
+/**
+ * Formato de los índices derivados. 2 (16/10/2026): documentos con formato y calendarios,
+ * anclas de destino y contexto en los enlaces, texto mostrado en notas y documentos.
+ */
+export const KNOWLEDGE_INDEX_FORMAT = 2;
 
 export interface ResolvedLink {
   link: StoredLink;
@@ -37,8 +61,7 @@ export class KnowledgeService {
   /** Vuelve a derivar un documento. Devuelve su documento de búsqueda, o null si se retiró. */
   async reindex(documentId: Uuid): Promise<SearchDocument | null> {
     const doc = await this.repo.getDocument(documentId);
-    // Notas, lienzos y documentos Markdown tienen enlaces y texto indexable (no carpetas,
-    // calendarios, plantillas ni documentos con formato, por ahora).
+    // Todo lo enlazable tiene enlaces y texto indexable (no carpetas ni plantillas).
     if (!doc || doc.deleted || !isIndexedKind(doc.kind)) {
       await this.store.removeDerived(documentId);
       return null;
@@ -50,9 +73,12 @@ export class KnowledgeService {
       const blob = await this.repo.getBlob(hash);
       return blob ? utf8Decode(blob.bytes) : null;
     };
-    const extracted = isMarkdownKind(doc.kind)
-      ? extractNote(parseNoteMarkdown((await text(head.contentRefs.body)) ?? '').body)
-      : extractCanvas(await text(head.contentRefs.body), await text(head.contentRefs.extensions));
+    const body = await text(head.contentRefs.body);
+    let extracted: Extracted;
+    if (isMarkdownKind(doc.kind)) extracted = extractNote(parseNoteMarkdown(body ?? '').body);
+    else if (doc.kind === 'doc') extracted = extractRichDoc(body);
+    else if (doc.kind === 'calendar') extracted = extractCalendar(body);
+    else extracted = extractCanvas(body, await text(head.contentRefs.extensions));
     const search: SearchDocument = {
       documentId,
       revisionId: head.id,
@@ -61,6 +87,7 @@ export class KnowledgeService {
       tags: doc.tags,
       text: extracted.text,
       elements: extracted.elements,
+      ...(extracted.blocks ? { blocks: extracted.blocks } : {}),
     };
     await this.store.replaceDerived(
       documentId,
@@ -80,6 +107,8 @@ export class KnowledgeService {
     const documents = (await this.repo.listDocuments()).filter(
       (d) => !d.deleted && isIndexedKind(d.kind),
     );
+    // Índices de un formato anterior: se reconstruyen todos.
+    const current = (await this.store.indexFormat()) === KNOWLEDGE_INDEX_FORMAT;
     const indexed = await this.store.indexedRevisions();
     const stale: Uuid[] = [];
     for (const doc of documents) {
@@ -88,7 +117,7 @@ export class KnowledgeService {
         doc.headRevisionIds.length === 1
           ? doc.headRevisionIds[0]
           : (await this.newestHead(doc.id))?.id;
-      if (newestId && indexed.get(doc.id) !== newestId) stale.push(doc.id);
+      if (newestId && (!current || indexed.get(doc.id) !== newestId)) stale.push(doc.id);
     }
     const active = new Set(documents.map((d) => d.id));
     const removed = [...indexed.keys()].filter((id) => !active.has(id));
@@ -99,6 +128,7 @@ export class KnowledgeService {
       if (doc) changed.push(doc);
       onProgress?.(i + 1, stale.length);
     }
+    if (!current) await this.store.setIndexFormat(KNOWLEDGE_INDEX_FORMAT);
     return { changed, removed };
   }
 
@@ -112,9 +142,11 @@ export class KnowledgeService {
     const direct = await this.store.linksTo(documentId);
     const wiki = (await this.store.allLinks()).filter((l) => l.kind === 'wiki');
     const result: ResolvedLink[] = [];
-    for (const link of [...direct, ...wiki]) {
-      const resolved = this.resolve(link, documents);
-      if (resolved.target?.id !== documentId || resolved.status !== 'ok') continue;
+    const all = [...direct, ...wiki];
+    const anchors = await this.anchorTargets(all);
+    for (const link of all) {
+      const resolved = this.resolve(link, documents, anchors);
+      if (resolved.target?.id !== documentId || !reachesTarget(resolved.status)) continue;
       if (!resolved.source || resolved.source.deleted) continue; // origen en papelera (§10)
       result.push(resolved);
     }
@@ -123,15 +155,24 @@ export class KnowledgeService {
 
   async outgoing(documentId: Uuid): Promise<ResolvedLink[]> {
     const documents = await this.documentsById();
-    return (await this.store.linksFrom(documentId)).map((l) => this.resolve(l, documents));
+    const links = await this.store.linksFrom(documentId);
+    const anchors = await this.anchorTargets(links);
+    return links.map((l) => this.resolve(l, documents, anchors));
   }
 
-  /** Enlaces rotos (RF-24, CA-08): destino inexistente, en la papelera, sin resolver o ambiguo. */
+  /**
+   * Enlaces rotos (RF-24, CA-08): destino inexistente, en la papelera, sin resolver o ambiguo, o
+   * con el fragmento perdido. Un ancla aproximada (sigue el bloque) no cuenta como rota.
+   */
   async brokenLinks(): Promise<ResolvedLink[]> {
     const documents = await this.documentsById();
-    return (await this.store.allLinks())
-      .map((l) => this.resolve(l, documents))
-      .filter((r) => r.status !== 'ok' && r.source && !r.source.deleted);
+    const links = await this.store.allLinks();
+    const anchors = await this.anchorTargets(links);
+    return links
+      .map((l) => this.resolve(l, documents, anchors))
+      .filter(
+        (r) => r.status !== 'ok' && r.status !== 'approximate' && r.source && !r.source.deleted,
+      );
   }
 
   /** Resolución de un [[Título]]: único destino activo, o null/ambiguo (nunca se elige en silencio). */
@@ -147,7 +188,41 @@ export class KnowledgeService {
     return matches[0] ?? null;
   }
 
-  private resolve(link: StoredLink, documents: Map<Uuid, DocumentRecord>): ResolvedLink {
+  /** Documentos de búsqueda de los destinos con ancla: su texto indexado resuelve las citas. */
+  private async anchorTargets(links: StoredLink[]): Promise<Map<Uuid, SearchDocument>> {
+    const ids = new Set(
+      links
+        .filter((l) => l.targetDocumentId && (l.targetBlockId || l.targetQuote || l.targetEventId))
+        .map((l) => l.targetDocumentId!),
+    );
+    const found = new Map<Uuid, SearchDocument>();
+    for (const id of ids) {
+      const doc = await this.store.getSearchDocument(id);
+      if (doc) found.set(id, doc);
+    }
+    return found;
+  }
+
+  /** Estado del ancla de un enlace cuyo documento existe. */
+  private anchorStatus(link: StoredLink, target: SearchDocument | undefined): LinkStatus {
+    // Destino aún sin indexar: no se puede saber; se da por bueno.
+    if (!target) return 'ok';
+    if (link.targetEventId && !target.elements.some((e) => e.elementId === link.targetEventId)) {
+      return 'anchor-lost';
+    }
+    const result = resolveAnchor(
+      { text: target.text, blocks: target.blocks ?? [], segments: [] },
+      { blockId: link.targetBlockId ?? null, text: link.targetQuote ?? null },
+    );
+    if (!result || result.status === 'found') return 'ok';
+    return result.status === 'approximate' ? 'approximate' : 'anchor-lost';
+  }
+
+  private resolve(
+    link: StoredLink,
+    documents: Map<Uuid, DocumentRecord>,
+    anchors: Map<Uuid, SearchDocument> = new Map(),
+  ): ResolvedLink {
     const source = documents.get(link.sourceDocumentId) ?? null;
     if (link.kind === 'wiki') {
       const target = this.resolveTitle(link.label, documents.values());
@@ -155,7 +230,11 @@ export class KnowledgeService {
       return { link, source, target, status: target ? 'ok' : 'unresolved' };
     }
     const target = link.targetDocumentId ? (documents.get(link.targetDocumentId) ?? null) : null;
-    const status: LinkStatus = !target ? 'missing' : target.deleted ? 'trashed' : 'ok';
+    const status: LinkStatus = !target
+      ? 'missing'
+      : target.deleted
+        ? 'trashed'
+        : this.anchorStatus(link, anchors.get(target.id));
     return { link, source, target, status };
   }
 

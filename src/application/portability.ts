@@ -1,7 +1,7 @@
 import type { DocumentRecord } from '../domain/revision.ts';
 import { effectiveFolder, RECOVERY_FOLDER } from '../domain/folders.ts';
 import { parseNoteMarkdown } from '../domain/frontmatter.ts';
-import { parseInternalLink } from './knowledge.ts';
+import { parseInternalLink } from '../domain/links.ts';
 
 /**
  * Reglas de exportación e importación (diseño §12.1; RF-33, RF-34, RF-35, RF-45, FA-05a).

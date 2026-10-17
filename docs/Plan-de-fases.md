@@ -330,6 +330,19 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **Fuera de alcance:** RF-38, cuentas, plugins, IA y OCR. El empaquetado de escritorio queda diferido (DP-02).
 
+### Fase 7 — Todo enlazable y anclas de texto (decidida el 16/10/2026)
+
+Cambio de arquitectura registrado en la cabecera del diseño; sintaxis en `docs/formato-almacen.md` §2.3.1. Opción elegida por el propietario: **híbrida**, cita textual en todos los documentos más id de bloque en los documentos con formato. El id de bloque es una extensión propia que lo asigna solo al crear el ancla: la extensión UniqueID de Tiptap (MIT, verificada) asigna ids a todos los bloques al abrir, lo que crearía revisiones y conflictos sin editar.
+
+| # | Tarea | Notas | Estado |
+| --- | --- | --- | --- |
+| 7.A | Modelo de ancla: esquema `aline://` (lee `mindnote://`), fragmentos `b=`, `ev=`, `t=` (`domain/links.ts`); texto mostrado y resolución de citas (`domain/anchors.ts`, `markdownProjection`, `richDocProjection`); registro del cambio | Sin interfaz | Hecha (16/10/2026) |
+| 7.B | Origen desde cualquier selección: «Enlazar selección» (botón y Ctrl/⌘+K) en notas (CodeMirror), documentos Markdown (Milkdown) y documentos con formato (Tiptap admite `aline:`); selector y `[[` con todos los tipos (`isLinkableKind`) y eventos; seguir un enlace a un evento abre su día y el evento | El esquema de enlaces de Milkdown vaciaba en el DOM los `href` internos: se conservan los válidos (`linkKeepingInternal`) | Hecha (16/10/2026) |
+| 7.C | Anclas de destino: «Copiar enlace a la selección» (botón y Ctrl/⌘+Mayús+K en los tres editores, «Copiar enlace al evento» en su diálogo; portapapeles interno, nunca el del sistema) y «Enlazar con lo copiado» en el selector; extensión propia de anclas de Tiptap (`features/docs/blockAnchors.ts`: asignación al copiar, sin duplicados al partir o pegar, `anchor: null` fuera del JSON guardado); `FocusTarget` con bloque y cita, y navegación al fragmento en notas, documentos Markdown y con formato; aviso si el ancla es aproximada o se perdió | Un enlace desde un lienzo conserva el ancla en `element.link`, pero el sidecar aún no (7.E) | Hecha (16/10/2026) |
+| 7.D | Calendario enlazable: `links` opcional en el evento (internos o http/https, máximo 50; se conserva en versiones anteriores, `EventDialog` guarda con `...event`), sección «Enlaces» en el diálogo (añadir con el selector, quitar, seguir guardando antes lo cambiado), marca con el número de enlaces en la vista, prueba de `mergeCalendars` | Sin subir `schemaVersion`; esquema JSON regenerado | Hecha (16/10/2026) |
+| 7.E | Índice: documentos con formato (texto mostrado y bloques anclados) y calendarios (eventos como elementos buscables) indexados; `StoredLink` con ancla de destino y contexto de origen; estados `approximate` y `anchor-lost` (solo el segundo cuenta como roto), calculados al consultar contra el texto indexado del destino, así que no hace falta reindexar a quien enlaza; ancla del lienzo en el sidecar (`fragment`); backlinks con contexto y apertura en el sitio del enlace; la búsqueda abre eventos | `KNOWLEDGE_INDEX_FORMAT` 2: se reconstruye el índice una vez | Hecha (16/10/2026) |
+| 7.F | Resaltar en el destino los fragmentos con backlinks: subrayado de puntos con «Enlazado desde: …» al pasar, en notas (CodeMirror), documentos Markdown (Milkdown) y con formato (Tiptap); decoraciones que siguen al texto al editar y se recalculan con el índice; solo las anclas encontradas tal cual | Nueva dependencia directa `@codemirror/view` (ya estaba como transitiva, MIT) | Hecha (16/10/2026) |
+
 ## 4. Dependencias y ruta crítica
 
 ```text

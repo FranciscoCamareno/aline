@@ -44,7 +44,8 @@ const schema: SanitizeSchema = {
   ...defaultSchema,
   protocols: {
     ...defaultSchema.protocols,
-    href: [...(defaultSchema.protocols?.['href'] ?? []), 'mindnote'],
+    // `aline:` y el esquema anterior `mindnote:` (enlaces internos, domain/links.ts).
+    href: [...(defaultSchema.protocols?.['href'] ?? []), 'aline', 'mindnote'],
   },
   attributes: {
     ...defaultSchema.attributes,

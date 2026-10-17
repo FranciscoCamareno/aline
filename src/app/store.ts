@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { InternalTarget, TextSelector } from '../domain/links.ts';
 import { isContentKind, isDocsKind, type DocumentRecord } from '../domain/revision.ts';
 import type { PersistenceStatus } from '../ports/RemoteStore.ts';
 import type { RemoteStatus } from './syncRuntime.ts';
@@ -16,6 +17,34 @@ export interface FocusTarget {
   elementId?: string | null;
   /** Notas: texto a seleccionar. */
   text?: string | null;
+  /** Calendarios: evento que se abre. */
+  eventId?: string | null;
+  /** Documentos con formato: bloque anclado (`#b=`). */
+  blockId?: string | null;
+  /** Notas y documentos: cita textual que se selecciona (`#t=`). */
+  quote?: TextSelector | null;
+}
+
+/** Enlace copiado con «Copiar enlace a la selección», para «Enlazar con lo copiado». */
+export interface CopiedLink {
+  url: string;
+  /** Texto del enlace si se inserta sin selección: la cita o el título del evento. */
+  label: string;
+  /** Título del documento de destino, para reconocerlo en el selector. */
+  documentTitle: string;
+  /** Distingue dos copias iguales (el aviso de «copiado» se muestra en cada una). */
+  seq: number;
+}
+
+/** Destino de la navegación al seguir un enlace interno. */
+export function linkFocus(target: InternalTarget): FocusTarget {
+  return {
+    documentId: target.documentId,
+    elementId: target.elementId,
+    eventId: target.eventId,
+    blockId: target.blockId,
+    quote: target.text,
+  };
 }
 
 /**
@@ -76,6 +105,9 @@ interface UiState {
   setActive: (id: string | null) => void;
   /** Abre un documento y, si se indica, centra un elemento o selecciona un texto. */
   navigate: (target: FocusTarget) => void;
+  /** Portapapeles interno de enlaces: solo en memoria, nunca en el del sistema. */
+  copiedLink: CopiedLink | null;
+  copyLink: (link: Omit<CopiedLink, 'seq'>) => void;
   consumeFocus: (documentId: string) => FocusTarget | null;
   setSaveStatus: (status: UiSaveStatus, errorCode?: string | null) => void;
   toggleLibrary: () => void;
@@ -104,6 +136,9 @@ export const useUiStore = create<UiState>()((set, get) => ({
   errorCode: null,
   libraryOpen: true,
   focus: null,
+  copiedLink: null,
+  copyLink: (link) =>
+    set((state) => ({ copiedLink: { ...link, seq: (state.copiedLink?.seq ?? 0) + 1 } })),
   knowledgeVersion: 0,
   indexing: null,
   remote: null,
@@ -128,12 +163,17 @@ export const useUiStore = create<UiState>()((set, get) => ({
     set((state) =>
       activeId ? { activeId, section: sectionFor(state.documents, activeId) } : { activeId },
     ),
+  // Un calendario no se «abre»: se va a la sección del calendario y la vista aplica el foco.
   navigate: (focus) =>
-    set((state) => ({
-      activeId: focus.documentId,
-      focus,
-      section: sectionFor(state.documents, focus.documentId),
-    })),
+    set((state) =>
+      state.documents.find((d) => d.id === focus.documentId)?.kind === 'calendar'
+        ? { focus, section: 'calendar' }
+        : {
+            activeId: focus.documentId,
+            focus,
+            section: sectionFor(state.documents, focus.documentId),
+          },
+    ),
   consumeFocus: (documentId) => {
     const focus = get().focus;
     if (focus?.documentId !== documentId) return null;

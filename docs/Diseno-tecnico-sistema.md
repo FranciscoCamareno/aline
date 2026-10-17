@@ -12,6 +12,8 @@ Versión 1.2 | 14 de octubre de 2026 | Base: documento de requerimientos de 34 p
 
 > **Cambio registrado (16/10/2026): esquemas de color y excepción al filtro del lienzo.** La interfaz ofrece 8 esquemas de color en 4 pares claro ↔ oscuro (`docs/DESIGN.md` §2.5, `brand/themes/`). El usuario elige uno claro y uno oscuro en Preferencias; el interruptor de la cabecera alterna entre ellos y «Seguir al sistema» usa el que toque. Es una preferencia de este navegador (`localStorage`), no contenido ni sincronización. El fondo del lienzo se **pinta** con el del esquema cuando la escena tiene un fondo de esquema (el papel de los lienzos nuevos), pero **no se guarda**: escena, firma de contenido, revisiones y exportaciones conservan el fondo guardado. **Excepción a la regla de no sobrescribir `--theme-filter`:** solo en el esquema Negro, el lienzo invierte al 100 % para llegar a negro puro, a petición del propietario; las exportaciones oscuras siguen usando el filtro del motor (fondo `#121212`). El modelo de datos y el formato no cambian.
 
+> **Cambio de arquitectura registrado (16/10/2026): todo enlazable y anclas de texto.** A petición del propietario, cualquier documento (notas, lienzos, documentos con formato y Markdown, calendarios y sus eventos) podrá enlazar y ser enlazado, y un enlace podrá salir de un fragmento de texto seleccionado y apuntar a un fragmento concreto de otro documento. Se eligió la opción híbrida: el destino se describe con una **cita textual** (texto exacto con contexto, la gramática de los fragmentos de texto de los navegadores), que no modifica el documento de destino y vale también para las copias `readable/` editadas fuera; en los documentos con formato se añade un **id de bloque** (`attrs.anchor`), escrito solo al crear el ancla para que abrir un documento no genere revisiones ni conflictos (por eso no se usa la extensión UniqueID de Tiptap, MIT, que asigna ids a todos los bloques al abrir). Las citas se toman sobre el texto mostrado, no el fuente. El esquema de los enlaces pasa de `mindnote://` (nombre provisional) a `aline://`; los enlaces anteriores se siguen leyendo y nunca se reescriben. Sintaxis completa en `docs/formato-almacen.md` §2.3.1; el formato sigue siendo la v1. Afecta a §10 y a §2.3.1, §2.5, §2.5.1 y §2.5.3 del formato. Plan por fases en `docs/Plan-de-fases.md` (fase 7). Desde la fase 7.E, los documentos con formato y los calendarios entran en el índice de enlaces y búsqueda (revisa lo dicho en el cambio del 15/10/2026), y el sidecar del lienzo guarda el ancla de sus enlaces (`fragment`, opcional). **Compatibilidad hacia atrás:** una versión anterior de la aplicación muestra como rotos los enlaces `aline://`; hay que actualizar todos los dispositivos.
+
 Este diseño convierte los requisitos en decisiones de implementación. Es una especificación para comenzar a construir; no certifica que las pruebas de hardware, rendimiento o integración ya hayan pasado. Se distinguen los requisitos heredados, las decisiones técnicas propuestas y las verificaciones pendientes.
 
 ## 1. Decisión de arquitectura
@@ -194,10 +196,10 @@ tags: [idea, sistema]
 
 # Ideas de arquitectura
 
-Ver [Mapa principal](mindnote://document/UUID-del-mapa).
+Ver [Mapa principal](aline://document/UUID-del-mapa).
 ```
 
-mindnote es un nombre provisional del esquema interno. El renderer lo intercepta; no requiere instalar un protocolo del sistema operativo. El frontmatter viaja en importaciones y exportaciones. El contenido original se preserva como bytes UTF-8; el hash se calcula sobre bytes exactos, no sobre texto normalizado.
+El esquema interno es `aline://` (hasta el 16/10/2026, el nombre provisional `mindnote://`, que se sigue leyendo; formato §2.3.1). El renderer lo intercepta; no requiere instalar un protocolo del sistema operativo. El frontmatter viaja en importaciones y exportaciones. El contenido original se preserva como bytes UTF-8; el hash se calcula sobre bytes exactos, no sobre texto normalizado.
 
 El usuario escribe [[ y selecciona una sugerencia por título; al confirmar se inserta un enlace Markdown con UUID. Un [[Título]] importado se resuelve solo cuando hay un único destino, o queda pendiente. Nunca escoger silenciosamente entre nombres duplicados.
 
@@ -350,7 +352,7 @@ Los elementos generados deben distinguirse de los elementos libres y reconstruir
 
 CodeMirror conserva Markdown fuente y una vista previa presenta el formato básico requerido. El parser extrae enlaces, etiquetas y texto indexable; no emplear expresiones regulares como único método para analizar Markdown con código, escapes o enlaces anidados.
 
-Los backlinks se calculan a partir de las revisiones activas, excluyendo origen en papelera. Cada enlace almacena localmente documento y elemento/rango de origen. Dos cabezas en conflicto se indexan con su revisionId y una marca visible para que la búsqueda no esconda ninguna versión divergente. Restaurar recalcula referencias.
+Los backlinks se calculan a partir de las revisiones activas, excluyendo origen en papelera. Cada enlace almacena localmente documento y elemento/rango de origen. El destino puede ser un documento, un elemento de lienzo, un evento o un fragmento de texto descrito por una cita y, en documentos con formato, por un id de bloque (formato §2.3.1); una cita que ya no aparece deja el enlace con el ancla perdida, visible como enlace roto. Dos cabezas en conflicto se indexan con su revisionId y una marca visible para que la búsqueda no esconda ninguna versión divergente. Restaurar recalcula referencias.
 
 Un enlace interno inválido aparece roto. Los enlaces web se validan sintácticamente pero no se comprueba su disponibilidad automáticamente, porque provocaría conexiones no configuradas. No obtener títulos ni vistas previas de páginas remotas sin una acción explícita.
 

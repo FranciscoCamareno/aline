@@ -93,18 +93,18 @@ test('claro: selección agua profunda y fondo papel; oscuro: agua pre-invertida 
   await follow.check();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('mindnote.theme'))).toBeNull();
-  await page.getByTestId('preferences-close').click();
+  await page.getByTestId('settings-close').click();
   // Tocar el interruptor desactiva «Seguir al sistema».
   await toggle.click();
   await openPreferences(page);
   await expect(follow).not.toBeChecked();
 });
 
-/** Preferencias es un modal que se abre desde Perfil. */
+/** Temas: Perfil (menú del pie) → Temas abre Configuración en Apariencia. */
 async function openPreferences(page: Page) {
   await page.getByTestId('open-profile').click();
-  await page.getByTestId('open-preferences').click();
-  await expect(page.getByTestId('preferences')).toBeVisible();
+  await page.getByTestId('settings-appearance').click();
+  await expect(page.getByTestId('settings-section-appearance')).toBeVisible();
 }
 
 /** Revisiones guardadas del lienzo inicial (el esquema no debe crear ninguna). */
@@ -137,7 +137,7 @@ test('esquemas: uno claro y uno oscuro elegidos, el lienzo los sigue sin guardar
   await page.getByTestId('scheme-bruma').click();
   await page.getByTestId('scheme-marea').click();
   await expect(page.locator('html')).toHaveAttribute('data-scheme', 'bruma');
-  await page.getByTestId('preferences-close').click();
+  await page.getByTestId('settings-close').click();
   // Paneles y lienzo con el esquema: el fondo pintado es el de Bruma.
   expect(
     await page.evaluate(() =>
@@ -169,7 +169,7 @@ test('Negro: el lienzo invierte al 100 % y llega a negro puro', async ({ page })
   await freshStart(page);
   await openPreferences(page);
   await page.getByTestId('scheme-negro').click();
-  await page.getByTestId('preferences-close').click();
+  await page.getByTestId('settings-close').click();
   await expect(page.locator('html')).toHaveAttribute('data-scheme', 'negro');
   await expect
     .poll(async () => distance(await screenPixel(page), '#000000'))

@@ -81,6 +81,7 @@ async function newNote(page: Page, text: string): Promise<string> {
 
 async function connectFolder(page: Page) {
   await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
   await page.getByTestId('connect-folder').click();
 }
 
@@ -118,8 +119,8 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
   await expect(page.getByTestId('folder-mismatch')).toBeVisible();
   await clickAndWaitForReload(page, page.getByTestId('open-folder-vault'));
   await expect(page.getByTestId('remote-status')).toContainText('Carpeta al día');
-  if (await page.getByTestId('profile-close').isVisible()) {
-    await page.getByTestId('profile-close').click();
+  if (await page.getByTestId('settings-close').isVisible()) {
+    await page.getByTestId('settings-close').click();
   }
   const item = page.locator(`[data-testid="library-item"][data-document-id="${noteId}"]`);
   await expect(item).toBeVisible();
@@ -136,7 +137,7 @@ test('conectar una carpeta y sincronizar dos dispositivos a través de ella (RF-
   await page.getByTestId('remote-status').click();
   await page.getByTestId('folder-sync').click();
   await expect(page.getByTestId('storage-phase')).toHaveText('al día');
-  await page.getByTestId('profile-close').click();
+  await page.getByTestId('settings-close').click();
 
   // De vuelta en el «equipo A»: al abrir se sincroniza y aparece el cambio.
   await page.getByTestId('more-menu').click();
@@ -202,7 +203,7 @@ test('una edición hecha fuera de la aplicación se importa como versión nueva 
   await page.getByTestId('folder-sync').click();
   // Sin cambios pendientes en el editor, la nota abierta se recarga sola con la versión nueva.
   await expect(page.locator('.cm-content')).toContainText('editado con un editor externo');
-  await page.getByTestId('profile-close').click();
+  await page.getByTestId('settings-close').click();
   await page.getByTestId('open-history').click();
   await expect(page.getByTestId('history-item').first()).toContainText('Cambio externo');
 });

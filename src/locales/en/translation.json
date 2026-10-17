@@ -33,7 +33,6 @@
     "kindNote": "Note",
     "conflict": "Conflict",
     "trash": "Move to trash",
-    "trashTitle": "Trash ({{count}})",
     "trashEmpty": "The trash is empty.",
     "restore": "Restore",
     "purge": "Delete permanently",
@@ -56,7 +55,6 @@
     "actions": "Actions",
     "searchPlaceholder": "Search files…",
     "noResults": "No title matches.",
-    "trashShort": "Trash",
     "importFiles": "Import files…",
     "importFolder": "Import folder…",
     "sections": "Sections",
@@ -231,7 +229,21 @@
     "pickerTitle": "Link element",
     "current": "Current link:",
     "remove": "Remove link",
-    "searchPlaceholder": "Find a note or canvas by title",
+    "searchPlaceholder": "Find by title (notes, canvases, documents, calendars)",
+    "selectionTitle": "Link selection",
+    "linkSelection": "Link selection (Ctrl+K)",
+    "back": "← Back",
+    "searchEvents": "Find an event",
+    "wholeCalendar": "Whole calendar",
+    "noEvents": "This calendar has no events.",
+    "eventsError": "The calendar could not be opened.",
+    "copyLink": "Copy link to selection (Ctrl+Shift+K)",
+    "linkedFrom": "Linked from: {{sources}}",
+    "copyEventLink": "Copy link to event",
+    "copied": "Link copied: “{{label}}”",
+    "useCopied": "Link to copied: “{{label}}” ({{title}})",
+    "anchorApproximate": "The linked text changed: showing the paragraph where it was.",
+    "anchorLost": "The linked passage is no longer in the document.",
     "createNote": "Create note “{{title}}”",
     "web": "Web address",
     "webAction": "Link web",
@@ -241,7 +253,9 @@
       "missing": "missing target",
       "trashed": "target in trash",
       "unresolved": "no target",
-      "ambiguous": "ambiguous title"
+      "ambiguous": "ambiguous title",
+      "approximate": "the linked text changed",
+      "anchor-lost": "passage lost"
     }
   },
   "details": {
@@ -452,7 +466,6 @@
     }
   },
   "preferences": {
-    "title": "Preferences",
     "followSystem": "Follow the system",
     "lightSchemes": "Light scheme",
     "darkSchemes": "Dark scheme",
@@ -496,6 +509,12 @@
     "week": "Week",
     "month": "Month",
     "newEvent": "New event",
+    "links": "Links",
+    "noLinks": "No links.",
+    "addLink": "Add link",
+    "removeLink": "Remove link “{{label}}”",
+    "hasLinks_one": "{{count}} link",
+    "hasLinks_other": "{{count}} links",
     "untitled": "Untitled",
     "more_one": "+{{count}} more",
     "more_other": "+{{count}} more",
@@ -545,8 +564,7 @@
   "profile": {
     "title": "Profile",
     "lead": "Your vault starts in this browser. Here you can also keep it in Google Drive or in a folder on your computer. Nothing leaves this device until you confirm.",
-    "unavailable": "Not available: this vault is temporary or sync is not active.",
-    "preferencesHint": "Language and colour schemes"
+    "unavailable": "Not available: this vault is temporary or sync is not active."
   },
   "docs": {
     "title": "Documents",
@@ -613,5 +631,26 @@
       "name": "Forest",
       "note": "Night green"
     }
+  },
+  "settings": {
+    "title": "Settings",
+    "sections": {
+      "storage": "Storage",
+      "appearance": "Appearance",
+      "language": "Language",
+      "trash": "Trash"
+    },
+    "menu": {
+      "settings": "Settings",
+      "themes": "Themes",
+      "language": "Language",
+      "trash": "Trash"
+    },
+    "languageHint": "Interface language in this browser.",
+    "languages": {
+      "es": "Español",
+      "en": "English"
+    },
+    "trashLead": "What you send to the trash keeps its history until you delete it permanently."
   }
 }

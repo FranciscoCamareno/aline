@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ProjectionBuilder, type TextProjection } from './anchors.ts';
 import type { ReadOnlyReason } from './compat.ts';
 
 /**
@@ -92,4 +93,43 @@ export function richDocText(doc: RichDocData): string {
   walk(doc.content);
   if (line) lines.push(line);
   return lines.join('\n');
+}
+
+/** Nodos hoja (tamaño 1 en ProseMirror); el resto abre y cierra, aunque esté vacío. */
+const LEAF_TYPES = new Set(['hardBreak', 'horizontalRule', 'image']);
+/** Bloques de texto: lo que se puede anclar con `attrs.anchor` (formato §2.5.3). */
+const TEXTBLOCK_TYPES = new Set(['paragraph', 'heading', 'codeBlock']);
+
+/**
+ * Texto mostrado del documento para las anclas de texto (`domain/anchors.ts`): un bloque por
+ * párrafo, título o bloque de código, con su ancla si la tiene, y la posición de ProseMirror de
+ * cada tramo de texto (el contenido de `doc` empieza en la posición 0).
+ */
+export function richDocProjection(doc: RichDocData): TextProjection {
+  const builder = new ProjectionBuilder();
+  let pos = 0;
+  const walk = (node: RichNode): void => {
+    if (node.type === 'text') {
+      const text = node.text ?? '';
+      builder.append(text, pos, pos + text.length);
+      pos += text.length;
+      return;
+    }
+    if (LEAF_TYPES.has(node.type)) {
+      if (node.type === 'hardBreak') builder.append(' ', pos, pos + 1);
+      pos += 1;
+      return;
+    }
+    const textblock = TEXTBLOCK_TYPES.has(node.type);
+    if (textblock) {
+      const anchor = node.attrs?.['anchor'];
+      builder.startBlock(typeof anchor === 'string' && anchor ? anchor : null);
+    }
+    pos += 1;
+    for (const child of node.content ?? []) walk(child);
+    pos += 1;
+    if (textblock) builder.endBlock();
+  };
+  for (const child of doc.content.content ?? []) walk(child);
+  return builder.build();
 }

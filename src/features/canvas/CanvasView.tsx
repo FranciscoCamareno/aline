@@ -21,11 +21,11 @@ import { excalidrawLangCode } from '../../app/i18n.ts';
 import { logDiagnostic } from '../../app/runtime.ts';
 import { describeError } from '../../ports/Diagnostics.ts';
 import { displayedCanvasBackground } from '../../app/schemes.ts';
-import { useUiStore } from '../../app/store.ts';
+import { linkFocus, useUiStore } from '../../app/store.ts';
 import { activeScheme, useTheme } from '../../app/theme.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
 import { useAutosave } from '../../app/useAutosave.ts';
-import { internalLink, parseInternalLink } from '../../application/knowledge.ts';
+import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import type { EditSession, VaultService } from '../../application/VaultService.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
 import type { CanvasExtensions } from '../../domain/sidecar.ts';
@@ -433,9 +433,11 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       )}
       {pickerOpen && selection && (
         <LinkPicker
+          title={t('links.pickerTitle')}
           sourceId={documentId}
+          service={service}
           currentLink={selection.link ?? null}
-          onPick={(doc) => setElementLink(internalLink(doc.id))}
+          onPick={(pick) => setElementLink(pick.url)}
           onCreateNote={(title) => {
             void onCreateNote(title).then((doc) => setElementLink(internalLink(doc.id)));
           }}
@@ -450,7 +452,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           const target = element.link ? parseInternalLink(element.link) : null;
           if (!target) return; // Enlace web: lo abre el motor en otra pestaña.
           event.preventDefault();
-          navigate({ documentId: target.documentId, elementId: target.elementId });
+          navigate(linkFocus(target));
         }}
         initialData={loaded.scene}
         // Sin herramienta web ni incrustaciones (diseño §13): un elemento incrustable que llegue

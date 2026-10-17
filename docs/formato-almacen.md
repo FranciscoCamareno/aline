@@ -80,12 +80,34 @@ tags: ["idea", "sistema"]
 ---
 # Ideas de arquitectura
 
-Ver [Mapa principal](mindnote://document/UUID-del-mapa).
+Ver [Mapa principal](aline://document/UUID-del-mapa).
 ```
 
 - **Frontmatter.** Es un subconjunto de YAML: claves simples, valores de texto escritos como cadenas JSON y listas en línea. Las claves desconocidas se conservan textualmente al volver a guardar.
-- **Enlaces internos.** Usan `mindnote://document/<UUID>[#elemento]` y apuntan siempre al identificador, nunca al título (RN-01, RN-02).
+- **Enlaces internos.** Usan `aline://document/<UUID>[#fragmento]` (§2.3.1) y apuntan siempre al identificador, nunca al título (RN-01, RN-02).
 - **Títulos.** Cambiar el título crea una revisión nueva con el frontmatter actualizado; el cuerpo no cambia.
+
+### 2.3.1 Enlaces internos y anclas
+
+Desde el 16/10/2026. Un enlace interno es `aline://document/<UUID>[#fragmento]`. Lo usan los enlaces Markdown de notas y documentos Markdown, el `link` de los elementos del lienzo (y su sidecar, §2.5) y, más adelante, los documentos con formato y los eventos del calendario. La aplicación lo intercepta; no es un protocolo del sistema operativo.
+
+- **Esquema anterior.** Los enlaces escritos antes de esa fecha usan `mindnote://document/<UUID>[#elemento]`. Se leen igual para siempre y nunca se reescriben; los enlaces nuevos se escriben con `aline://`. Una versión anterior de la aplicación no reconoce `aline://` y lo muestra como enlace roto: hay que actualizar todos los dispositivos.
+- **Fragmento sin `=`.** Es el id de un elemento de lienzo, codificado con `encodeURIComponent` (la forma original, que se sigue escribiendo para los elementos).
+- **Fragmento con claves.** `clave=valor` separados por `&`; las claves desconocidas o mal formadas se ignoran y el enlace apunta entonces al documento entero.
+
+| Clave | Destino |
+| --- | --- |
+| `b=<id>` | Bloque de un documento con formato: el bloque cuyo `attrs.anchor` vale `<id>` (§2.5.3). Id de 1 a 64 caracteres `[A-Za-z0-9_-]` |
+| `ev=<UUID>` | Evento de un calendario, por su `id` (§2.5.1) |
+| `t=[prefijo-,]inicio[,fin][,-sufijo]` | Cita textual, con la gramática de los fragmentos de texto de los navegadores. Sin `fin`, `inicio` es la cita completa; con `fin`, la cita va de `inicio` a `fin`, ambos incluidos (citas largas). `prefijo` y `sufijo` son contexto para desempatar entre apariciones. Cada parte se codifica con `encodeURIComponent` y además `-`, `(` y `)` (`%2D`, `%28`, `%29`) |
+
+- **Texto de las citas.** Es el texto mostrado, no el fuente: en Markdown, sin marcas (el texto de los nodos del AST); en un documento con formato, el texto de sus nodos. La comparación ignora mayúsculas, diacríticos y diferencias de espacios.
+- **Combinación.** `b=…&t=…` busca la cita dentro del bloque y, si ya no está ahí, en todo el documento; si tampoco, ofrece el bloque entero. Una cita que ya no aparece deja el enlace con el ancla perdida: abre el documento con un aviso.
+- **Sin cambios en el destino.** Crear un enlace con cita no modifica el documento de destino. Solo el id de bloque (`attrs.anchor`) se escribe en el destino, y únicamente al crear el ancla.
+
+```markdown
+Ver [la decisión](aline://document/UUID-del-doc#b=k3Xa9&t=el%20equipo-,usar%20IndexedDB,-como%20almac%C3%A9n).
+```
 
 ### 2.4 Escenas (`objects/<hash>.excalidraw`)
 
@@ -99,7 +121,7 @@ Es la autoridad para enlaces de elementos, ramas, notas incrustadas y conectores
 
 La aplicación lo vuelve a derivar en cada guardado del lienzo:
 
-- `elementLinks` recoge los enlaces `mindnote://document/<UUID>[#elemento]` de los elementos vivos.
+- `elementLinks` recoge los enlaces internos (§2.3.1) de los elementos vivos: documento y, si lo hay, elemento de destino. Desde el 16/10/2026, `fragment` (opcional) guarda el ancla que no es un elemento (bloque, evento o cita) como el fragmento del enlace sin `#`. Un sidecar escrito por una versión anterior no lo tiene; el índice toma entonces el ancla del `link` del elemento.
 - `danglingConnectorIds` recoge las flechas que perdieron un extremo porque su nodo se borró.
 - `mindMap` y `noteEmbeds` se conservan tal cual.
 
@@ -123,6 +145,8 @@ Desde el 14/10/2026. Un documento `calendar` por calendario; su cuerpo guarda el
 - Las fechas (`AAAA-MM-DD`) y horas (`HH:MM`) son **locales y sin zona horaria**, como en una agenda de papel.
 - `endDate` es el último día, incluido. `start` y `end` son ambos `null` en un evento de todo el día.
 - `color` es uno de los colores de las notas adhesivas: `mantequilla`, `agua`, `rosa`, `brote`, `durazno` o `lavanda`.
+- El `id` del evento es el destino de los enlaces `#ev=<UUID>` (§2.3.1).
+- `links` (opcional, desde el 16/10/2026): hasta 50 enlaces del evento, cada uno `{ "url", "label" }`. `url` es un enlace interno (§2.3.1, también el esquema anterior `mindnote://`) o una dirección `http`/`https`; cualquier otro esquema hace inválido el calendario (solo lectura). Un evento sin enlaces no lleva la clave. Las versiones anteriores de la aplicación conservan la clave al editar el evento. En la fusión de conflictos, el evento entero (con sus enlaces) es el de la versión más reciente.
 - Las claves desconocidas se conservan. Un `schemaVersion` posterior se abre en solo lectura.
 
 ### 2.5.2 Plantillas del lienzo (`objects/<hash>.excalidraw`)
@@ -153,6 +177,7 @@ Desde el 15/10/2026. Un documento `doc` guarda el documento entero en JSON y cad
 
 - El esquema solo fija la forma general del árbol; qué nodos y marcas existen lo decide el editor. Un árbol que el editor no acepta se abre en solo lectura y no se reescribe.
 - Nodos actuales: `paragraph`, `heading` (niveles 1–3), `bulletList`, `orderedList`, `listItem`, `blockquote`, `codeBlock`, `horizontalRule`, `hardBreak` y `text`; marcas `bold`, `italic`, `underline`, `strike`, `code` y `link`; atributo `textAlign` en párrafos y títulos.
+- **Anclas de bloque.** Desde el 16/10/2026, un `paragraph`, `heading` o `codeBlock` puede llevar `attrs.anchor` (1 a 64 caracteres `[A-Za-z0-9_-]`, único dentro del documento): es el destino de los enlaces `#b=<id>` (§2.3.1). Solo se añade al crear un ancla a ese bloque, nunca al abrir el documento. Si al partir o pegar un bloque el id se repite, la aplicación lo conserva en el primero y lo retira de los demás.
 - No hay copia legible en `readable/`: se edita solo dentro de la aplicación. Va en las carpetas de «Documentos» (`docfolder`) o en la raíz.
 - Las claves desconocidas se conservan. Un `schemaVersion` posterior se abre en solo lectura.
 

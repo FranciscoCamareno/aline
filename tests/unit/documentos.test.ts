@@ -143,11 +143,52 @@ describe('documentos en el almacén (cambio de arquitectura 15/10/2026)', () => 
     expect(richDocText((await service.openRichDoc(duplicate!.id)).doc)).toBeTruthy();
   });
 
-  it('el índice de enlaces y búsqueda lo ignora (por ahora)', async () => {
+  it('entra en el índice: texto mostrado, bloques anclados y enlaces (fase 7.E)', async () => {
     const { db, repo, service } = await freshService();
+    const target = await service.createDocument('note', 'Plan');
     const doc = await service.createRichDoc('Guion');
+    const opened = await service.openRichDoc(doc.id);
+    const link = `aline://document/${target.id}#t=la%20escena`;
+    await service.saveRichDoc(
+      opened.session,
+      {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            attrs: { anchor: 'p1' },
+            content: [
+              { type: 'text', text: 'Ver ' },
+              { type: 'text', text: 'la ', marks: [{ type: 'link', attrs: { href: link } }] },
+              {
+                type: 'text',
+                text: 'escena',
+                marks: [{ type: 'bold' }, { type: 'link', attrs: { href: link } }],
+              },
+              {
+                type: 'text',
+                text: ' y la web',
+                marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
+              },
+            ],
+          },
+        ],
+      },
+      opened.doc,
+    );
     const knowledge = new KnowledgeService(repo, new DexieKnowledgeStore(db));
-    expect(await knowledge.reindex(doc.id)).toBeNull();
+    const search = await knowledge.reindex(doc.id);
+    expect(search?.text).toBe('Ver la escena y la web');
+    expect(search?.blocks).toEqual([{ id: 'p1', from: 0, to: 22 }]);
+    const backlinks = await knowledge.backlinks(target.id);
+    expect(backlinks).toHaveLength(1);
+    expect(backlinks[0]?.link).toMatchObject({
+      sourceElementId: 'p1',
+      kind: 'rich',
+      label: 'la escena',
+      targetQuote: { start: 'la escena' },
+      context: 'Ver la escena y la web',
+    });
   });
 });
 

@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore, type FocusTarget } from '../../app/store.ts';
 import { Icon, KindIcon } from '../../app/ui/Icon.tsx';
-import type { KnowledgeService, ResolvedLink } from '../../application/KnowledgeService.ts';
+import {
+  reachesTarget,
+  type KnowledgeService,
+  type ResolvedLink,
+} from '../../application/KnowledgeService.ts';
+import { quoteLabel } from '../../domain/anchors.ts';
 import { folderPath, wouldCreateCycle } from '../../domain/folders.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
 import { tagKey } from '../../domain/tags.ts';
@@ -55,15 +60,37 @@ export function DetailsPanel({ document, knowledge, onMove, onSetTags, onClose }
     .map((f) => ({ id: f.id, label: [...folderPath(f.folderId, folders), f.title].join(' / ') }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
+  /** Abrir el origen de un enlace en el sitio del enlace (elemento, evento o texto). */
   const goToSource = (r: ResolvedLink) => {
     if (!r.source) return;
+    const { kind } = r.source;
+    const { sourceElementId, label } = r.link;
     const focus: FocusTarget = {
       documentId: r.source.id,
-      elementId: r.link.sourceElementId,
-      text: r.source.kind === 'note' ? r.link.label : null,
+      elementId: kind === 'canvas' ? sourceElementId : null,
+      eventId: kind === 'calendar' ? sourceElementId : null,
+      text: kind === 'note' || kind === 'mddoc' || kind === 'doc' ? label : null,
     };
     navigate(focus);
   };
+
+  /** Abrir el destino de un enlace saliente en su fragmento. */
+  const goToTarget = (r: ResolvedLink) => {
+    if (!r.target) return;
+    navigate({
+      documentId: r.target.id,
+      elementId: r.link.targetElementId,
+      eventId: r.link.targetEventId ?? null,
+      blockId: r.link.targetBlockId ?? null,
+      quote: r.link.targetQuote ?? null,
+    });
+  };
+
+  /** Fragmento enlazado del destino: la cita, o nada si el enlace va al documento entero. */
+  const anchorOf = (r: ResolvedLink) =>
+    r.link.targetQuote ? (
+      <span className="muted small link-anchor"> → «{quoteLabel(r.link.targetQuote)}»</span>
+    ) : null;
 
   const addTag = () => {
     const tag = newTag.trim();
@@ -152,6 +179,13 @@ export function DetailsPanel({ document, knowledge, onMove, onSetTags, onClose }
                   <button type="button" className="link-button" onClick={() => goToSource(r)}>
                     {r.source && <KindIcon kind={r.source.kind} />} {r.source?.title}
                     {r.link.label ? <span className="muted"> — {r.link.label}</span> : null}
+                    {anchorOf(r)}
+                    {status(r)}
+                    {r.link.context && r.link.context !== r.link.label ? (
+                      <span className="muted small link-context" data-testid="backlink-context">
+                        {r.link.context}
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               ))}
@@ -163,15 +197,11 @@ export function DetailsPanel({ document, knowledge, onMove, onSetTags, onClose }
             <ul className="link-list-panel" data-testid="outgoing-links">
               {outgoing.map((r, i) => (
                 <li key={i} className={r.status === 'ok' ? '' : 'broken'}>
-                  {r.target && r.status === 'ok' ? (
-                    <button
-                      type="button"
-                      className="link-button"
-                      onClick={() =>
-                        navigate({ documentId: r.target!.id, elementId: r.link.targetElementId })
-                      }
-                    >
+                  {r.target && reachesTarget(r.status) ? (
+                    <button type="button" className="link-button" onClick={() => goToTarget(r)}>
                       <Icon name="enlace" size={16} /> {r.target.title}
+                      {anchorOf(r)}
+                      {status(r)}
                     </button>
                   ) : (
                     <span>

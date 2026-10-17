@@ -15,8 +15,7 @@ import { CanvasView } from '../features/canvas/CanvasView.tsx';
 import { LibrarySidebar } from '../features/library/LibrarySidebar.tsx';
 import { RenameableTitle } from '../features/library/RenameableTitle.tsx';
 import { NoteView } from '../features/notes/NoteView.tsx';
-import { PreferencesDialog } from '../features/status/PreferencesDialog.tsx';
-import { ProfileDialog } from '../features/status/ProfileDialog.tsx';
+import { SettingsDialog, type SettingsSection } from '../features/status/SettingsDialog.tsx';
 import { QUOTA_WARNING_RATIO, quotaRatio, StatusPanel } from '../features/status/StatusPanel.tsx';
 import { describeError } from '../ports/Diagnostics.ts';
 import { runEmergencyExport } from './emergency.ts';
@@ -65,7 +64,7 @@ export function App() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [panel, setPanel] = useState<
-    'status' | 'profile' | 'preferences' | 'history' | 'conflict' | 'details' | null
+    'status' | 'settings' | 'history' | 'conflict' | 'details' | null
   >(null);
   const [searchOpen, setSearchOpen] = useState(false);
   /** Índices de enlaces y búsqueda del almacén abierto. */
@@ -98,6 +97,12 @@ export function App() {
     sendViewCommand,
   } = useUiStore.getState();
   const statusOpen = panel === 'status';
+  /** Sección abierta de Configuración (menú de Perfil o estado remoto de la cabecera). */
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('storage');
+  const openSettings = useCallback((section: SettingsSection) => {
+    setSettingsSection(section);
+    setPanel('settings');
+  }, []);
   const reloadView = useCallback(
     (documentId: string) => setReloads((r) => ({ ...r, [documentId]: (r[documentId] ?? 0) + 1 })),
     [],
@@ -490,7 +495,7 @@ export function App() {
           <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
             {t(`status.${saveStatus}`)}
           </span>
-          <RemoteChip onOpen={() => setPanel('profile')} />
+          <RemoteChip onOpen={() => openSettings('storage')} />
           <span className="topbar-spacer" />
           {active && (
             <button
@@ -637,11 +642,10 @@ export function App() {
           onCreateFolder={createFolder}
           onRename={renameDocument}
           onTrash={trashDocument}
-          onRestoreFromTrash={restoreFromTrash}
-          onPurge={purgeDocument}
           onImport={importDocuments}
           onMove={moveDocument}
-          onOpenProfile={() => setPanel((p) => (p === 'profile' ? null : 'profile'))}
+          onOpenSettings={openSettings}
+          onOpenStatus={() => setPanel('status')}
           onCreateDoc={createDocsDocument}
           onCreateCalendar={(title) =>
             useCalendarStore
@@ -721,6 +725,8 @@ export function App() {
             documentId={active.id}
             title={active.title}
             service={services.service}
+            knowledge={services.knowledge}
+            onCreateNote={createNoteForLink}
           />
         )}
         {active?.kind === 'doc' && (
@@ -728,6 +734,8 @@ export function App() {
             key={`${active.id}:${reloads[active.id] ?? 0}`}
             documentId={active.id}
             service={services.service}
+            knowledge={services.knowledge}
+            onCreateNote={createNoteForLink}
           />
         )}
         {!active && !inCalendar && !inDocs && (
@@ -761,6 +769,7 @@ export function App() {
             documentId={active.id}
             title={active.title}
             service={services.service}
+            knowledge={services.knowledge}
             onCreateNote={createNoteForLink}
           />
         )}
@@ -768,16 +777,18 @@ export function App() {
       {statusOpen && (
         <StatusPanel services={services} onClose={() => setPanel(null)} onError={reportError} />
       )}
-      {panel === 'profile' && (
-        <ProfileDialog
+      {panel === 'settings' && (
+        <SettingsDialog
+          section={settingsSection}
+          onSection={setSettingsSection}
           services={services}
           sync={sync}
+          onRestoreFromTrash={restoreFromTrash}
+          onPurge={purgeDocument}
           onClose={() => setPanel(null)}
           onError={reportError}
-          onOpenPreferences={() => setPanel('preferences')}
         />
       )}
-      {panel === 'preferences' && <PreferencesDialog onClose={() => setPanel(null)} />}
       {panel === 'history' && active && (
         <HistoryPanel
           key={active.id}

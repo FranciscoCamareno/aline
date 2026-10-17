@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { linkFocus, useUiStore } from '../../app/store.ts';
+import { Icon } from '../../app/ui/Icon.tsx';
 import type { VaultService } from '../../application/VaultService.ts';
 import {
   EVENT_COLORS,
+  MAX_EVENT_LINKS,
   minutesOf,
   validateEvent,
   type CalendarEvent,
   type EventColor,
+  type EventLink,
 } from '../../domain/calendar.ts';
 import { newId } from '../../domain/ids.ts';
+import { internalLink, parseInternalLink } from '../../domain/links.ts';
+import { CopiedNotice } from '../knowledge/anchorUi.tsx';
+import { LinkPicker } from '../knowledge/LinkPicker.tsx';
 import { useCalendarStore } from './calendarStore.ts';
 
 const plusHour = (time: string) => {
@@ -47,6 +54,9 @@ export function EventDialog({ service }: { service: VaultService }) {
       : (draft?.calendarId ?? firstCalendar?.document.id ?? '');
 
   const [event, setEvent] = useState<CalendarEvent>(initial);
+  /** Cómo era al abrir: seguir un enlace guarda antes lo cambiado. */
+  const [pristine] = useState(() => JSON.stringify(initial));
+  const [picking, setPicking] = useState(false);
   const [calendarId, setCalendarId] = useState(initialCalendar);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,8 +79,8 @@ export function EventDialog({ service }: { service: VaultService }) {
     });
   };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  /** Valida y guarda el evento. False si no es válido o no se pudo guardar. */
+  const save = async (): Promise<boolean> => {
     let checked: CalendarEvent;
     try {
       checked = validateEvent({ ...event, title: event.title.trim() });
@@ -80,9 +90,9 @@ export function EventDialog({ service }: { service: VaultService }) {
           ? t('calendar.badTime')
           : t('calendar.badRange'),
       );
-      return;
+      return false;
     }
-    if (!calendarId) return;
+    if (!calendarId) return false;
     setBusy(true);
     try {
       if (editing && draft.calendarId !== calendarId) {
@@ -96,10 +106,40 @@ export function EventDialog({ service }: { service: VaultService }) {
           editing ? events.map((x) => (x.id === checked.id ? checked : x)) : [...events, checked],
         );
       }
-      closeDraft();
+      return true;
     } catch {
       setBusy(false);
+      return false;
     }
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (await save()) closeDraft();
+  };
+
+  const links = event.links ?? [];
+  const addLink = (link: EventLink) => {
+    setPicking(false);
+    if (links.some((l) => l.url === link.url)) return;
+    update({ links: [...links, link].slice(0, MAX_EVENT_LINKS) });
+  };
+
+  /**
+   * Seguir un enlace del evento: lo cambiado en el diálogo se guarda antes (si no es válido, no
+   * se sale). Una web se abre en el acto, dentro del gesto del usuario.
+   */
+  const follow = async (link: EventLink) => {
+    const target = parseInternalLink(link.url);
+    if (!target) window.open(link.url, '_blank', 'noopener,noreferrer');
+    const changed = JSON.stringify(event) !== pristine || calendarId !== initialCalendar;
+    if (changed && !readOnly && !(await save())) return;
+    if (!target) {
+      if (changed) closeDraft();
+      return;
+    }
+    closeDraft();
+    useUiStore.getState().navigate(linkFocus(target));
   };
 
   const remove = async () => {
@@ -238,6 +278,49 @@ export function EventDialog({ service }: { service: VaultService }) {
             ))}
           </fieldset>
         </fieldset>
+        <section className="event-links" aria-labelledby="event-links-title">
+          <h3 id="event-links-title" className="event-links-title">
+            {t('calendar.links')}
+          </h3>
+          {links.length === 0 && <p className="muted small">{t('calendar.noLinks')}</p>}
+          <ul className="event-link-list">
+            {links.map((link, index) => (
+              <li key={link.url} data-testid="event-link">
+                <button
+                  type="button"
+                  className="link-button"
+                  disabled={busy}
+                  onClick={() => void follow(link)}
+                >
+                  <Icon name="enlace" size={16} /> {link.label || link.url}
+                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={t('calendar.removeLink', { label: link.label || link.url })}
+                    title={t('calendar.removeLink', { label: link.label || link.url })}
+                    data-testid="event-link-remove"
+                    disabled={busy}
+                    onClick={() => update({ links: links.filter((_, i) => i !== index) })}
+                  >
+                    <Icon name="cerrar" size={14} />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+          {!readOnly && links.length < MAX_EVENT_LINKS && (
+            <button
+              type="button"
+              data-testid="event-add-link"
+              disabled={busy}
+              onClick={() => setPicking(true)}
+            >
+              {t('calendar.addLink')}
+            </button>
+          )}
+        </section>
         {problem && (
           <p className="field-problem" role="alert">
             {problem}
@@ -255,6 +338,22 @@ export function EventDialog({ service }: { service: VaultService }) {
               {t('calendar.delete')}
             </button>
           )}
+          {editing && (
+            <button
+              type="button"
+              data-testid="event-copy-link"
+              onClick={() =>
+                useUiStore.getState().copyLink({
+                  url: internalLink(draft.calendarId, { eventId: draft.event.id }),
+                  label: draft.event.title || t('calendar.untitled'),
+                  documentTitle: calendars[draft.calendarId]?.document.title ?? '',
+                })
+              }
+            >
+              {t('links.copyEventLink')}
+            </button>
+          )}
+          <CopiedNotice />
           <span className="topbar-spacer" />
           <button type="button" onClick={closeDraft}>
             {t('title.cancel')}
@@ -266,6 +365,26 @@ export function EventDialog({ service }: { service: VaultService }) {
           )}
         </div>
       </form>
+      {picking && (
+        // El selector va fuera del formulario (lleva el suyo para la web) y sus clics y su
+        // Escape no llegan al fondo del diálogo del evento, que lo cerraría.
+        <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          <LinkPicker
+            title={t('calendar.addLink')}
+            sourceId={calendarId}
+            service={service}
+            onPick={(pick) => addLink({ url: pick.url, label: pick.title })}
+            onCreateNote={(title) => {
+              void service.createDocument('note', title).then((doc) => {
+                useUiStore.getState().upsertDocument(doc);
+                addLink({ url: internalLink(doc.id), label: doc.title });
+              });
+            }}
+            onWeb={(url) => addLink({ url, label: url })}
+            onClose={() => setPicking(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -10,7 +10,15 @@ export const canvasExtensionsSchema = z.object({
   documentId: z.uuid(),
   elementLinks: z.record(
     z.string(),
-    z.object({ documentId: z.uuid(), elementId: z.string().nullable() }),
+    z.object({
+      documentId: z.uuid(),
+      elementId: z.string().nullable(),
+      /**
+       * Ancla de destino que no es un elemento (bloque, evento o cita), como el fragmento del
+       * enlace sin `#` (formato §2.3.1). Opcional: desde el 16/10/2026.
+       */
+      fragment: z.string().max(4000).optional(),
+    }),
   ),
   mindMap: z.object({
     parentByNode: z.record(z.string(), z.string()),

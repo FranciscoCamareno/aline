@@ -9,6 +9,7 @@ import type { DocumentKind, DocumentRecord } from '../../domain/revision.ts';
 import { hasConflict, isContentKind, isDocsKind, isFolderKind } from '../../domain/revision.ts';
 import { tagKey } from '../../domain/tags.ts';
 import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
+import type { SettingsSection } from '../status/SettingsDialog.tsx';
 import { RenameableTitle } from './RenameableTitle.tsx';
 import { schemeLogo } from '../../app/schemes.ts';
 
@@ -21,8 +22,6 @@ interface Props {
   ) => Promise<void>;
   onRename: (documentId: string, title: string) => Promise<void>;
   onTrash: (documentId: string) => Promise<void>;
-  onRestoreFromTrash: (documentId: string) => Promise<void>;
-  onPurge: (documentId: string) => Promise<void>;
   /** RF-34, RF-35: archivos sueltos o una carpeta, dentro de la carpeta seleccionada. */
   onImport: (files: File[], folderId: string | null) => Promise<void>;
   /** Mover un lienzo o una nota a una carpeta (o a la raíz con null), arrastrándolo. */
@@ -31,7 +30,10 @@ interface Props {
   /** Documento nuevo de la sección «Documentos»: con formato (Tiptap) o Markdown (Milkdown). */
   onCreateDoc: (editor: DocEditorKind, folderId: string | null) => Promise<void>;
   /** Abre el perfil: conexión con Google Drive y estado del almacenamiento. */
-  onOpenProfile: () => void;
+  /** Abre Configuración en una sección (menú de Perfil del pie). */
+  onOpenSettings: (section: SettingsSection) => void;
+  /** Abre «Estado y diagnóstico». */
+  onOpenStatus: () => void;
 }
 
 /** Editor de un documento nuevo: Tiptap (formato libre, JSON) o Milkdown (Markdown). */
@@ -61,17 +63,16 @@ export function LibrarySidebar({
   onCreateFolder,
   onRename,
   onTrash,
-  onRestoreFromTrash,
-  onPurge,
   onImport,
   onMove,
   onCreateCalendar,
   onCreateDoc,
-  onOpenProfile,
+  onOpenSettings,
+  onOpenStatus,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { scheme } = useTheme();
   const documents = useUiStore((s) => s.documents);
   const activeId = useUiStore((s) => s.activeId);
@@ -98,7 +99,6 @@ export function LibrarySidebar({
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const [tab, setTab] = useState<'all' | 'recent'>('all');
   const [query, setQuery] = useState('');
-  const [trashOpen, setTrashOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [newFolder, setNewFolder] = useState<string | null>(null);
@@ -652,66 +652,57 @@ export function LibrarySidebar({
         </>
       )}
 
-      {trashOpen && (
-        <section className="trash" aria-label={t('library.trashTitle', { count: trashed.length })}>
-          <ul className="library-list trash-list" data-testid="trash-list">
-            {trashed.length === 0 && <li className="muted">{t('library.trashEmpty')}</li>}
-            {trashed.map((doc) => (
-              <li key={doc.id} data-testid="trash-item" data-document-id={doc.id}>
-                {kindIcon(doc.kind)}
-                <span className="renameable-text">{doc.title}</span>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={`${t('library.restore')}: ${doc.title}`}
-                  title={t('library.restore')}
-                  data-testid="trash-restore"
-                  onClick={() => void onRestoreFromTrash(doc.id)}
-                >
-                  <Icon name="restaurar" size={18} />
-                </button>
-                <button
-                  type="button"
-                  className="icon-button danger"
-                  aria-label={`${t('library.purge')}: ${doc.title}`}
-                  title={t('library.purge')}
-                  data-testid="trash-purge"
-                  onClick={() => {
-                    if (window.confirm(t('library.purgeConfirm', { title: doc.title }))) {
-                      void onPurge(doc.id);
-                    }
-                  }}
-                >
-                  <Icon name="eliminar" size={18} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
+      {/* Pie: solo Perfil, con su menú (configuración, temas, idioma, papelera y estado). */}
       <div className="library-foot">
-        <button
-          type="button"
-          className="foot-button"
-          aria-expanded={trashOpen}
-          data-testid="trash-toggle"
-          onClick={() => setTrashOpen((v) => !v)}
-        >
-          <Icon name="eliminar" size={18} />
-          <span>{t('library.trashShort')}</span>
-          <span className="foot-count">({trashed.length})</span>
-        </button>
-        {/* Perfil: almacenamiento y Google Drive, y desde ahí las Preferencias (modales). */}
-        <button
-          type="button"
-          className="foot-button"
-          data-testid="open-profile"
-          onClick={onOpenProfile}
-        >
-          <Icon name="usuario" size={18} />
-          <span>{t('profile.title')}</span>
-        </button>
+        <Menu
+          className="profile-menu"
+          trigger={
+            <>
+              <Icon name="usuario" size={18} />
+              <span className="profile-menu-label">{t('profile.title')}</span>
+              <Icon name="chevron-arriba" size={16} />
+            </>
+          }
+          label={t('profile.title')}
+          triggerClassName="foot-button profile-trigger"
+          testId="open-profile"
+          placement="top-start"
+          items={[
+            {
+              id: 'settings-storage',
+              label: t('settings.menu.settings'),
+              icon: 'ajustes',
+              onSelect: () => onOpenSettings('storage'),
+            },
+            {
+              id: 'settings-appearance',
+              label: t('settings.menu.themes'),
+              icon: 'tema-sistema',
+              onSelect: () => onOpenSettings('appearance'),
+            },
+            {
+              id: 'settings-language',
+              label: t('settings.menu.language'),
+              icon: 'idioma',
+              hint: i18n.language.startsWith('en') ? 'EN' : 'ES',
+              onSelect: () => onOpenSettings('language'),
+            },
+            {
+              id: 'settings-trash',
+              label: t('settings.menu.trash'),
+              icon: 'eliminar',
+              hint: String(trashed.length),
+              onSelect: () => onOpenSettings('trash'),
+            },
+            {
+              id: 'profile-status',
+              label: t('app.openStatus'),
+              icon: 'info',
+              separated: true,
+              onSelect: onOpenStatus,
+            },
+          ]}
+        />
       </div>
     </nav>
   );

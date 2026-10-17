@@ -53,6 +53,7 @@ test('una escena sincronizada con imagen remota e iframe con HTML no contacta co
   });
   await freshStart(page);
   await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
   await page.getByTestId('connect-folder').click();
   await expect(page.getByTestId('storage-phase')).toHaveText('al día');
 
@@ -176,7 +177,7 @@ test('una escena sincronizada con imagen remota e iframe con HTML no contacta co
 
   await page.getByTestId('folder-sync').click();
   await expect(page.getByTestId('storage-phase')).toHaveText('al día');
-  await page.getByTestId('profile-close').click();
+  await page.getByTestId('settings-close').click();
   await page
     .locator(`[data-testid="library-item"][data-document-id="${canvasId}"]`)
     .getByTestId('library-title-text')

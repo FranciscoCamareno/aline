@@ -319,7 +319,7 @@ test('vincular un elemento a una nota, ver el backlink y renombrar sin romperlo 
     .poll(
       async () => (await scene(page, canvasId)).elements.find((e) => e.type === 'rectangle')?.link,
     )
-    .toBe(`mindnote://document/${noteId}`);
+    .toBe(`aline://document/${noteId}`);
 
   // Backlink en la nota de destino; al pulsarlo se abre el lienzo con el elemento seleccionado.
   await page.getByTestId('library-title-text').filter({ hasText: 'Destino' }).click();
@@ -364,10 +364,10 @@ test('[[ sugiere destinos, crea la nota si falta y los enlaces rotos se listan (
   await page.keyboard.type(' y ');
   await page.keyboard.type('[[Idea nueva');
   await page.locator('.cm-tooltip-autocomplete li').filter({ hasText: 'Crear nota' }).click();
-  await expect(editor).toContainText('[Idea nueva](mindnote://document/');
+  await expect(editor).toContainText('[Idea nueva](aline://document/');
   await saved(page);
   const body = await headBody(page, sourceId);
-  expect(body).toContain(`[Plan trimestral](mindnote://document/${targetId})`);
+  expect(body).toContain(`[Plan trimestral](aline://document/${targetId})`);
 
   // El enlace de la vista previa abre el destino.
   await page.getByTestId('note-preview').getByRole('link', { name: 'Plan trimestral' }).click();

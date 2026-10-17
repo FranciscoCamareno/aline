@@ -190,16 +190,51 @@ describe('calendarios y plantillas en el almacén (cambio de arquitectura 14/10/
     expect(back.documents.find((d) => d.id === template.id)?.kind).toBe('template');
   });
 
-  it('el índice de enlaces y búsqueda los ignora', async () => {
+  it('entran en el índice: eventos buscables y sus enlaces como backlinks (fase 7.E)', async () => {
     const { db, repo, service } = await freshService();
+    const note = await service.createDocument('note', 'Guion');
     const calendar = await service.createCalendar('Personal', 'mantequilla');
+    const opened = await service.openCalendar(calendar.id);
+    const eventId = '0b8f6a8e-6a4f-4c7e-9c55-0e8d36b2c111';
+    await service.saveCalendar(opened.session, {
+      ...opened.calendar,
+      events: [
+        {
+          id: eventId,
+          title: 'Rodaje',
+          date: '2026-10-20',
+          endDate: '2026-10-20',
+          start: null,
+          end: null,
+          color: 'agua',
+          links: [{ url: `aline://document/${note.id}`, label: 'el guion' }],
+        },
+      ],
+    });
     const knowledge = new KnowledgeService(
       repo,
       new (await import('../../src/adapters/indexeddb/DexieKnowledgeStore.ts')).DexieKnowledgeStore(
         db,
       ),
     );
-    expect(await knowledge.reindex(calendar.id)).toBeNull();
+    const search = await knowledge.reindex(calendar.id);
+    expect(search?.elements).toEqual([{ elementId: eventId, text: 'Rodaje' }]);
+    const backlinks = await knowledge.backlinks(note.id);
+    expect(backlinks[0]?.link).toMatchObject({
+      sourceElementId: eventId,
+      kind: 'event',
+      label: 'el guion',
+      context: 'Rodaje',
+    });
+    // Un enlace a un evento que ya no existe pierde el ancla.
+    const other = await service.createDocument('note', 'Otra');
+    const otherNote = await service.openNote(other.id);
+    await service.saveNote(
+      otherNote.session,
+      `[x](aline://document/${calendar.id}#ev=1b8f6a8e-6a4f-4c7e-9c55-0e8d36b2c111)`,
+    );
+    await knowledge.reindex(other.id);
+    expect((await knowledge.outgoing(other.id))[0]?.status).toBe('anchor-lost');
   });
 });
 
@@ -400,5 +435,62 @@ describe('conflictos de un calendario (DESIGN.md §8.6)', () => {
       { schemaVersion: 1, color: 'agua', events: [{ ...base, title: 'Después' }] },
     ]);
     expect(merged.events.map((e) => e.title)).toEqual(['Después']);
+  });
+});
+
+describe('enlaces de los eventos (fase 7.D)', () => {
+  const doc = '8b53f815-9d38-4313-a1ad-cb690fabf23c';
+  const base: CalendarEvent = {
+    id: '0b8f6a8e-6a4f-4c7e-9c55-0e8d36b2c111',
+    title: 'Rodaje',
+    date: '2026-10-20',
+    endDate: '2026-10-20',
+    start: null,
+    end: null,
+    color: 'agua',
+  };
+  const calendar = (events: CalendarEvent[]) => ({
+    schemaVersion: 1,
+    color: 'agua',
+    events,
+  });
+
+  it('un evento sin enlaces sigue siendo válido y los enlaces internos y web se aceptan', () => {
+    const links = [
+      { url: `aline://document/${doc}#t=la%20escena`, label: 'la escena' },
+      { url: `mindnote://document/${doc}`, label: 'antiguo' },
+      { url: 'https://example.com/guion', label: 'web' },
+    ];
+    expect(parseCalendar(calendar([base])).readOnly).toBeNull();
+    const parsed = parseCalendar(calendar([{ ...base, links }]));
+    expect(parsed.readOnly).toBeNull();
+    expect(parsed.calendar.events[0]?.links).toEqual(links);
+    expect(validateEvent({ ...base, links }).links).toEqual(links);
+  });
+
+  it('un enlace con otro esquema hace el calendario inválido (solo lectura, sin reescribir)', () => {
+    for (const url of ['javascript:alert(1)', 'data:text/html,x', 'aline://document/no-uuid']) {
+      const parsed = parseCalendar(calendar([{ ...base, links: [{ url, label: 'x' }] }]));
+      expect(parsed.readOnly).toBe('invalid-content');
+    }
+  });
+
+  it('la fusión de versiones en conflicto conserva los enlaces de la versión más reciente', () => {
+    const older = { ...base, links: [{ url: 'https://a.example', label: 'a' }] };
+    const newer = {
+      ...base,
+      title: 'Rodaje nocturno',
+      links: [
+        { url: 'https://a.example', label: 'a' },
+        { url: `aline://document/${doc}`, label: 'guion' },
+      ],
+    };
+    const other = { ...base, id: '1b8f6a8e-6a4f-4c7e-9c55-0e8d36b2c111', title: 'Otro' };
+    const merged = mergeCalendars([
+      parseCalendar(calendar([older, other])).calendar,
+      parseCalendar(calendar([newer])).calendar,
+    ]);
+    expect(merged.events.find((e) => e.id === base.id)?.links).toEqual(newer.links);
+    expect(merged.events.map((e) => e.title).sort()).toEqual(['Otro', 'Rodaje nocturno']);
   });
 });

@@ -60,15 +60,21 @@ test('papelera: enviar, restaurar y eliminar definitivamente (RN-03, CA-15)', as
   await item.getByTestId('library-trash').click();
   await expect(item).toHaveCount(0);
 
-  await page.getByTestId('trash-toggle').click();
+  // La papelera está en Perfil → Papelera (Configuración).
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-trash').click();
   const trashed = page.locator(`[data-testid="trash-item"][data-document-id="${id}"]`);
   await expect(trashed).toBeVisible();
   await trashed.getByTestId('trash-restore').click();
+  await expect(trashed).toHaveCount(0);
+  await page.getByTestId('settings-close').click();
   await expect(item).toBeVisible();
   await expect(page.locator('.cm-content')).toContainText('para la papelera');
 
   await item.getByTestId('library-actions').click();
   await item.getByTestId('library-trash').click();
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-trash').click();
   page.once('dialog', (d) => void d.accept());
   await trashed.getByTestId('trash-purge').click();
   await expect(trashed).toHaveCount(0);

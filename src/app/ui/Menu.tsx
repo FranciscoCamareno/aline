@@ -1,6 +1,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -43,8 +44,8 @@ interface Props {
  * elegir o al pulsar fuera.
  *
  * El menú se coloca con `position: fixed` junto a su botón, para que no lo recorte un contenedor
- * con desplazamiento (la lista de la biblioteca); si no cabe debajo, se abre hacia arriba. Al
- * desplazar o cambiar el tamaño de la ventana se cierra.
+ * con desplazamiento (la lista de la biblioteca); si no cabe debajo, se abre hacia arriba. Se
+ * cierra al cambiar el tamaño de la ventana o si un desplazamiento mueve su botón.
  */
 export function Menu({
   trigger,
@@ -60,22 +61,45 @@ export function Menu({
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Ya abierto se mide de verdad: si se sale de la ventana (un texto largo alineado a la derecha
+  // del botón crece hacia la izquierda), se mete dentro con un margen de 8 px.
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!open || !menu) return;
+    const rect = menu.getBoundingClientRect();
+    const width = document.documentElement.clientWidth;
+    if (rect.left < 8) setPosition((p) => ({ ...p, left: 8, right: 'auto' }));
+    else if (rect.right > width - 8) setPosition((p) => ({ ...p, left: 'auto', right: 8 }));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    const onViewportChange = (e: Event) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    const onResize = () => setOpen(false);
+    // Un desplazamiento solo cierra el menú si su botón se movió: el evento llega después del
+    // clic, y el de un desplazamiento que ya terminó (o que no afecta al botón) no debe cerrarlo.
+    const opened = triggerRef.current?.getBoundingClientRect();
+    const onScroll = (e: Event) => {
+      if (rootRef.current?.contains(e.target as Node)) return;
+      const now = triggerRef.current?.getBoundingClientRect();
+      const moved =
+        !opened ||
+        !now ||
+        Math.abs(now.top - opened.top) > 1 ||
+        Math.abs(now.left - opened.left) > 1;
+      if (moved) setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('resize', onViewportChange);
-    document.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('resize', onResize);
+    document.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('resize', onViewportChange);
-      document.removeEventListener('scroll', onViewportChange, true);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('scroll', onScroll, true);
     };
   }, [open]);
 
@@ -115,7 +139,11 @@ export function Menu({
   };
 
   const onTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+    // Abierto con el ratón, el foco sigue en el botón: Escape también lo cierra desde aquí.
+    if (e.key === 'Escape' && open) {
+      e.preventDefault();
+      close(true);
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       openMenu('first');
     } else if (e.key === 'ArrowUp') {
@@ -167,6 +195,7 @@ export function Menu({
       </button>
       {open && (
         <div
+          ref={menuRef}
           className="menu"
           style={position}
           role="menu"

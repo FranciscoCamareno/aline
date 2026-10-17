@@ -2,6 +2,9 @@ import type { Uuid } from '../../domain/ids.ts';
 import type { KnowledgeStore, SearchDocument, StoredLink } from '../../ports/KnowledgeStore.ts';
 import type { VaultDatabase } from './db.ts';
 
+/** Ajuste del dispositivo con el formato de los índices derivados (sin él, el formato 1). */
+const INDEX_FORMAT_KEY = 'knowledgeIndexFormat';
+
 const strip = ({ id: _id, ...link }: StoredLink & { id?: number }): StoredLink => link;
 
 /** Índices derivados en las tablas linkIndex y searchDocuments del esquema v1. */
@@ -60,5 +63,14 @@ export class DexieKnowledgeStore implements KnowledgeStore {
 
   getSearchDocument(documentId: Uuid): Promise<SearchDocument | undefined> {
     return this.db.searchDocuments.get(documentId);
+  }
+
+  async indexFormat(): Promise<number> {
+    const value = (await this.db.deviceSettings.get(INDEX_FORMAT_KEY))?.value;
+    return typeof value === 'number' ? value : 1;
+  }
+
+  async setIndexFormat(format: number): Promise<void> {
+    await this.db.deviceSettings.put({ key: INDEX_FORMAT_KEY, value: format });
   }
 }

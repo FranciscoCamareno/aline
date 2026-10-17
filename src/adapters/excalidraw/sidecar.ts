@@ -1,6 +1,6 @@
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { CanvasExtensions } from '../../domain/sidecar.ts';
-import { parseInternalLink } from '../../application/knowledge.ts';
+import { formatLinkFragment, parseInternalLink } from '../../domain/links.ts';
 
 /** Extremos anclados de cada flecha en el último guardado. */
 export type ArrowBindings = Map<string, { start: string | null; end: string | null }>;
@@ -24,7 +24,7 @@ export function currentBindings(elements: readonly ExcalidrawElement[]): ArrowBi
 
 /**
  * Deriva el sidecar a partir de la escena (diseño §9):
- * - elementLinks: enlaces internos `mindnote://` de los elementos vivos. El sidecar es la copia
+ * - elementLinks: enlaces internos (`aline://`) de los elementos vivos. El sidecar es la copia
  *   autoritativa que leen los índices y otras herramientas; `element.link` es la interacción.
  * - danglingConnectorIds (RN-07): flechas que perdieron un extremo porque su nodo se borró. El
  *   motor ya conserva la flecha (fase 0); aquí solo se marca. Deja de estar suelta al volver a
@@ -41,8 +41,17 @@ export function deriveExtensions(
   const elementLinks: CanvasExtensions['elementLinks'] = {};
   for (const el of [...live.values()].sort((a, b) => a.id.localeCompare(b.id))) {
     const target = el.link ? parseInternalLink(el.link) : null;
-    if (target)
-      elementLinks[el.id] = { documentId: target.documentId, elementId: target.elementId };
+    if (!target) continue;
+    const fragment = formatLinkFragment({
+      blockId: target.blockId,
+      eventId: target.eventId,
+      text: target.text,
+    });
+    elementLinks[el.id] = {
+      documentId: target.documentId,
+      elementId: target.elementId,
+      ...(fragment ? { fragment } : {}),
+    };
   }
 
   const dangling = new Set<string>();
