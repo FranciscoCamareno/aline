@@ -76,16 +76,14 @@ test('zoom de la hoja: acercar, alejar, volver al 100 % y recordarlo', async ({ 
   await freshStart(page);
   await newRichDoc(page);
   const sheet = page.locator('.doc-sheet');
-  await page.getByTestId('doc-zoom-in').click();
-  await page.getByTestId('doc-zoom-in').click();
-  await expect(page.getByTestId('doc-zoom-value')).toHaveText('125%');
+  // El zoom es un desplegable al principio de la barra, como en Google Docs.
+  const zoom = page.getByTestId('doc-zoom');
+  await zoom.selectOption('125');
+  await expect(zoom).toHaveValue('125');
   await expect(sheet).toHaveCSS('zoom', '1.25');
   await page.reload();
-  await expect(page.getByTestId('doc-zoom-value')).toHaveText('125%');
-  await page.getByTestId('doc-zoom-out').click();
-  await expect(page.getByTestId('doc-zoom-value')).toHaveText('110%');
-  await page.getByTestId('doc-zoom-value').click();
-  await expect(page.getByTestId('doc-zoom-value')).toHaveText('100%');
+  await expect(zoom).toHaveValue('125');
+  await zoom.selectOption('100');
   await expect(sheet).toHaveCSS('zoom', '1');
 });
 
@@ -140,6 +138,8 @@ test('paginación: la vista «Hoja» se parte en páginas A4 y «Continuo» no',
   await saved(page);
   expect(await headBody(page, docId)).not.toContain('page');
 
+  // En la barra de los documentos con formato, la vista es un desplegable.
+  await page.getByTestId('doc-layout').click();
   await page.getByTestId('doc-layout-continuous').click();
   await expect(pageBreak).toHaveCount(0);
   await expect(page.getByTestId('doc-page-count')).toHaveCount(0);
@@ -200,4 +200,85 @@ test('comentarios: comentar una frase, responder, resolver, reabrir y eliminar',
   await expect(highlight).toHaveCount(0);
   await saved(page);
   await expect.poll(() => headBody(page, docId)).not.toContain('"comment"');
+});
+
+test('burbuja al seleccionar texto: comentar y enlazar desde la selección', async ({ page }) => {
+  await freshStart(page);
+  await newRichDoc(page);
+  await page.keyboard.type('Una frase para comentar.');
+  const bubble = page.getByTestId('doc-bubble');
+  await expect(bubble).toHaveCount(0);
+  for (let i = 0; i < 'comentar.'.length; i++) await page.keyboard.press('Shift+ArrowLeft');
+  await expect(bubble).toBeVisible();
+
+  await page.getByTestId('doc-bubble-comment').click();
+  await expect(page.getByTestId('doc-comment-input')).toBeFocused();
+  await page.getByTestId('doc-comment-input').press('Escape');
+
+  await page.getByTestId('doc-editor').click();
+  await page.keyboard.press('End');
+  for (let i = 0; i < 'comentar.'.length; i++) await page.keyboard.press('Shift+ArrowLeft');
+  await page.getByTestId('doc-bubble-link').click();
+  await expect(page.getByTestId('link-picker')).toBeVisible();
+  await page.keyboard.press('Escape');
+  // Sin selección, no hay burbuja.
+  await page.getByTestId('doc-editor').click();
+  await page.keyboard.press('End');
+  await expect(bubble).toHaveCount(0);
+});
+
+test('pestañas del documento: crear, renombrar, cambiar, duplicar y eliminar, y que se guarde', async ({
+  page,
+}) => {
+  await freshStart(page);
+  await newRichDoc(page);
+  const docId = await activeId(page);
+  await page.keyboard.type('Texto de la primera');
+  await page.getByTestId('doc-outline-toggle').click();
+  const tabs = page.getByTestId('doc-tab');
+  const tabNames = tabs.getByTestId('doc-tab-title-text');
+  await expect(tabNames).toHaveText(['Pestaña 1']);
+
+  // Nueva pestaña: se abre vacía.
+  await page.getByTestId('doc-tab-add').click();
+  await expect(tabs).toHaveCount(2);
+  const editor = page.getByTestId('doc-editor');
+  await expect(editor).not.toContainText('Texto de la primera');
+  await editor.click();
+  await page.keyboard.type('Texto de la segunda');
+
+  // Renombrar desde su menú.
+  await tabs.nth(1).getByTestId('doc-tab-actions').click();
+  await page.getByTestId('doc-tab-rename').click();
+  await page.getByTestId('doc-tab-title-input').fill('Anexo');
+  await page.getByTestId('doc-tab-title-input').press('Enter');
+  await expect(tabNames).toHaveText(['Pestaña 1', 'Anexo']);
+
+  // Cambiar de pestaña muestra su contenido.
+  await tabs.nth(0).getByTestId('doc-tab-title-text').click();
+  await expect(editor).toContainText('Texto de la primera');
+  await saved(page);
+  const body = JSON.parse(await headBody(page, docId)) as {
+    content: unknown;
+    tabs: Array<{ title: string; content?: unknown }>;
+  };
+  expect(body.tabs.map((t) => t.title)).toEqual(['', 'Anexo']);
+  expect(JSON.stringify(body.content)).toContain('Texto de la primera');
+  expect(JSON.stringify(body.tabs[1]!.content)).toContain('Texto de la segunda');
+
+  // Tras recargar, las dos pestañas siguen ahí.
+  await page.reload();
+  await expect(tabNames).toHaveText(['Pestaña 1', 'Anexo']);
+  await tabs.nth(1).getByTestId('doc-tab-title-text').click();
+  await expect(editor).toContainText('Texto de la segunda');
+
+  // Duplicar y eliminar (con confirmación).
+  await tabs.nth(1).getByTestId('doc-tab-actions').click();
+  await page.getByTestId('doc-tab-duplicate').click();
+  await expect(tabNames).toHaveText(['Pestaña 1', 'Anexo', 'Copia de Anexo']);
+  await expect(editor).toContainText('Texto de la segunda');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await tabs.nth(2).getByTestId('doc-tab-actions').click();
+  await page.getByTestId('doc-tab-delete').click();
+  await expect(tabNames).toHaveText(['Pestaña 1', 'Anexo']);
 });

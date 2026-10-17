@@ -58,6 +58,8 @@ test('documento con formato: crear, dar formato, cambiar la vista y que se guard
   await expect(editor).toBeFocused();
   await page.keyboard.type('Guion');
   await page.getByTestId('doc-block-style').selectOption('h1');
+  // La alineación es un desplegable de la barra, como en Google Docs.
+  await page.getByTestId('doc-align').click();
   await page.getByTestId('doc-align-center').click();
   await page.keyboard.press('End');
   await page.keyboard.press('Enter');
@@ -70,6 +72,8 @@ test('documento con formato: crear, dar formato, cambiar la vista y que se guard
   await expect(page.getByTestId('save-status')).toHaveText('Guardado en este dispositivo');
 
   // La vista «Hoja» o «Continuo» es solo presentación.
+  // En la barra de los documentos con formato, la vista es un desplegable.
+  await page.getByTestId('doc-layout').click();
   await page.getByTestId('doc-layout-continuous').click();
   await expect(page.getByTestId('doc-view')).toHaveClass(/layout-continuous/);
 

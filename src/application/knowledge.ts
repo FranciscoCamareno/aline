@@ -10,7 +10,7 @@ import {
   type InternalTarget,
   type TextSelector,
 } from '../domain/links.ts';
-import { parseRichDoc, richDocProjection, type RichNode } from '../domain/richDoc.ts';
+import { docTabs, parseRichDoc, richDocProjection, type RichNode } from '../domain/richDoc.ts';
 
 /**
  * Extracción de enlaces y texto indexable (diseño §10): se hace sobre el AST de Markdown, no con
@@ -190,7 +190,8 @@ export function extractRichDoc(bodyJson: string | null): Extracted {
     }
     close();
   };
-  walk(doc.content);
+  // Todas las pestañas.
+  for (const tab of docTabs(doc)) walk(tab.content);
   return {
     links,
     text: projection.text,

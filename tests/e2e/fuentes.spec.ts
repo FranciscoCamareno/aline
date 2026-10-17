@@ -151,12 +151,19 @@ test('documento con formato: fuente con búsqueda y A+/A− sobre la selección,
   await page.getByTestId('doc-font-option').click();
   await expect(page.getByTestId('doc-font')).toContainText('Lora');
 
-  await expect(page.getByTestId('doc-font-size')).toHaveText('16');
+  await expect(page.getByTestId('doc-font-size')).toHaveValue('16');
   await page.getByTestId('doc-font-larger').click();
   await page.getByTestId('doc-font-larger').click();
-  await expect(page.getByTestId('doc-font-size')).toHaveText('20');
+  await expect(page.getByTestId('doc-font-size')).toHaveValue('20');
   await page.getByTestId('doc-font-smaller').click();
-  await expect(page.getByTestId('doc-font-size')).toHaveText('18');
+  await expect(page.getByTestId('doc-font-size')).toHaveValue('18');
+  // El tamaño también se escribe a mano (como en Google Docs).
+  await page.getByTestId('doc-font-size').fill('22');
+  await page.getByTestId('doc-font-size').press('Enter');
+  await expect(page.getByTestId('doc-font-size')).toHaveValue('22');
+  await page.getByTestId('doc-font-smaller').click();
+  await page.getByTestId('doc-font-smaller').click();
+  await expect(page.getByTestId('doc-font-size')).toHaveValue('18');
 
   const span = editor.locator('span[style*="font-family"]');
   await expect(span).toHaveText('Capítulo uno');

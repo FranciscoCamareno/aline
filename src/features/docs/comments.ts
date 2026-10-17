@@ -2,6 +2,7 @@ import { Mark, mergeAttributes, type Editor } from '@tiptap/core';
 import type { Node as PmNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import type { RichNode } from '../../domain/richDoc.ts';
 
 /**
  * Comentarios de los documentos con formato (fase 8.3). Los comentarios de Tiptap son de pago y
@@ -125,4 +126,35 @@ export function unmarkComment(editor: Editor, id: string) {
 
 export function newCommentId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+}
+
+/** Ids de los hilos citados en un contenido guardado (JSON de una pestaña). */
+export function commentIdsIn(content: RichNode | undefined): Set<string> {
+  const ids = new Set<string>();
+  const walk = (node: RichNode) => {
+    for (const mark of node.marks ?? []) {
+      const id = mark.attrs?.['id'];
+      if (mark.type === 'comment' && typeof id === 'string') ids.add(id);
+    }
+    node.content?.forEach(walk);
+  };
+  if (content) walk(content);
+  return ids;
+}
+
+/** Copia de un contenido sin marcas de comentario ni anclas de bloque (duplicar una pestaña). */
+export function withoutCommentsAndAnchors(node: RichNode): RichNode {
+  const copy: RichNode = { ...node };
+  if (node.marks) {
+    const marks = node.marks.filter((m) => m.type !== 'comment');
+    if (marks.length) copy.marks = marks;
+    else delete copy.marks;
+  }
+  if (node.attrs && 'anchor' in node.attrs) {
+    const attrs = { ...node.attrs };
+    delete attrs['anchor'];
+    copy.attrs = attrs;
+  }
+  if (node.content) copy.content = node.content.map(withoutCommentsAndAnchors);
+  return copy;
 }

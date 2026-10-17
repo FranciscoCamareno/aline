@@ -58,15 +58,39 @@ export const docCommentSchema = z.looseObject({
 });
 export type DocComment = z.infer<typeof docCommentSchema>;
 
-export const richDocSchema = z.looseObject({
-  schemaVersion: z.literal(RICH_DOC_SCHEMA_VERSION),
-  content: z.looseObject({
-    type: z.literal('doc'),
-    content: z.array(nodeSchema).max(100_000).optional(),
-  }),
-  /** Comentarios (opcional; sin comentarios, la clave no se escribe). */
-  comments: z.array(docCommentSchema).max(2_000).optional(),
+const docContentSchema = z.looseObject({
+  type: z.literal('doc'),
+  content: z.array(nodeSchema).max(100_000).optional(),
 });
+
+/**
+ * Pestaña de un documento con formato (desde el 17/10/2026, como las de Google Docs). La lista
+ * da el orden y los títulos; exactamente una pestaña no lleva `content`: es la principal y su
+ * contenido es el `content` raíz del documento (así un documento sin pestañas no cambia y las
+ * versiones anteriores de la aplicación siguen leyéndolo). Formato §2.5.3.
+ */
+export const docTabSchema = z.looseObject({
+  id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  title: z.string().max(200),
+  content: docContentSchema.optional(),
+});
+
+export const richDocSchema = z
+  .looseObject({
+    schemaVersion: z.literal(RICH_DOC_SCHEMA_VERSION),
+    content: docContentSchema,
+    /** Comentarios (opcional; sin comentarios, la clave no se escribe). */
+    comments: z.array(docCommentSchema).max(2_000).optional(),
+    /** Pestañas (opcional; con una sola pestaña sin título, la clave no se escribe). */
+    tabs: z.array(docTabSchema).min(1).max(100).optional(),
+  })
+  .refine(
+    (doc) =>
+      !doc.tabs ||
+      (doc.tabs.filter((t) => !t.content).length === 1 &&
+        new Set(doc.tabs.map((t) => t.id)).size === doc.tabs.length),
+    { message: 'Las pestañas necesitan ids únicos y exactamente una principal (sin contenido)' },
+  );
 export type RichDocData = z.infer<typeof richDocSchema>;
 
 export function emptyRichDoc(): RichDocData {
@@ -87,7 +111,7 @@ export function parseRichDoc(value: unknown): {
   const version =
     value && typeof value === 'object' ? (value as { schemaVersion?: unknown }).schemaVersion : 0;
   if (typeof version === 'number' && version > RICH_DOC_SCHEMA_VERSION) {
-    const content = richDocSchema.shape.content.safeParse((value as { content?: unknown }).content);
+    const content = docContentSchema.safeParse((value as { content?: unknown }).content);
     return {
       doc: content.success ? { ...emptyRichDoc(), content: content.data } : emptyRichDoc(),
       readOnly: 'unsupported-version',
@@ -97,6 +121,57 @@ export function parseRichDoc(value: unknown): {
   return parsed.success
     ? { doc: parsed.data, readOnly: null }
     : { doc: emptyRichDoc(), readOnly: 'invalid-content' };
+}
+
+/** Id de la pestaña principal de un documento que nunca tuvo pestañas. */
+export const MAIN_TAB_ID = 'main';
+
+export interface ResolvedTab {
+  id: string;
+  /** Título escrito por el usuario; vacío = «Pestaña N» en la interfaz. */
+  title: string;
+  content: RichDocData['content'];
+  /** La principal: su contenido es el `content` raíz. */
+  main: boolean;
+}
+
+/** Pestañas del documento en orden, cada una con su contenido. */
+export function docTabs(doc: RichDocData): ResolvedTab[] {
+  if (!doc.tabs?.length) {
+    return [{ id: MAIN_TAB_ID, title: '', content: doc.content, main: true }];
+  }
+  return doc.tabs.map((tab) =>
+    tab.content
+      ? { id: tab.id, title: tab.title, content: tab.content, main: false }
+      : { id: tab.id, title: tab.title, content: doc.content, main: true },
+  );
+}
+
+/**
+ * Documento a guardar a partir de sus pestañas: la principal va al `content` raíz y las demás
+ * en `tabs`. Sin pestañas extra ni título, ni comentarios, esas claves no se escriben. Conserva
+ * las demás claves de `base` (desconocidas, de una versión posterior).
+ */
+export function assembleRichDoc(
+  base: RichDocData,
+  tabs: ReadonlyArray<{ id: string; title: string; content: RichDocData['content'] }>,
+  mainId: string,
+  comments: DocComment[],
+): RichDocData {
+  const main = tabs.find((t) => t.id === mainId) ?? tabs[0];
+  const result: RichDocData = { ...base, content: main?.content ?? base.content };
+  delete result.tabs;
+  delete result.comments;
+  const single = tabs.length <= 1 && (!main || (main.id === MAIN_TAB_ID && !main.title));
+  if (!single) {
+    result.tabs = tabs.map((t) =>
+      t.id === main?.id
+        ? { id: t.id, title: t.title }
+        : { id: t.id, title: t.title, content: t.content },
+    );
+  }
+  if (comments.length) result.comments = comments;
+  return result;
 }
 
 /** Nodos que separan bloques al extraer el texto (párrafos, títulos, elementos de lista…). */
@@ -115,7 +190,7 @@ export function richDocText(doc: RichDocData): string {
       line = '';
     }
   };
-  walk(doc.content);
+  for (const tab of docTabs(doc)) walk(tab.content);
   if (line) lines.push(line);
   return lines.join('\n');
 }
@@ -132,6 +207,19 @@ const TEXTBLOCK_TYPES = new Set(['paragraph', 'heading', 'codeBlock']);
  */
 export function richDocProjection(doc: RichDocData): TextProjection {
   const builder = new ProjectionBuilder();
+  // Con pestañas, el texto de todas (para el índice); las posiciones de cada una empiezan en 0.
+  for (const tab of docTabs(doc)) projectContent(tab.content, builder);
+  return builder.build();
+}
+
+/** Proyección de un solo contenido (una pestaña), con sus posiciones de ProseMirror. */
+export function contentProjection(content: RichDocData['content']): TextProjection {
+  const builder = new ProjectionBuilder();
+  projectContent(content, builder);
+  return builder.build();
+}
+
+function projectContent(content: RichDocData['content'], builder: ProjectionBuilder): void {
   let pos = 0;
   const walk = (node: RichNode): void => {
     if (node.type === 'text') {
@@ -155,6 +243,5 @@ export function richDocProjection(doc: RichDocData): TextProjection {
     pos += 1;
     if (textblock) builder.endBlock();
   };
-  for (const child of doc.content.content ?? []) walk(child);
-  return builder.build();
+  for (const child of content.content ?? []) walk(child);
 }

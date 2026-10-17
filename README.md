@@ -102,7 +102,7 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   importar), lienzos y notas que se arrastran dentro y fuera de las carpetas, buscador de títulos, pestañas «Todos» y «Recientes», acciones de cada fila en «⋯» y,
   abajo, solo Perfil: su menú abre Configuración (almacenamiento, temas, idioma, archivo y papelera). Carpetas y documentos se arrastran dentro y fuera de las carpetas y arriba o abajo (orden manual, también con «Subir»/«Bajar»), y se pueden archivar. La cabecera deja a la vista Historial, Enlaces y
   Exportar; Buscar y Estado y diagnóstico están en «⋯».
-- **Documentos con formato:** zoom de la hoja, panel de capítulos, vista «Hoja» partida en páginas A4 y comentarios con respuestas (resolver, reabrir, eliminar). Imágenes del equipo (también en los documentos Markdown) y exportación a Word (.docx) y PDF.
+- **Documentos con formato:** pestañas (como en Google Docs) con sus capítulos, barra de herramientas compacta, burbuja al seleccionar texto para comentar o enlazar, zoom de la hoja, vista «Hoja» partida en páginas A4 y comentarios con respuestas (resolver, reabrir, eliminar). Imágenes del equipo (también en los documentos Markdown) y exportación a Word (.docx) y PDF.
 - **Fuentes:** 24 fuentes de Google Fonts (OFL), servidas desde el propio origen y descargadas solo al usarse, en el selector de fuentes del lienzo (con un parche de Excalidraw) y en la barra de los documentos con formato, junto con el tamaño (A− / A+).
 - **Tema y esquemas de color:** 8 esquemas en 4 pares (Papel/Noche, Blanco/Negro, Bruma/Marea,
   Salvia/Bosque). En Perfil → Temas se elige uno claro y uno oscuro; el interruptor de la

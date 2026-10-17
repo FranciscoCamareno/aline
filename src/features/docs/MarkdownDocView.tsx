@@ -17,7 +17,7 @@ import {
 import { gfm, toggleStrikethroughCommand } from '@milkdown/preset-gfm';
 import { Plugin, Selection, TextSelection, type EditorState } from '@milkdown/prose/state';
 import { $prose, callCommand, getMarkdown } from '@milkdown/utils';
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { downloadText } from '../../app/download.ts';
 import { logDiagnostic, registerFlusher } from '../../app/runtime.ts';
@@ -48,6 +48,7 @@ import {
 import { milkdownBacklinkKey, milkdownBacklinkPlugin } from './backlinkMarksPm.ts';
 import { DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
+import { SelectionBubble } from './SelectionBubble.tsx';
 import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
 
 interface Props {
@@ -510,6 +511,13 @@ function MarkdownDocEditor({
     else run(wrapInHeadingCommand.key, Number(block.slice(1)));
   };
   const disabled = readOnly !== null || !editor;
+  const getEditorView = useCallback(() => {
+    try {
+      return editor ? editor.ctx.get(editorViewCtx) : null;
+    } catch {
+      return null;
+    }
+  }, [editor]);
 
   /** Inserta imágenes del equipo en `at` o en la selección (nodo `image` de Milkdown). */
   const insertImages = async (files: File[], at?: number) => {
@@ -768,6 +776,14 @@ function MarkdownDocEditor({
         </div>
       </div>
       {linker.picker}
+      {/* Burbuja al seleccionar texto: enlazar (los documentos Markdown no tienen comentarios). */}
+      <SelectionBubble
+        getView={getEditorView}
+        disabled={readOnly !== null}
+        actions={[
+          { id: 'link', label: t('links.linkSelectionShort'), icon: 'enlace', onRun: openLink },
+        ]}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   FONT_CATALOG,
@@ -12,6 +13,8 @@ import {
   catalogFontFor,
   DEFAULT_FONT_SIZE,
   FONT_SIZES,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
   stepFontSize,
 } from './typography.ts';
 
@@ -37,7 +40,9 @@ export function FontFamilyPicker({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [position, setPosition] = useState<CSSProperties>({});
+  /** Posición de la lista; null mientras está cerrada (nunca se pinta sin colocar). */
+  const [position, setPosition] = useState<CSSProperties | null>(null);
+  const search = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const current = catalogFontFor(value);
@@ -47,11 +52,14 @@ export function FontFamilyPicker({
     return FONT_CATALOG.filter((f) => !q || normalizeForSearch(f.name).includes(q));
   }, [query]);
 
-  // Lista fija bajo el botón: la barra puede desplazarse en horizontal y recortaría un menú
-  // posicionado dentro de ella (como `app/ui/Menu.tsx`).
-  useLayoutEffect(() => {
-    if (!open || !trigger.current) return;
-    const box = trigger.current.getBoundingClientRect();
+  /**
+   * Coloca la lista bajo el botón. Va en una capa sobre `<body>` (como `app/ui/Menu.tsx`): dentro
+   * de la barra la recortaría su desplazamiento, y su posición quedaría vieja si la barra se
+   * recoloca. Se recalcula al desplazar, al cambiar el tamaño y si el botón se mueve.
+   */
+  const place = () => {
+    const box = trigger.current?.getBoundingClientRect();
+    if (!box) return;
     const width = 260;
     setPosition({
       position: 'fixed',
@@ -61,20 +69,47 @@ export function FontFamilyPicker({
       // Cabe en lo que queda de ventana bajo el botón; la lista se desplaza dentro.
       maxHeight: Math.max(200, Math.min(420, window.innerHeight - box.bottom - 16)),
     });
+  };
+  useEffect(() => {
+    if (!open) return;
+    search.current?.focus({ preventScroll: true });
+    const observer = new ResizeObserver(place);
+    if (trigger.current) observer.observe(trigger.current);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (!panel.current?.contains(target) && !trigger.current?.contains(target)) setOpen(false);
+      if (!panel.current?.contains(target) && !trigger.current?.contains(target)) {
+        setOpen(false);
+        setPosition(null);
+      }
     };
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, [open]);
 
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      setPosition(null);
+      return;
+    }
+    place();
+    setOpen(true);
+  };
+
   const pick = (font: CatalogFont | null) => {
     setOpen(false);
+    setPosition(null);
     setQuery('');
     onPick(font);
   };
@@ -93,24 +128,29 @@ export function FontFamilyPicker({
         disabled={disabled}
         // Sin robar el foco al editor: la selección sigue donde estaba.
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         style={current ? { fontFamily: fontStack(current) } : undefined}
       >
         <span className="doc-font-name">{current?.name ?? t('docs.fontDefault')}</span>
         <Icon name="chevron-abajo" size={14} />
       </button>
-      {open && (
+      {open &&
+        position &&
+        createPortal(
         <div
           ref={panel}
           className="doc-font-panel"
           style={position}
           data-testid="doc-font-panel"
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setOpen(false);
+            if (e.key === 'Escape') {
+              setOpen(false);
+              setPosition(null);
+            }
           }}
         >
           <input
-            autoFocus
+            ref={search}
             value={query}
             placeholder={t('docs.fontSearch')}
             aria-label={t('docs.fontSearch')}
@@ -161,8 +201,9 @@ export function FontFamilyPicker({
             })}
             {!filtered.length && <li className="muted small">{t('docs.fontNone')}</li>}
           </ul>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </>
   );
 }
@@ -179,30 +220,54 @@ export function FontSizeControl({
 }) {
   const { t } = useTranslation();
   const current = size ?? DEFAULT_FONT_SIZE;
-  const button = (direction: 1 | -1, label: string, letter: string, testId: string) => (
+  /** Lo que se está escribiendo en el número; null = se muestra el tamaño actual. */
+  const [draft, setDraft] = useState<string | null>(null);
+  const apply = () => {
+    if (draft === null) return;
+    const value = Math.round(Number(draft.replace(',', '.')));
+    setDraft(null);
+    if (Number.isFinite(value) && value >= MIN_FONT_SIZE && value <= MAX_FONT_SIZE) onChange(value);
+  };
+  const step = (direction: 1 | -1, label: string, icon: 'mas' | 'menos', testId: string) => (
     <button
       type="button"
-      className={`icon-button doc-size-step doc-size-${direction > 0 ? 'up' : 'down'}`}
+      className="icon-button doc-size-step"
       aria-label={label}
       title={label}
       data-testid={testId}
       disabled={
-        disabled ||
-        (direction > 0 ? current >= FONT_SIZES.at(-1)! : current <= FONT_SIZES[0]!)
+        disabled || (direction > 0 ? current >= FONT_SIZES.at(-1)! : current <= FONT_SIZES[0]!)
       }
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => onChange(stepFontSize(current, direction))}
     >
-      <span aria-hidden="true">{letter}</span>
+      <Icon name={icon} size={16} />
     </button>
   );
   return (
-    <>
-      {button(-1, t('docs.fontSmaller'), 'A−', 'doc-font-smaller')}
-      <span className="doc-size-value" data-testid="doc-font-size" aria-live="polite">
-        {current}
-      </span>
-      {button(1, t('docs.fontLarger'), 'A+', 'doc-font-larger')}
-    </>
+    <span className="doc-size">
+      {step(-1, t('docs.fontSmaller'), 'menos', 'doc-font-smaller')}
+      <input
+        className="doc-size-input"
+        inputMode="numeric"
+        aria-label={t('docs.fontSize')}
+        title={t('docs.fontSize')}
+        data-testid="doc-font-size"
+        disabled={disabled}
+        value={draft ?? String(current)}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={apply}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            apply();
+          } else if (e.key === 'Escape') {
+            setDraft(null);
+          }
+        }}
+      />
+      {step(1, t('docs.fontLarger'), 'mas', 'doc-font-larger')}
+    </span>
   );
 }

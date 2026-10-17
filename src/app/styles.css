@@ -2895,23 +2895,89 @@ a,
   display: flex;
   flex-direction: column;
 }
+/*
+ * Barra de los documentos (estructura de la de Google Docs): una sola fila compacta dentro de
+ * una barra redondeada; en pantallas estrechas se desplaza en horizontal en lugar de partirse.
+ */
 .doc-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px 10px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border-soft);
+  gap: 2px;
+  margin: 8px 12px;
+  padding: 3px 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
   background: var(--bg-panel);
+  scrollbar-width: thin;
 }
 .doc-toolbar-group {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
 }
 .doc-toolbar-group + .doc-toolbar-group {
-  padding-left: 10px;
+  margin-left: 3px;
+  padding-left: 3px;
   border-left: 1px solid var(--border-soft);
+}
+.doc-toolbar .icon-button {
+  min-width: 28px;
+  min-height: 30px;
+  padding: 0 4px;
+  border-radius: 6px;
+}
+.doc-toolbar > .icon-button,
+.doc-toolbar > .segmented,
+.doc-toolbar > .doc-page-count {
+  flex: none;
+}
+.doc-toolbar select,
+.doc-toolbar .doc-font-trigger {
+  min-height: 30px;
+  border-color: transparent;
+  border-radius: 6px;
+  background: transparent;
+}
+.doc-toolbar select:hover,
+.doc-toolbar .doc-font-trigger:hover {
+  background: var(--selection-soft);
+}
+.doc-zoom-select {
+  min-width: 64px;
+}
+.doc-align-trigger {
+  gap: 1px;
+}
+.doc-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.doc-size-input {
+  width: 38px;
+  min-height: 26px;
+  padding: 0 2px;
+  border: 1px solid var(--border-ink);
+  border-radius: 4px;
+  background: var(--bg-canvas);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.doc-toolbar .segmented {
+  flex: none;
+  padding: 2px;
+}
+.doc-toolbar .segmented-option {
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+.doc-toolbar .doc-page-count {
+  padding: 0 4px;
+  white-space: nowrap;
 }
 .doc-toolbar-spacer {
   flex: 1;
@@ -2934,8 +3000,8 @@ a,
   text-decoration: line-through;
 }
 .doc-block-style {
-  min-height: 34px;
-  min-width: 140px;
+  min-height: 30px;
+  min-width: 100px;
 }
 
 .doc-scroll {
@@ -3388,8 +3454,8 @@ a,
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  min-width: 150px;
-  min-height: 34px;
+  min-width: 112px;
+  min-height: 30px;
   padding: 0 8px;
 }
 .doc-font-name {
@@ -3762,4 +3828,100 @@ a,
   html.printing-doc .print-doc h3 {
     break-after: avoid;
   }
+}
+
+/* Burbuja al seleccionar texto en los documentos (como Google Docs): comentar y enlazar. */
+.doc-bubble {
+  z-index: 25;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--bg-popover);
+  box-shadow: var(--shadow-popover);
+}
+.doc-bubble .icon-button {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 999px;
+}
+
+/* «Pestañas del documento» (como Google Docs): pestañas y, bajo la activa, sus capítulos. */
+.doc-tabs-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+.doc-tab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.doc-tab-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+}
+.doc-tab-row .renameable {
+  flex: 1;
+  min-width: 0;
+}
+.doc-tab-row .renameable-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doc-tab.is-active > .doc-tab-row {
+  background: var(--selection-soft);
+  color: var(--on-selection-soft);
+  font-weight: 600;
+}
+.doc-tab-menu {
+  opacity: 0;
+}
+.doc-tab-row:hover .doc-tab-menu,
+.doc-tab-row:focus-within .doc-tab-menu,
+.doc-tab.is-active .doc-tab-menu {
+  opacity: 1;
+}
+.doc-tabs .doc-outline-items {
+  margin: 4px 0 6px 22px;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--border-soft);
+}
+.doc-tabs .doc-outline-items button {
+  min-height: 28px;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  border-radius: 0 6px 6px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+}
+.doc-tabs .doc-outline-items button.is-current {
+  border-left-color: var(--focus);
+  background: transparent;
+  color: var(--text-primary);
+}
+.doc-outline-empty {
+  margin: 4px 0 6px 28px;
+}
+.doc-tabs header h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doc-layout-trigger {
+  gap: 4px;
+  flex: none;
+}
+.doc-layout-label {
+  font-size: 13px;
 }

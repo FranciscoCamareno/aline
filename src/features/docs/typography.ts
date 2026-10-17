@@ -4,6 +4,9 @@ import { FONT_CATALOG, fontStack, type CatalogFont } from '../../app/fontCatalog
 
 /** Tamaños de A− y A+ (px). Un tamaño intermedio se redondea al paso siguiente. */
 export const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 60, 72];
+/** Límites de un tamaño escrito a mano en la barra. */
+export const MIN_FONT_SIZE = 6;
+export const MAX_FONT_SIZE = 96;
 /** Tamaño del texto sin tamaño propio (`.doc-content`). */
 export const DEFAULT_FONT_SIZE = 16;
 

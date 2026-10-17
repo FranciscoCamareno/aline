@@ -172,6 +172,7 @@ describe('exportar a Word (.docx)', () => {
     const { Packer } = await import('docx');
     const built = await buildDocx(doc, {
       title: 'Guion',
+      tabLabel: (n) => `Pestaña ${n}`,
       image: async (h) => (h === hash ? { data: PNG, type: 'png', width: 1, height: 1 } : null),
     });
     const files = unzipSync(new Uint8Array(await Packer.toBuffer(built)));

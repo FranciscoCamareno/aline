@@ -1,7 +1,7 @@
 import type { IParagraphOptions, IRunOptions, ParagraphChild } from 'docx';
 import { assetHashOf } from '../../domain/docAssets.ts';
 import { parseInternalLink } from '../../domain/links.ts';
-import type { RichDocData, RichNode } from '../../domain/richDoc.ts';
+import { docTabs, type RichDocData, type RichNode } from '../../domain/richDoc.ts';
 import { catalogFontFor, parsePx } from './typography.ts';
 
 /**
@@ -22,6 +22,8 @@ export interface DocxImage {
 
 export interface DocxOptions {
   title: string;
+  /** Nombre de una pestaña sin título («Pestaña 2»). */
+  tabLabel: (position: number) => string;
   /** Imagen del almacén por hash, convertida a un formato que Word admite (null si falta). */
   image: (hash: string) => Promise<DocxImage | null>;
 }
@@ -191,7 +193,18 @@ export async function buildDocx(doc: RichDocData, options: DocxOptions) {
     }
   };
 
-  for (const node of doc.content.content ?? []) await block(node, { level: 0, quote: false });
+  // Con varias pestañas, cada una empieza en página nueva con su título (como en Google Docs).
+  const tabs = docTabs(doc);
+  for (const [index, tab] of tabs.entries()) {
+    if (tabs.length > 1) {
+      add({
+        heading: docx.HeadingLevel.TITLE,
+        pageBreakBefore: index > 0,
+        children: [new docx.TextRun({ text: tab.title || options.tabLabel(index + 1) })],
+      });
+    }
+    for (const node of tab.content.content ?? []) await block(node, { level: 0, quote: false });
+  }
 
   const levels = (format: (typeof LevelFormat)[keyof typeof LevelFormat], text: (i: number) => string) =>
     Array.from({ length: 6 }, (_, level) => ({

@@ -16,6 +16,9 @@ interface Props {
   onActivate: (id: string | null) => void;
   onCancelDraft: () => void;
   onClose: () => void;
+  /** Pestaña donde está el texto de un hilo que no está en la activa (null si se borró). */
+  tabOf: (id: string) => { id: string; title: string } | null;
+  onSwitchTab: (id: string) => void;
 }
 
 const QUOTE_MAX = 90;
@@ -34,6 +37,8 @@ export function CommentsPanel({
   onActivate,
   onCancelDraft,
   onClose,
+  tabOf,
+  onSwitchTab,
 }: Props) {
   const { t, i18n } = useTranslation();
   const [text, setText] = useState('');
@@ -69,7 +74,12 @@ export function CommentsPanel({
   const select = (id: string) => {
     onActivate(id);
     const range = firstRange(id);
-    if (!range) return;
+    if (!range) {
+      // El texto está en otra pestaña: se va a ella.
+      const tab = tabOf(id);
+      if (tab) onSwitchTab(tab.id);
+      return;
+    }
     editor.chain().setTextSelection(range).scrollIntoView().run();
   };
 
@@ -92,7 +102,11 @@ export function CommentsPanel({
       data-comment-id={comment.id}
     >
       <button type="button" className="doc-comment-quote link-button" onClick={() => select(comment.id)}>
-        {firstRange(comment.id) ? `«${quoteOf(comment.id)}»` : t('docs.commentOrphan')}
+        {firstRange(comment.id)
+          ? `«${quoteOf(comment.id)}»`
+          : tabOf(comment.id)
+            ? t('docs.commentInTab', { title: tabOf(comment.id)!.title })
+            : t('docs.commentOrphan')}
       </button>
       <p className="doc-comment-text" data-testid="doc-comment-text">
         {comment.text}

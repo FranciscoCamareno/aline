@@ -10,7 +10,15 @@ import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { FontFamily, FontSize, TextStyle } from '@tiptap/extension-text-style';
 import { Placeholder } from '@tiptap/extensions';
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { linkFocus, useUiStore } from '../../app/store.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
@@ -27,7 +35,15 @@ import {
 } from '../../domain/anchors.ts';
 import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
-import type { DocComment, RichDocData } from '../../domain/richDoc.ts';
+import {
+  assembleRichDoc,
+  contentProjection,
+  docTabs,
+  emptyRichDoc,
+  type DocComment,
+  type RichDocData,
+  type RichNode,
+} from '../../domain/richDoc.ts';
 import { AnchorNotice, CopiedNotice, type AnchorStatus } from '../knowledge/anchorUi.tsx';
 import { backlinkRanges, useBacklinkAnchors } from '../knowledge/backlinkMarks.ts';
 import { pmProjection } from '../knowledge/pmProjection.ts';
@@ -41,16 +57,13 @@ import { BlockAnchors, ensureBlockAnchor, withoutEmptyAnchors } from './blockAnc
 import { FontFamilyPicker, FontSizeControl } from './fontControls.tsx';
 import { parsePx } from './typography.ts';
 import { fontStack } from '../../app/fontCatalog.ts';
-import {
-  OutlinePanel,
-  useDocZoom,
-  useOutlineOpen,
-  ZoomControl,
-} from './docPanels.tsx';
-import { CommentMark, setCommentView } from './comments.ts';
+import { DocTabsPanel, useDocZoom, useOutlineOpen, ZoomSelect } from './docPanels.tsx';
+import { Menu } from '../../app/ui/Menu.tsx';
+import { commentIdsIn, CommentMark, setCommentView, withoutCommentsAndAnchors } from './comments.ts';
 import { DocImage, DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
 import { browserDocxImage, docxBlob } from './exportDocx.ts';
 import { printRichDoc } from './printDoc.ts';
+import { SelectionBubble } from './SelectionBubble.tsx';
 import { downloadBlob } from '../../app/download.ts';
 import { safeFilename } from '../../application/portability.ts';
 import { CommentsPanel } from './CommentsPanel.tsx';
@@ -160,6 +173,19 @@ function DocEditor({
   const readOnly: ReadOnlyReason | null =
     opened.readOnly ?? (contentError ? 'invalid-content' : null);
 
+  // Pestañas (como Google Docs): la lista (orden y títulos), la principal (su contenido es el
+  // `content` raíz) y el contenido de cada una. El editor muestra la activa y se vuelve a crear
+  // al cambiar de pestaña, así el deshacer de una no se mezcla con otra.
+  const [initialTabs] = useState(() => docTabs(opened.doc));
+  const [tabs, setTabs] = useState(() => initialTabs.map(({ id, title }) => ({ id, title })));
+  const tabsRef = useRef(tabs);
+  const mainTabRef = useRef(initialTabs.find((tab) => tab.main)?.id ?? initialTabs[0]!.id);
+  const contents = useRef(new Map(initialTabs.map((tab) => [tab.id, tab.content])));
+  const [activeTab, setActiveTab] = useState(initialTabs[0]!.id);
+  /** Contenido con que se crea el editor de la pestaña activa. */
+  const [editorContent, setEditorContent] = useState(initialTabs[0]!.content);
+  const activeTabRef = useRef(activeTab);
+
   // Comentarios (fase 8.3): se guardan con el contenido, en la misma revisión.
   const [comments, setComments] = useState<DocComment[]>(() => opened.doc.comments ?? []);
   const commentsRef = useRef(comments);
@@ -170,14 +196,21 @@ function DocEditor({
   /** Insertar imágenes vigente, para pegar y arrastrar (el editor se crea una sola vez). */
   const insertImagesRef = useRef<(files: File[], at?: number) => Promise<void>>(async () => {});
 
-  const autosave = useAutosave<{ content: RichDocData['content']; comments: DocComment[] }>(
-    ({ content, comments: list }) => {
-      const preserved: RichDocData = { ...opened.doc };
-      if (list.length) preserved.comments = list;
-      else delete preserved.comments;
-      return service.saveRichDoc(opened.session, content, preserved, images.newAssets());
-    },
+  // Se guarda el documento entero: pestañas, contenido de cada una y comentarios.
+  const autosave = useAutosave<RichDocData>((doc) =>
+    service.saveRichDoc(opened.session, doc.content, doc, images.newAssets()),
   );
+  /** El documento a guardar con lo que hay ahora (la pestaña activa, del editor). */
+  const buildDoc = (): RichDocData =>
+    assembleRichDoc(
+      opened.doc,
+      tabsRef.current.map((tab) => ({
+        ...tab,
+        content: contents.current.get(tab.id) ?? emptyRichDoc().content,
+      })),
+      mainTabRef.current,
+      commentsRef.current,
+    );
 
   const editor = useEditor({
     extensions: [
@@ -208,7 +241,7 @@ function DocEditor({
       // Páginas de la vista «Hoja» (fase 8.3): decoraciones, el documento no cambia.
       Pagination.configure({ pageLabel: (page) => t('docs.pageLabel', { page }) }),
     ],
-    content: opened.doc.content as JSONContent,
+    content: editorContent as JSONContent,
     editable: opened.readOnly === null,
     // Al abrir, el cursor va al final para poder escribir sin hacer clic; si se llega por un
     // enlace, no: la selección es la del fragmento enlazado (el autofoco llegaría después).
@@ -261,12 +294,14 @@ function DocEditor({
     },
     onUpdate: ({ editor: instance }) => {
       if (!instance.isEditable) return;
-      autosave.push({
-        content: withoutEmptyAnchors(instance.getJSON()) as RichDocData['content'],
-        comments: commentsRef.current,
-      });
+      contents.current.set(
+        activeTabRef.current,
+        withoutEmptyAnchors(instance.getJSON()) as RichDocData['content'],
+      );
+      autosave.push(buildDoc());
     },
-  });
+    // Un editor por pestaña: se crea de nuevo al cambiar de pestaña.
+  }, [activeTab]);
 
   /** «Enlazar selección»: marca `link` sobre la selección, o el título enlazado si no hay texto. */
   const linker = useSelectionLinker({
@@ -344,6 +379,99 @@ function DocEditor({
     else chain.insertContentAt(at, nodes).run();
   }
 
+  const getEditorView = useCallback(() => (editor ? editor.view : null), [editor]);
+
+  /** Guarda en `contents` lo que muestra el editor (la pestaña activa). */
+  const snapshotActive = () => {
+    if (!editor || editor.isDestroyed) return;
+    contents.current.set(
+      activeTabRef.current,
+      withoutEmptyAnchors(editor.getJSON()) as RichDocData['content'],
+    );
+  };
+  /** Guarda tras un cambio de pestañas o de comentarios. */
+  const saveNow = () => {
+    if (readOnly !== null) return;
+    snapshotActive();
+    autosave.push(buildDoc());
+  };
+
+  /** Cambiar los hilos: se guardan con el contenido actual. */
+  const changeComments = (next: DocComment[]) => {
+    commentsRef.current = next;
+    setComments(next);
+    saveNow();
+  };
+
+  // --- Pestañas ---
+  const updateTabs = (next: Array<{ id: string; title: string }>) => {
+    tabsRef.current = next;
+    setTabs(next);
+  };
+  const switchTab = (id: string) => {
+    if (id === activeTabRef.current || !tabsRef.current.some((tab) => tab.id === id)) return;
+    snapshotActive();
+    activeTabRef.current = id;
+    setEditorContent(contents.current.get(id) ?? emptyRichDoc().content);
+    setActiveTab(id);
+    setCommentDraft(null);
+  };
+  const newTabId = () => crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  const addTab = () => {
+    snapshotActive();
+    const id = newTabId();
+    contents.current.set(id, emptyRichDoc().content);
+    updateTabs([...tabsRef.current, { id, title: '' }]);
+    saveNow();
+    switchTab(id);
+  };
+  const renameTab = (id: string, title: string) => {
+    updateTabs(tabsRef.current.map((tab) => (tab.id === id ? { ...tab, title } : tab)));
+    saveNow();
+  };
+  const duplicateTab = (id: string) => {
+    snapshotActive();
+    const source = contents.current.get(id);
+    const original = tabsRef.current.find((tab) => tab.id === id);
+    if (!source || !original) return;
+    const copy = newTabId();
+    // La copia no se lleva los comentarios ni las anclas de enlaces (son del original).
+    contents.current.set(copy, withoutCommentsAndAnchors(source as RichNode) as RichDocData['content']);
+    const index = tabsRef.current.findIndex((tab) => tab.id === id);
+    const next = [...tabsRef.current];
+    next.splice(index + 1, 0, {
+      id: copy,
+      title: t('docs.tabCopyOf', { title: original.title || t('docs.tabUntitled', { n: index + 1 }) }),
+    });
+    updateTabs(next);
+    saveNow();
+    switchTab(copy);
+  };
+  const deleteTab = (id: string) => {
+    if (tabsRef.current.length < 2) return;
+    const index = tabsRef.current.findIndex((tab) => tab.id === id);
+    const name = tabsRef.current[index]?.title || t('docs.tabUntitled', { n: index + 1 });
+    if (!window.confirm(t('docs.tabDeleteConfirm', { title: name }))) return;
+    snapshotActive();
+    const next = tabsRef.current.filter((tab) => tab.id !== id);
+    if (mainTabRef.current === id) mainTabRef.current = next[0]!.id;
+    if (activeTabRef.current === id) switchTab(next[Math.max(0, index - 1)]!.id);
+    contents.current.delete(id);
+    updateTabs(next);
+    saveNow();
+  };
+  /** Pestaña (que no es la activa) donde está el texto de un hilo, para ir a él. */
+  const tabOfComment = (commentId: string) => {
+    const index = tabsRef.current.findIndex(
+      (tab) =>
+        tab.id !== activeTabRef.current &&
+        commentIdsIn(contents.current.get(tab.id) as RichNode | undefined).has(commentId),
+    );
+    if (index < 0) return null;
+    const tab = tabsRef.current[index]!;
+    return { id: tab.id, title: tab.title || t('docs.tabUntitled', { n: index + 1 }) };
+  };
+
   // «Exportar» de la cabecera (fase 8.4): Word (.docx) o PDF por la impresión del navegador.
   useEffect(
     () =>
@@ -358,33 +486,23 @@ function DocEditor({
           return;
         }
         setExportError(false);
-        const content = withoutEmptyAnchors(editor.getJSON()) as RichDocData['content'];
-        void docxBlob(
-          { ...opened.doc, content },
-          {
+        snapshotActive();
+        void docxBlob(buildDoc(), {
             title,
+            tabLabel: (n) => t('docs.tabUntitled', { n }),
             image: async (hash) => {
               const asset = images.added.get(hash) ?? (await service.loadAsset(hash));
               return asset ? browserDocxImage(asset) : null;
             },
-          },
-        )
+          })
           .then((blob) => downloadBlob(safeFilename(title, 'docx'), blob))
           .catch(() => setExportError(true));
       }),
+    // `buildDoc` y `snapshotActive` leen el estado vigente por referencias.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [editor, images, opened, service],
   );
 
-  /** Cambiar los hilos: se guardan con el contenido actual. */
-  const changeComments = (next: DocComment[]) => {
-    commentsRef.current = next;
-    setComments(next);
-    if (!editor || readOnly !== null) return;
-    autosave.push({
-      content: withoutEmptyAnchors(editor.getJSON()) as RichDocData['content'],
-      comments: next,
-    });
-  };
   /** «Comentar»: abre el formulario para la selección actual. */
   const startComment = () => {
     if (!editor || readOnly !== null) return;
@@ -441,18 +559,37 @@ function DocEditor({
     if (!target || (!quote && !target.blockId)) return;
     const fromLink = Boolean(target.quote || target.blockId);
     const projection = pmProjection(editor.state.doc);
+    // Si el fragmento no está en la pestaña activa pero sí en otra, se cambia a esa pestaña y el
+    // enlace se resuelve allí (el editor nuevo vuelve a pasar por aquí).
+    const anchor = { blockId: target.blockId ?? null, text: quote };
+    if (tabsRef.current.length > 1 && resolveAnchor(projection, anchor)?.status !== 'found') {
+      const other = tabsRef.current.find(
+        (tab) =>
+          tab.id !== activeTabRef.current &&
+          resolveAnchor(
+            contentProjection(contents.current.get(tab.id) ?? emptyRichDoc().content),
+            anchor,
+          )?.status === 'found',
+      );
+      if (other) {
+        useUiStore.setState({ focus: target });
+        switchTab(other.id);
+        return;
+      }
+    }
     const result = resolveAnchor(projection, {
       blockId: target.blockId ?? null,
       text: quote,
     });
     // Sincroniza con una orden externa (la navegación), una vez por enlace seguido.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAnchorStatus(!fromLink || !result || result.status === 'found' ? null : result.status);
     if (!result || result.status === 'lost') return;
     const from = sourceOffset(projection, result.from, 'start');
     const to = sourceOffset(projection, result.to, 'end');
     if (from === null || to === null) return;
     editor.chain().focus().setTextSelection({ from, to }).scrollIntoView().run();
+    // `switchTab` solo usa referencias y el editor vigente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, focus, opened.document.id]);
 
   /** Enlaces: los internos se abren en la app; los externos solo con Ctrl/⌘ y sin opener. */
@@ -502,6 +639,7 @@ function DocEditor({
           <FormatControls
             editor={editor}
             disabled={readOnly !== null}
+            zoom={<ZoomSelect zoom={zoom} onChange={setZoom} />}
             onLink={openLink}
             onCopyLink={copyLink}
             onComment={startComment}
@@ -535,12 +673,22 @@ function DocEditor({
             <span className="doc-comments-count">{comments.filter((c) => !c.resolved).length}</span>
           )}
         </button>
-        <ZoomControl zoom={zoom} onChange={setZoom} />
-        <LayoutToggle layout={layout} onChange={setLayout} />
+        <LayoutToggle layout={layout} onChange={setLayout} compact />
       </div>
       <div className="doc-body">
         {outlineOpen && editor && (
-          <OutlinePanel editor={editor} onClose={() => setOutlineOpen(false)} />
+          <DocTabsPanel
+            editor={editor}
+            tabs={tabs}
+            activeId={activeTab}
+            readOnly={readOnly !== null}
+            onSwitch={switchTab}
+            onAdd={addTab}
+            onRename={renameTab}
+            onDuplicate={duplicateTab}
+            onDelete={deleteTab}
+            onClose={() => setOutlineOpen(false)}
+          />
         )}
         <div className="doc-scroll">
           {/* Zoom con la propiedad CSS `zoom`: a diferencia de `transform`, el editor sigue
@@ -572,6 +720,8 @@ function DocEditor({
             onChange={changeComments}
             onActivate={setActiveComment}
             onCancelDraft={() => setCommentDraft(null)}
+            tabOf={tabOfComment}
+            onSwitchTab={switchTab}
             onClose={() => {
               setCommentsOpen(false);
               setCommentDraft(null);
@@ -580,6 +730,20 @@ function DocEditor({
         )}
       </div>
       {linker.picker}
+      {/* Burbuja al seleccionar texto: comentar y enlazar (como Google Docs). */}
+      <SelectionBubble
+        getView={getEditorView}
+        disabled={readOnly !== null}
+        actions={[
+          {
+            id: 'comment',
+            label: t('docs.commentAddShort'),
+            icon: 'comentario',
+            onRun: startComment,
+          },
+          { id: 'link', label: t('links.linkSelectionShort'), icon: 'enlace', onRun: openLink },
+        ]}
+      />
     </div>
   );
 }
@@ -610,9 +774,12 @@ function FormatControls({
   onCopyLink,
   onComment,
   onImage,
+  zoom,
 }: {
   editor: Editor;
   disabled: boolean;
+  /** Desplegable de zoom: el primero tras deshacer/rehacer, como en Drive. */
+  zoom: ReactNode;
   onLink: () => void;
   onCopyLink: () => void;
   onComment: () => void;
@@ -671,6 +838,7 @@ function FormatControls({
           onRun={() => chain().redo().run()}
         />
       </div>
+      <div className="doc-toolbar-group">{zoom}</div>
       <div className="doc-toolbar-group">
         <BlockStyleSelect value={state.block} disabled={disabled} onChange={setBlock} />
       </div>
@@ -726,31 +894,55 @@ function FormatControls({
       </div>
       <div className="doc-toolbar-group">
         <ToolIconButton
-          id="align-left"
-          icon="alinear-izq"
-          label={t('docs.alignLeft')}
-          active={state.left}
+          id="link"
+          icon="enlace"
+          label={t('links.linkSelection')}
           disabled={disabled}
-          onRun={() => chain().setTextAlign('left').run()}
+          onRun={onLink}
         />
         <ToolIconButton
-          id="align-center"
-          icon="alinear-centro"
-          label={t('docs.alignCenter')}
-          active={state.center}
-          disabled={disabled}
-          onRun={() => chain().setTextAlign('center').run()}
+          id="comment"
+          icon="comentario"
+          label={t('docs.commentAdd')}
+          disabled={disabled || !state.hasSelection}
+          onRun={onComment}
         />
         <ToolIconButton
-          id="align-right"
-          icon="alinear-der"
-          label={t('docs.alignRight')}
-          active={state.right}
+          id="image"
+          icon="imagen"
+          label={t('docs.insertImage')}
           disabled={disabled}
-          onRun={() => chain().setTextAlign('right').run()}
+          onRun={onImage}
         />
       </div>
       <div className="doc-toolbar-group">
+        <Menu
+          trigger={
+            <>
+              <Icon
+                name={state.center ? 'alinear-centro' : state.right ? 'alinear-der' : 'alinear-izq'}
+                size={18}
+              />
+              <Icon name="chevron-abajo" size={12} />
+            </>
+          }
+          label={t('docs.align')}
+          triggerClassName="icon-button doc-align-trigger"
+          testId="doc-align"
+          placement="bottom-start"
+          items={(
+            [
+              ['left', 'alinear-izq', t('docs.alignLeft')],
+              ['center', 'alinear-centro', t('docs.alignCenter')],
+              ['right', 'alinear-der', t('docs.alignRight')],
+            ] as const
+          ).map(([value, icon, label]) => ({
+            id: `doc-align-${value}`,
+            label,
+            icon,
+            onSelect: () => chain().setTextAlign(value).run(),
+          }))}
+        />
         <ToolIconButton
           id="bullet-list"
           icon="lista"
@@ -778,31 +970,10 @@ function FormatControls({
       </div>
       <div className="doc-toolbar-group">
         <ToolIconButton
-          id="link"
-          icon="enlace"
-          label={t('links.linkSelection')}
-          disabled={disabled}
-          onRun={onLink}
-        />
-        <ToolIconButton
           id="copy-link"
           icon="duplicar"
           label={t('links.copyLink')}
           onRun={onCopyLink}
-        />
-        <ToolIconButton
-          id="comment"
-          icon="comentario"
-          label={t('docs.commentAdd')}
-          disabled={disabled || !state.hasSelection}
-          onRun={onComment}
-        />
-        <ToolIconButton
-          id="image"
-          icon="imagen"
-          label={t('docs.insertImage')}
-          disabled={disabled}
-          onRun={onImage}
         />
         <CopiedNotice />
       </div>

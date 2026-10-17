@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../../app/ui/Icon.tsx';
+import { Menu } from '../../app/ui/Menu.tsx';
 
 /**
  * Presentación de un documento de la sección «Documentos»: texto corrido o una hoja A4. Es una
@@ -29,15 +31,43 @@ export function useDocLayout(): [DocLayout, (layout: DocLayout) => void] {
   return [layout, change];
 }
 
-/** Selector «Continuo · Hoja» de la barra del documento. */
+/**
+ * Selector «Continuo · Hoja» de la barra del documento. `compact`: un desplegable «Vista» con
+ * las dos opciones (barra de los documentos con formato, donde no cabe el selector entero).
+ */
 export function LayoutToggle({
   layout,
   onChange,
+  compact = false,
 }: {
   layout: DocLayout;
   onChange: (layout: DocLayout) => void;
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
+  if (compact) {
+    return (
+      <Menu
+        trigger={
+          <>
+            <Icon name="documento" size={18} />
+            <span className="doc-layout-label">{t(`docs.layout_${layout}`)}</span>
+            <Icon name="chevron-abajo" size={12} />
+          </>
+        }
+        label={t('docs.layout')}
+        triggerClassName="icon-button doc-layout-trigger"
+        testId="doc-layout"
+        placement="bottom-end"
+        items={(['continuous', 'page'] as const).map((value) => ({
+          id: `doc-layout-${value}`,
+          label: t(`docs.layout_${value}`),
+          ...(value === layout ? { icon: 'check' as const } : {}),
+          onSelect: () => onChange(value),
+        }))}
+      />
+    );
+  }
   return (
     <div className="segmented" role="group" aria-label={t('docs.layout')}>
       {(['continuous', 'page'] as const).map((value) => (

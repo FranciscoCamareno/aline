@@ -32,7 +32,7 @@ import {
   type RevisionMetadata,
 } from '../domain/revision.ts';
 import { markdownAssetRefs, richDocAssetRefs } from '../domain/docAssets.ts';
-import { emptyRichDoc, parseRichDoc, type RichDocData } from '../domain/richDoc.ts';
+import { docTabs, emptyRichDoc, parseRichDoc, type RichDocData } from '../domain/richDoc.ts';
 import { emptyCanvasExtensions, type CanvasExtensions } from '../domain/sidecar.ts';
 import { wouldCreateCycle } from '../domain/folders.ts';
 import { dedupeTags } from '../domain/tags.ts';
@@ -464,7 +464,13 @@ export class VaultService {
         operation: 'save',
         knownHeads: session.knownHeads,
         metadata: { ...head.metadata, kind: 'doc', deleted: false },
-        ...(await this.withAssets(richDocAssetRefs(parsed.doc.content), head, newAssets, body)),
+        // Las imágenes de todas las pestañas.
+        ...(await this.withAssets(
+          [...new Set(docTabs(parsed.doc).flatMap((tab) => richDocAssetRefs(tab.content)))].sort(),
+          head,
+          newAssets,
+          body,
+        )),
       });
     });
   }
