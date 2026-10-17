@@ -470,6 +470,12 @@
       "too-many-elements": "demasiados elementos (máximo 50 000)"
     }
   },
+  "welcome": {
+    "title": "Te damos la bienvenida a aline",
+    "lead": "Elige el idioma y el tema de la aplicación.",
+    "hint": "Podrás cambiarlo cuando quieras en Configuración.",
+    "continue": "Continuar"
+  },
   "preferences": {
     "followSystem": "Seguir al sistema",
     "lightSchemes": "Esquema claro",

@@ -470,6 +470,12 @@
       "too-many-elements": "too many elements (50,000 maximum)"
     }
   },
+  "welcome": {
+    "title": "Welcome to aline",
+    "lead": "Choose the language and theme of the app.",
+    "hint": "You can change this any time in Settings.",
+    "continue": "Continue"
+  },
   "preferences": {
     "followSystem": "Follow the system",
     "lightSchemes": "Light scheme",

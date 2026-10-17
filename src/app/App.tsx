@@ -25,6 +25,7 @@ import { PwaPrompt } from './PwaPrompt.tsx';
 import { flushAllWrites, logDiagnostic } from './runtime.ts';
 import { bootstrap, type AppServices } from './services.ts';
 import { StartupError } from './StartupError.tsx';
+import { shouldShowWelcome, WelcomeDialog } from './WelcomeDialog.tsx';
 import { EVENT_COLORS } from '../domain/calendar.ts';
 import { CalendarView } from '../features/calendar/CalendarView.tsx';
 import { DocView } from '../features/docs/DocView.tsx';
@@ -76,6 +77,8 @@ export function App() {
   /** Documento abierto que otra pestaña acaba de modificar. */
   const [changedElsewhere, setChangedElsewhere] = useState<string | null>(null);
   const [quotaHigh, setQuotaHigh] = useState(false);
+  /** Bienvenida de la primera apertura: idioma y tema (se recuerda en este navegador). */
+  const [welcomeOpen, setWelcomeOpen] = useState(shouldShowWelcome);
   const zenMode = useUiStore((s) => s.zen);
   const { documents, activeId, saveStatus, libraryOpen, selectedFolder, section } = useUiStore(
     useShallow((s) => ({
@@ -473,7 +476,13 @@ export function App() {
       />
     );
   }
-  if (!services) return <div className="view-message">{t('app.loading')}</div>;
+  if (!services)
+    return (
+      <>
+        <div className="view-message">{t('app.loading')}</div>
+        {welcomeOpen && <WelcomeDialog onDone={() => setWelcomeOpen(false)} />}
+      </>
+    );
 
   const inCalendar = section === 'calendar';
   const inDocs = section === 'documents';
@@ -872,6 +881,7 @@ export function App() {
         />
       )}
       <PwaPrompt beforeUpdate={beforeUpdate} />
+      {welcomeOpen && <WelcomeDialog onDone={() => setWelcomeOpen(false)} />}
     </div>
   );
 }

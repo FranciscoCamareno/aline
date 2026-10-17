@@ -41,10 +41,12 @@ test('tras instalar el Service Worker, la app abre sin conexión', async ({ page
   await context.setOffline(false);
 });
 
-test('la aplicación distribuye su licencia MIT y los avisos de terceros', async ({ request }) => {
+test('la aplicación distribuye su licencia AGPLv3 y los avisos de terceros', async ({
+  request,
+}) => {
   const own = await (await request.get('/LICENSE.txt')).text();
-  expect(own).toContain('MIT License');
-  expect(own).toContain('Copyright (c) 2026 F. C.');
+  expect(own).toContain('GNU AFFERO GENERAL PUBLIC LICENSE');
+  expect(own).toContain('Version 3, 19 November 2007');
 
   const notices = await (await request.get('/THIRD-PARTY-NOTICES.txt')).text();
   expect(notices).toContain('@excalidraw/excalidraw 0.18.1 — MIT');

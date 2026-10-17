@@ -137,7 +137,7 @@ export function SettingsDialog({
 }
 
 /** «Seguir al sistema» y los esquemas de color (DESIGN.md §2.5): uno claro y uno oscuro. */
-function AppearanceSettings() {
+export function AppearanceSettings() {
   const { t } = useTranslation();
   const { theme, preference, lightScheme, darkScheme } = useTheme();
 
@@ -194,7 +194,7 @@ function AppearanceSettings() {
   );
 }
 
-function LanguageSettings() {
+export function LanguageSettings() {
   const { t, i18n } = useTranslation();
   return (
     <label className="preference-row">

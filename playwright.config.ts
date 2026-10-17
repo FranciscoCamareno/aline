@@ -25,6 +25,16 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'retain-on-failure',
+    // La bienvenida de la primera apertura ya está vista; su propio test parte de un perfil vacío.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: 'http://localhost:4173',
+          localStorage: [{ name: 'mindnote.welcome', value: '1' }],
+        },
+      ],
+    },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

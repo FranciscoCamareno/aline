@@ -599,6 +599,16 @@ a {
 .preferences .section-title {
   margin: 0 4px 2px;
 }
+.welcome-dialog {
+  width: min(760px, 100%);
+  max-height: 88vh;
+  gap: 14px;
+  padding: 24px;
+}
+.welcome-dialog h2 {
+  margin: 0;
+}
+
 .preference-row {
   display: flex;
   align-items: center;

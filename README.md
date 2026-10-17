@@ -1,14 +1,20 @@
-# aline — núcleo local
+# aline
 
-Sistema personal de mapas mentales y notas conectadas. Esta es la **primera entrega**: el núcleo
-local descrito en [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md). Es una PWA
-con React, TypeScript estricto y Vite, con lienzo Excalidraw, notas Markdown y guardado
-automático en IndexedDB (Dexie). No necesita cuenta ni servidor; Google Drive y la carpeta
-local son opcionales.
+Sistema personal de mapas mentales y notas conectadas: lienzos Excalidraw, notas Markdown,
+documentos con formato, calendario y enlaces entre todo ello. Es una PWA con React, TypeScript
+estricto y Vite que guarda todo en el navegador (IndexedDB con Dexie), en un formato abierto y
+con historial de versiones. No necesita cuenta ni servidor; la carpeta local y Google Drive
+(opcionalmente cifrado de extremo a extremo) son destinos de sincronización opcionales.
 
-> El nombre visible es **aline**. Los identificadores internos siguen siendo `mindnote` (base
-> `mindnote-vault`, formato del almacén) para no romper datos existentes. Los enlaces internos
-> se escriben como `aline://` desde el 16/10/2026; los anteriores `mindnote://` se siguen leyendo.
+El diseño técnico es [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md) y el plan
+de trabajo, [docs/Plan-de-fases.md](docs/Plan-de-fases.md). Están implementadas las fases 0 a 5
+y 7 a 8; para la beta faltan las pruebas en el iPad y dos semanas de uso real, y la fase 6
+(ramas colapsables, tarjetas de nota, modo «Solo lápiz»…) sigue pendiente. Versión publicada:
+https://aline.projeck.workers.dev (Cloudflare Workers, recursos estáticos de `dist/`).
+
+> El sistema se llama **aline**. Para no romper datos existentes, la base local conserva su
+> nombre original (`mindnote-vault`) y los enlaces internos anteriores a 16/10/2026 (`mindnote://`)
+> se siguen leyendo; los nuevos se escriben como `aline://`.
 
 **Diseño visual:** [docs/DESIGN.md](docs/DESIGN.md). Los recursos de marca (logotipo, iconos,
 stickers, notas adhesivas) están en [brand/](brand/); los tokens de color viven en
@@ -34,8 +40,14 @@ pnpm install --frozen-lockfile
 pnpm dev            # http://localhost:5173
 ```
 
-`pnpm dev` y `pnpm build` copian antes las fuentes de Excalidraw a `public/fonts` para que se
-sirvan desde el mismo origen y no desde un CDN (diseño §13).
+`pnpm dev` y `pnpm build` ejecutan antes `pnpm assets`: copian las fuentes de Excalidraw a
+`public/fonts` y las fuentes adicionales a `public/fonts-extra` para que se sirvan desde el mismo
+origen y no desde un CDN (diseño §13), y generan los avisos de licencias de terceros.
+
+El ID de cliente OAuth de Google de `.env` es público por diseño (va incrustado en el JavaScript
+publicado) y solo funciona desde los orígenes autorizados. Un fork que quiera usar Drive debe
+crear su propio cliente en Google Cloud y ponerlo en `.env.local`. La aplicación no usa ningún
+secreto de cliente.
 
 ## Comandos
 
@@ -49,7 +61,8 @@ sirvan desde el mismo origen y no desde un CDN (diseño §13).
 | `pnpm format` / `pnpm format:check`     | Prettier                                                                                    |
 | `pnpm test`                             | Pruebas unitarias (Vitest con IndexedDB en memoria)                                         |
 | `pnpm test:e2e`                         | Recorridos en Chromium con Playwright sobre la compilación de producción                    |
-| `pnpm verify`                           | typecheck + lint + test + build                                                             |
+| `pnpm test:e2e:all`                     | Los mismos recorridos también en Microsoft Edge, si está instalado                          |
+| `pnpm verify`                           | Formato + typecheck + lint + test + build                                                   |
 | `pnpm test:fase0`                       | Pruebas de viabilidad del motor (fase 0) sobre el banco `spikes/fase0/`                     |
 | `pnpm spike:fase0 --host`               | Sirve el banco en http://<IP>:4174 para las pruebas manuales en el iPad                     |
 | `pnpm schemas`                          | Regenera los JSON Schema del formato en `docs/formato/schemas/v1`                           |
@@ -64,14 +77,16 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
 
 ## Qué incluye
 
-- **Primera apertura:** crea un almacén local (UUID) y muestra un lienzo vacío de inmediato.
+- **Primera apertura:** pide el idioma y el tema (una sola vez, se recuerda en el navegador), crea
+  un almacén local (UUID) y muestra un lienzo vacío de inmediato.
 - **Lienzos Excalidraw:** guardado automático con espera de 500 ms y máximo de 2 s, guardado
   al soltar el puntero, al ocultar la página y antes de cambiar de documento. Desplazamiento,
   zoom y selección no generan revisiones. Las imágenes se guardan aparte como blobs
   direccionados por SHA-256 y se rehidratan al abrir.
 - **Notas Markdown:** CodeMirror 6, vista previa saneada (unified + remark + rehype-sanitize,
   sin HTML crudo ni carga de imágenes remotas), frontmatter con `schema_version`, `id`, `title`
-  y `tags`. Los enlaces `aline://document/<UUID>` (y los anteriores `mindnote://`) abren el documento dentro de la app.
+  y `tags`. Los enlaces `aline://document/<UUID>` (y los anteriores `mindnote://`) abren el documento
+  dentro de la app.
 - **Crear, abrir y renombrar** notas y lienzos desde la biblioteca o desde el título de la
   cabecera. Renombrar conserva el UUID y crea una revisión nueva; en notas vuelve a serializar
   el frontmatter y conserva el cuerpo.
@@ -88,36 +103,48 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   agrupadas con menú, panel secundario (marco, láser, imagen, Mermaid), nota adhesiva (N) y
   stickers de la marca (B), que se colocan con clic o arrastrándolos al lienzo y conservan su
   color en el tema oscuro. Los demás atajos de teclado son los del motor.
-- **Calendario** (DESIGN.md §8): sección propia en la biblioteca, vistas de mes y semana,
-  eventos de todo el día, con hora o de varios días con los colores de las notas adhesivas, y
-  varios calendarios que se muestran u ocultan. Cada calendario es un documento del almacén.
-- **Documentos** (beta): sección de la barra lateral (junto a «Notas», antes «Biblioteca», y
-  «Calendario») con su menú «Nuevo», buscador, «Todos/Recientes» y carpetas propias. Dos tipos:
-  **documento con formato** (Tiptap: títulos, negrita, cursiva, subrayado, tachado, listas, citas
-  y alineación; `kind: 'doc'`, JSON) y **documento Markdown** (Milkdown; `kind: 'mddoc'`, mismo
-  formato que una nota, con copia legible y búsqueda). Vista «Continuo» u «Hoja» (A4).
+- **Calendario** (DESIGN.md §8): sección propia de la barra lateral, vistas de día, semana y mes,
+  eventos de todo el día, con hora o de varios días con los colores de las notas adhesivas,
+  enlaces en cada evento y varios calendarios que se muestran u ocultan. Cada calendario es un
+  documento del almacén; si dos equipos lo cambian a la vez, se combinan por evento.
+- **Documentos** (beta): sección de la barra lateral con su menú «Nuevo», buscador,
+  «Todos/Recientes» y carpetas propias. Dos tipos: **documento con formato** (Tiptap;
+  `kind: 'doc'`, JSON) y **documento Markdown** (Milkdown; `kind: 'mddoc'`, mismo formato que una
+  nota, con copia legible). Los dos se indexan en la búsqueda y tienen vista «Continuo» u «Hoja»
+  (A4).
+- **Documentos con formato:** títulos, negrita, cursiva, subrayado, tachado, listas, citas,
+  alineación, fuente y tamaño; pestañas (como en Google Docs) con sus capítulos, barra de
+  herramientas compacta, burbuja al seleccionar texto para comentar o enlazar, zoom de la hoja,
+  vista «Hoja» partida en páginas A4 y comentarios con respuestas (resolver, reabrir, eliminar).
+  Imágenes del equipo (también en los documentos Markdown; nunca remotas) y exportación a Word
+  (.docx) y PDF.
 - **Plantillas del lienzo** (DESIGN.md §9): guardar una selección (también con imágenes y
   stickers) e insertarla con un clic o arrastrándola. Sustituyen a la biblioteca de Excalidraw.
-- **Biblioteca y cabecera** (DESIGN.md §6): «Nuevo» con desplegable (lienzo, nota, carpeta,
-  importar), lienzos y notas que se arrastran dentro y fuera de las carpetas, buscador de títulos, pestañas «Todos» y «Recientes», acciones de cada fila en «⋯» y,
-  abajo, solo Perfil: su menú abre Configuración (almacenamiento, temas, idioma, archivo y papelera). Carpetas y documentos se arrastran dentro y fuera de las carpetas y arriba o abajo (orden manual, también con «Subir»/«Bajar»), y se pueden archivar. La cabecera deja a la vista Historial, Enlaces y
-  Exportar; Buscar y Estado y diagnóstico están en «⋯».
-- **Documentos con formato:** pestañas (como en Google Docs) con sus capítulos, barra de herramientas compacta, burbuja al seleccionar texto para comentar o enlazar, zoom de la hoja, vista «Hoja» partida en páginas A4 y comentarios con respuestas (resolver, reabrir, eliminar). Imágenes del equipo (también en los documentos Markdown) y exportación a Word (.docx) y PDF.
-- **Fuentes:** 24 fuentes de Google Fonts (OFL), servidas desde el propio origen y descargadas solo al usarse, en el selector de fuentes del lienzo (con un parche de Excalidraw) y en la barra de los documentos con formato, junto con el tamaño (A− / A+).
+- **Barra lateral y cabecera** (DESIGN.md §6): secciones Notas → Documentos → Calendario. «Nuevo»
+  con desplegable (lienzo, nota, carpeta, importar), buscador de títulos, pestañas «Todos» y
+  «Recientes» y acciones de cada fila en «⋯». Carpetas y documentos se arrastran dentro y fuera
+  de las carpetas y arriba o abajo (orden manual, también con «Subir»/«Bajar»), y se pueden
+  archivar. Abajo solo está Perfil, cuyo menú abre Configuración (almacenamiento, temas, idioma,
+  archivo y papelera). La cabecera deja a la vista Historial, Enlaces y Exportar; Buscar y
+  Estado y diagnóstico están en «⋯».
+- **Fuentes:** 24 fuentes de Google Fonts (OFL, y una Apache-2.0), servidas desde el propio
+  origen y descargadas solo al usarse, en el selector de fuentes del lienzo (con un parche de
+  Excalidraw) y en la barra de los documentos con formato, junto con el tamaño (A− / A+).
 - **Tema y esquemas de color:** 8 esquemas en 4 pares (Papel/Noche, Blanco/Negro, Bruma/Marea,
-  Salvia/Bosque). En Perfil → Temas se elige uno claro y uno oscuro; el interruptor de la
-  cabecera alterna entre ellos y «Seguir al sistema» usa el que toque (preferencias de este
-  navegador). El lienzo pinta el fondo del esquema sin guardarlo. Fuente Nunito servida desde el
-  propio origen.
+  Salvia/Bosque). En Configuración → Apariencia (y en la bienvenida) se elige uno claro y uno
+  oscuro; el interruptor de la cabecera alterna entre ellos y «Seguir al sistema» usa el que
+  toque (preferencias de este navegador). El lienzo pinta el fondo del esquema sin guardarlo.
+  Fuente Nunito servida desde el propio origen.
 - **Modo Zen del lienzo** (menú contextual o Alt+Z): oculta también la barra lateral y la
   cabecera; las herramientas del lienzo siguen a la vista.
 - **Al abrir** se vuelve al último documento abierto en este dispositivo.
 - **Compatibilidad de versiones:** una revisión, un frontmatter, un sidecar o una escena con una
   versión posterior a la soportada (o con contenido inválido) se abre en **solo lectura** con
   aviso; nada se guarda encima.
-- **Estado y diagnóstico** (botón ⓘ): almacén, dispositivo, persistencia concedida, uso y cuota
+- **Estado y diagnóstico** (menú «⋯» de la cabecera): almacén, dispositivo, persistencia concedida, uso y cuota
   del navegador, aviso de cuota alta, **exportación de emergencia** (todo el contenido en un JSON)
-  y registro de diagnóstico local, rotado por tamaño, sin texto de las notas y exportable.
+  registro de diagnóstico local (rotado por tamaño, sin texto de las notas y exportable), licencias
+  y enlace al código fuente (AGPLv3 §13).
 - **Almacén inaccesible (FA-01b):** si el navegador no deja abrir IndexedDB, se avisa sin borrar
   nada y se ofrece reintentar o trabajar en un almacén temporal en memoria.
 - **Actualizaciones seguras:** antes de activar una versión nueva se guardan los cambios
@@ -131,9 +158,11 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   `backup-manifest.json` (SHA-256 de cada archivo). La **restauración** valida manifiesto, hashes,
   rutas y límites de descompresión, crea un almacén nuevo y comprueba que el contenido coincide
   byte a byte antes de ofrecer abrirlo. También restaura la exportación de emergencia JSON.
-- **Papelera** recuperable y **borrado definitivo** explícito, con confirmación, que registra un
-  control `VersionPrune` y solo libera blobs que ya nadie usa.
-- **Historial** de cada documento (botón 🕘): lista sin cargar cuerpos, vista previa de notas y
+- **Papelera** recuperable (Configuración → Papelera) y **borrado definitivo** explícito, con
+  confirmación, que registra un control `VersionPrune` y solo libera blobs que ya nadie usa.
+- **Archivo:** lo archivado sale de la barra lateral, de «Recientes» y de los selectores de
+  enlaces, pero sigue en la búsqueda; se recupera en Configuración → Archivo.
+- **Historial** de cada documento (botón Historial de la cabecera): lista sin cargar cuerpos, vista previa de notas y
   lienzos y restauración que conserva la versión reemplazada.
 - **Conflictos:** aviso en el documento y panel para conservar una versión, conservar ambas
   (copia en un documento nuevo) o combinar notas a mano con las diferencias a la vista. Ninguna
@@ -148,18 +177,24 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   «Vincular» con un elemento seleccionado; se puede crear la nota en el momento). En notas, `[[`
   sugiere destinos por título e inserta un enlace por UUID, o crea la nota. Renombrar no rompe
   enlaces. Los `[[Título]]` importados se resuelven solo si el título es único.
-- **Backlinks y enlaces rotos** en «Detalles y enlaces» (botón 🔗), junto con carpeta y etiquetas.
-  Desde un backlink o un resultado se abre el documento y se centra el elemento o el texto.
+- **Todo enlazable** (fase 7): en notas y documentos, «Enlazar selección» (Ctrl/⌘+K) enlaza con
+  cualquier documento o evento del calendario, y «Copiar enlace a la selección» (Ctrl/⌘+Mayús+K)
+  crea un enlace a un fragmento concreto (cita del texto y, en documentos con formato, id de
+  bloque). Si el texto citado cambia, el enlace avisa de que el ancla es aproximada o se perdió.
+  Los fragmentos que reciben enlaces se subrayan en el destino.
+- **Backlinks y enlaces rotos** en «Detalles y enlaces» (botón Enlaces de la cabecera), con el
+  contexto de cada enlace, junto con carpeta y etiquetas. Desde un backlink o un resultado se
+  abre el documento y se centra el elemento o el texto.
 - **Conectores sueltos (RN-07):** al borrar un nodo, su flecha se conserva y se señala; un botón
   la selecciona.
-- **Búsqueda** de texto completo (botón 🔍 o Ctrl+Mayús+F) en títulos, etiquetas, notas y texto
-  de los lienzos, sin distinguir mayúsculas ni acentos, por prefijo y con tolerancia a errores.
+- **Búsqueda** de texto completo («⋯» → Buscar o Ctrl+Mayús+F) en títulos, etiquetas, notas,
+  documentos, eventos y texto de los lienzos, sin distinguir mayúsculas ni acentos, por prefijo y con tolerancia a errores.
   El índice MiniSearch vive en un worker y se reconstruye desde el contenido.
-- **Carpeta local** (Estado y diagnóstico → «Dónde se guarda»; Chrome o Edge en el ordenador): el
+- **Carpeta local** (Configuración → Almacenamiento; Chrome o Edge en el ordenador): el
   almacén sigue en el navegador y la carpeta recibe el formato abierto, con objetos primero y
   revisión al final, sin sobrescribir nunca. Se sincroniza al abrir, al volver a la pestaña,
   unos segundos después de cada cambio y cada minuto. El estado se muestra en la barra superior
-  (📁). Los permisos se revalidan al reiniciar («Reconectar carpeta»). Si la carpeta contiene
+  (icono de carpeta). Los permisos se revalidan al reiniciar («Reconectar carpeta»). Si la carpeta contiene
   otro almacén, no se mezclan: se ofrece abrirlo aquí como almacén aparte, que es como se usa
   desde un segundo equipo.
 - **Sincronización** entre equipos a través de la carpeta: precedencia por `parentIds` (no por
@@ -171,7 +206,7 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   nota, ambas quedan en conflicto.
 - Si el documento abierto cambia en otro sitio y no tiene cambios sin guardar, se recarga solo;
   si los tiene, se avisa y no se pisa nada.
-- **Google Drive** (Estado y diagnóstico → «Dónde se guarda» → «Conectar Google Drive…»):
+- **Google Drive** (Configuración → Almacenamiento → «Conectar Google Drive…»):
   - primero hay que elegir **sin cifrar** (aviso RN-12: Google puede leer el contenido) o
     **cifrado de extremo a extremo** (aviso: sin la contraseña ni el código de recuperación, la
     copia de Drive no se recupera). Con cifrado se crea una contraseña y se muestra un código de
@@ -183,8 +218,8 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
     archivo lleva `appProperties` (almacén, revisión, hash…) y se busca por ellas, nunca por ruta;
   - si la cuenta ya tiene este almacén, se enlaza; si tiene otros, se ofrece abrir uno aquí como
     almacén aparte o crear una carpeta para este; nunca se mezclan;
-  - la barra superior muestra «☁️ Sincronizado · hh:mm» solo tras un ciclo completo sin nada
-    pendiente;
+  - la barra superior muestra «Sincronizado · hh:mm» (con el icono de nube) solo tras un ciclo
+    completo sin nada pendiente;
   - un almacén usa un solo destino externo: la carpeta o Drive.
 - **Cifrado de la copia en Drive** (opcional; diseño §13.1, formato §7):
   - AES-256-GCM con Web Crypto. Una clave por almacén, protegida con la contraseña (PBKDF2, 600 000
@@ -196,18 +231,19 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   - en «Cifrado y contraseña» se puede cambiar la contraseña, generar otro código o cambiar de
     modo. Al cambiar de modo se crea una carpeta nueva y se sube todo; los demás equipos se
     trasladan solos y la carpeta anterior se puede mover a la papelera.
-- **Exportar el lienzo** (botón «Exportar…» o menú del lienzo; RF-33, RF-45):
+- **Exportar el lienzo** (cabecera → Exportar o menú del lienzo; RF-33, RF-45):
   - PNG y SVG con fondo opcional, escala 1×–3× y opción de solo la selección;
   - PDF A4 encajado o paginado (raster insertado con jsPDF, como decide el diseño);
   - `.excalidraw` autocontenido, con la lista de lo que no viaja;
   - si el raster no cabe en memoria (límite de Safari, 16,7 Mpx), se propone una escala menor o
     la selección; nunca se recorta en silencio.
-- **Importar** (biblioteca → «Importar y exportar»; RF-34, RF-35):
+- **Importar** (barra lateral → «Nuevo» → Importar; RF-34, RF-35):
   - `.excalidraw` validado, sin contenido web incrustado ni imágenes remotas;
   - notas Markdown sueltas o carpetas con subcarpetas;
   - cada importación crea documentos nuevos y termina con un informe de lo no importado y por qué.
-- **Exportar Markdown:** cada nota con su frontmatter («Exportar .md»), o una carpeta o todo el
-  almacén en un ZIP con la estructura de carpetas.
+- **Exportar Markdown** (cabecera → Exportar): la nota o el documento Markdown abierto con su
+  frontmatter, o las notas de una carpeta o de todo el almacén en un ZIP con la estructura de
+  carpetas.
 - **Uso táctil (iPad):**
   - objetivos de 44 px y campos de 16 px (sin zoom al enfocar en iOS);
   - biblioteca superpuesta en vertical que se cierra al abrir un documento, al tocar fuera o al
@@ -218,24 +254,30 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   - contraste WCAG AA comprobado en los temas claro y oscuro;
   - traducciones es/en completas, con una prueba que lo exige.
 - **Integración continua** en `.github/workflows/ci.yml` (formato, licencias, verify y E2E).
-- Borrador de cabeceras de seguridad para Cloudflare Pages en `public/_headers`. La CSP completa
-  va en modo informe (`Report-Only`) y **no es la definitiva**; solo es obligatoria una CSP
-  mínima contra la incrustación en marcos (`frame-ancestors 'none'`, `X-Frame-Options: DENY`).
+- Cabeceras de seguridad en `public/_headers` (las sirve Cloudflare con los recursos
+  estáticos). La CSP completa va en modo informe (`Report-Only`) y **no es la definitiva**; solo
+  es obligatoria una CSP mínima contra la incrustación en marcos (`frame-ancestors 'none'`,
+  `X-Frame-Options: DENY`).
 
 ## Estructura
 
 ```text
 src/
-  app/                 arranque, composición, estado de UI (Zustand), i18n, guardado automático
-  domain/              revisiones, documentos, frontmatter, etiquetas, sidecar (sin React/Dexie)
-  application/         VaultService: CreateDocument, SaveNote, SaveCanvas, RenameDocument
-  ports/               VaultRepository, RemoteStore, SyncEngine, RemoteAuth, LocalFolderStore, CanvasAdapter
-  features/canvas/     vista del lienzo
-  features/notes/      editor, vista previa
-  features/library/    biblioteca y títulos renombrables
+  app/                 arranque, composición (app/composition), estado de UI (Zustand), i18n,
+                       tema y esquemas, fuentes, guardado automático
+  domain/              revisiones, documentos, frontmatter, enlaces y anclas, calendario,
+                       documentos con formato, sidecar (sin React/Dexie)
+  application/         VaultService, SyncEngine, KnowledgeService, formato abierto, copias,
+                       portabilidad (importar/exportar)
+  ports/               VaultRepository, RemoteStore, RemoteAuth, Archiver, CanvasAdapter…
+  features/canvas/     vista del lienzo, barra de herramientas, plantillas, stickers, exportación
+  features/notes/      editor de notas (CodeMirror) y vista previa
+  features/docs/       documentos con formato (Tiptap) y Markdown (Milkdown)
+  features/calendar/   calendario y eventos
+  features/library/    barra lateral, carpetas, orden manual y títulos renombrables
   features/history/    historial, vista previa de versiones y resolución de conflictos
-  features/status/     estado del almacén, exportación de emergencia y diagnóstico
-  features/knowledge/  vincular elementos, detalles y backlinks, paleta de búsqueda
+  features/status/     Configuración, almacenamiento (carpeta y Drive), estado y diagnóstico
+  features/knowledge/  enlaces y anclas, detalles y backlinks, paleta de búsqueda
   adapters/excalidraw/ serialización de escenas y assets
   adapters/indexeddb/  esquema Dexie, transacciones, registro de almacenes, persistencia y cuota
   adapters/zip/        ZIP con fflate, rutas seguras y límites de descompresión
@@ -245,6 +287,9 @@ src/
   locales/es, locales/en
 tests/unit, tests/e2e, tests/fase0
 spikes/fase0          banco de viabilidad del motor (fuera del producto)
+brand/                marca y recursos gráficos (todos los derechos reservados)
+patches/              parche de Excalidraw para las fuentes adicionales
+docs/                 diseño, plan, formato del almacén, guías y licencias
 ```
 
 ESLint impide que `domain`, `application` y `ports` importen React, Dexie, Excalidraw o
@@ -252,12 +297,16 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 
 ## Verificación
 
-Última ejecución: 13/10/2026, Windows 11, Node 24.21.
+Última ejecución: 17/10/2026, Windows 11, Node 24.21.
 
-- `pnpm verify`: typecheck, lint, 109 pruebas unitarias y compilación, todo correcto.
-- `pnpm test:e2e:all`: 39 recorridos en **Chromium** y los mismos 39 en **Microsoft Edge**.
-  - De cuatro ejecuciones completas, una tuvo un fallo intermitente (una comprobación de texto)
-    que no se volvió a reproducir en las otras tres; no se identificó qué prueba fue.
+- `pnpm verify`: formato, typecheck, lint, 245 pruebas unitarias y compilación, todo correcto.
+- `pnpm test:e2e` (Chromium): pasan los 100 recorridos; los 2 del banco de rendimiento se omiten, como
+  siempre (`pnpm test:rendimiento`).
+  - Un recorrido es intermitente: «documento Markdown: Ctrl+K enlaza la selección…»
+    (`tests/e2e/enlaces.spec.ts`) falló 1 de 3 veces porque la selección hecha con el teclado en
+    Milkdown quedó más corta.
+  - Esta vez no se ejecutaron en Microsoft Edge. La última ejecución en los dos navegadores fue
+    la del 13/10/2026 (39 recorridos en cada uno).
   - Los recorridos nuevos de la fase 5, junto con los de Drive, se repitieron 4 veces en los dos
     navegadores, sin fallos.
 - La fase 5 incluye:
@@ -331,7 +380,8 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 - Que los PDF, PNG y SVG exportados se abran en visores externos (Acrobat, Vista previa…): se
   comprobó su estructura y que el navegador los decodifica.
 - El flujo de actualización de la PWA con una versión nueva publicada (requiere un despliegue).
-- El resultado del CI en GitHub: el repositorio es privado y no se ha consultado desde aquí.
+- El resultado del CI en GitHub no se ha consultado desde aquí (los recorridos se ejecutaron en
+  local).
 - La carpeta con el selector nativo de Windows y con una carpeta real del disco: las pruebas usan
   el sistema de archivos privado del navegador (OPFS), que tiene la misma API pero no pasa por
   el diálogo ni por los permisos de una carpeta del usuario.
@@ -362,29 +412,29 @@ Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes d
 error `not-implemented` en vez de simular un éxito.
 El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
 
-| Área                                                                                                                                                                                                                                                                                                                                                                                   | Estado                                                                                                                                                                                                                       | Dónde                                   |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Google Drive: comprobación con la cuenta real                                                                                                                                                                                                                                                                                                                                          | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                                                                                                   | `adapters/drive/`, `public/_headers`    |
-| Google Picker (abrir archivos ajenos a la aplicación)                                                                                                                                                                                                                                                                                                                                  | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                                  | —                                       |
-| Poda selectiva de versiones y espacio que ocupan (RF-46)                                                                                                                                                                                                                                                                                                                               | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                                                            | `features/history/`                     |
-| Enlaces `[[Título]]` escritos a mano en la vista previa                                                                                                                                                                                                                                                                                                                                | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID                                                                                     | `features/notes/`                       |
-| Biblioteca con miles de documentos                                                                                                                                                                                                                                                                                                                                                     | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                                                     | `features/library/`                     |
-| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1)                                                                                                                                                                                                                                                                                                               | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                                 | `app/importExport.ts`                   |
-| Mensajes técnicos de sincronización en inglés                                                                                                                                                                                                                                                                                                                                          | Los textos de la interfaz están traducidos; los mensajes de error que llegan del adaptador (Drive, carpeta) se muestran en español                                                                                           | `adapters/drive`, `adapters/filesystem` |
-| Pruebas en el iPad y dos semanas de uso real (5.8)                                                                                                                                                                                                                                                                                                                                     | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                                | —                                       |
-| Sidecar: ramas colapsables y notas incrustadas                                                                                                                                                                                                                                                                                                                                         | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                                                            | `domain/sidecar.ts`                     |
-| Pila de deshacer coordinada para comandos propios                                                                                                                                                                                                                                                                                                                                      | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                                                        | —                                       |
-| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                                                                                                                                                                                                                                                                                                                                  | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6         | `features/canvas/CanvasView.tsx`        |
-| Búsqueda en documentos en conflicto                                                                                                                                                                                                                                                                                                                                                    | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                         | `application/KnowledgeService.ts`       |
-| Frontmatter YAML completo                                                                                                                                                                                                                                                                                                                                                              | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                          | `domain/frontmatter.ts`                 |
-| Paleta del lienzo (DESIGN.md §3.2)                                                                                                                                                                                                                                                                                                                                                     | La barra de herramientas propia ya está; falta un selector de color con la paleta del lienzo (la 0.18.1 no deja cambiar la suya)                                                                                             | `features/canvas/CanvasView.tsx`        |
-| Nota adhesiva: color y texto (DESIGN.md §3.5)                                                                                                                                                                                                                                                                                                                                          | Se inserta con la barra o con N, siempre en mantequilla; falta elegir el color y que el texto quede arriba a la izquierda (el motor lo centra)                                                                               | `features/canvas/stickyNote.ts`         |
-| Stickers en oscuro (DESIGN.md «Selector de stickers»)                                                                                                                                                                                                                                                                                                                                  | Conservan su color con una capa sin filtro, pero quedan por encima de las formas aunque estén detrás en el orden de capas, no respetan el recorte de un marco y la exportación en oscuro los muestra con el filtro del motor | `features/canvas/stickerLayer.ts`       |
-| Calendario: lo que falta (DESIGN.md §8.6)                                                                                                                                                                                                                                                                                                                                              | Selector de fechas propio, hoja de «hoy», eventos repetidos, semana desde el domingo y búsqueda de eventos                                                                                                                   | `features/calendar/`                    |
-| Calendario y plantillas con versiones antiguas de la app                                                                                                                                                                                                                                                                                                                               | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento: actualizar todos los dispositivos antes de usarlos                                                                                                   | `domain/revision.ts`                    |
-| Documentos: lo que falta (beta) Con formato: exportar (PDF/DOCX/Markdown), tablas, imágenes, búsqueda. Markdown: tablas desde la barra, imágenes propias (las de Markdown se muestran sin descargar), enlaces `[[…]]` con autocompletado, documentos en la exportación Markdown por carpetas. Ambos: paginación real al editar, iconos propios de negrita/cursiva y pruebas en el iPad | `features/docs/`                                                                                                                                                                                                             |
-| Documentos con versiones antiguas de la app                                                                                                                                                                                                                                                                                                                                            | Una versión anterior al 15/10/2026 no reconoce `doc`, ni una anterior al 16/10/2026 `mddoc` y `docfolder`: actualizar todos los dispositivos antes de usarlos                                                                | `domain/revision.ts`                    |
-| Desactivar la biblioteca externa de Excalidraw                                                                                                                                                                                                                                                                                                                                         | Se quitaron los enlaces del menú; falta comprobar «Explorar bibliotecas»                                                                                                                                                     | —                                       |
+| Área                                                                     | Estado                                                                                                                                                                                                                       | Dónde                                   |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Google Drive: comprobación con la cuenta real                            | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                                                                                                   | `adapters/drive/`, `public/_headers`    |
+| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                                  | —                                       |
+| Poda selectiva de versiones y espacio que ocupan (RF-46)                 | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                                                            | `features/history/`                     |
+| Enlaces `[[Título]]` escritos a mano en la vista previa                  | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID                                                                                     | `features/notes/`                       |
+| Barra lateral con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                                                     | `features/library/`                     |
+| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                                 | `app/importExport.ts`                   |
+| Mensajes técnicos de sincronización solo en español                      | Los textos de la interfaz están traducidos, pero los mensajes de error que llegan del adaptador (Drive, carpeta) se muestran en español también con la interfaz en inglés                                                    | `adapters/drive`, `adapters/filesystem` |
+| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                                | —                                       |
+| Sidecar: ramas colapsables y notas incrustadas                           | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                                                            | `domain/sidecar.ts`                     |
+| Pila de deshacer coordinada para comandos propios                        | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                                                        | —                                       |
+| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6         | `features/canvas/CanvasView.tsx`        |
+| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                         | `application/KnowledgeService.ts`       |
+| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                          | `domain/frontmatter.ts`                 |
+| Paleta del lienzo (DESIGN.md §3.2)                                       | La barra de herramientas propia ya está; falta un selector de color con la paleta del lienzo (la 0.18.1 no deja cambiar la suya)                                                                                             | `features/canvas/CanvasView.tsx`        |
+| Nota adhesiva: color y texto (DESIGN.md §3.5)                            | Se inserta con la barra o con N, siempre en mantequilla; falta elegir el color y que el texto quede arriba a la izquierda (el motor lo centra)                                                                               | `features/canvas/stickyNote.ts`         |
+| Stickers en oscuro (DESIGN.md «Selector de stickers»)                    | Conservan su color con una capa sin filtro, pero quedan por encima de las formas aunque estén detrás en el orden de capas, no respetan el recorte de un marco y la exportación en oscuro los muestra con el filtro del motor | `features/canvas/stickerLayer.ts`       |
+| Calendario: lo que falta (DESIGN.md §8.6)                                | Selector de fechas propio, hoja de «hoy», eventos repetidos, semana desde el domingo y búsqueda de eventos                                                                                                                   | `features/calendar/`                    |
+| Calendario y plantillas con versiones antiguas de la app                 | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento: actualizar todos los dispositivos antes de usarlos                                                                                                   | `domain/revision.ts`                    |
+| Documentos: lo que falta (beta)                                          | Con formato: tablas y exportar a Markdown. Markdown: tablas desde la barra, autocompletado `[[…]]` y entrar en la exportación Markdown por carpetas (que solo lleva notas). Ambos: pruebas en el iPad                        | `features/docs/`                        |
+| Documentos con versiones antiguas de la app                              | Una versión anterior al 15/10/2026 no reconoce `doc`, ni una anterior al 16/10/2026 `mddoc` y `docfolder`: actualizar todos los dispositivos antes de usarlos                                                                | `domain/revision.ts`                    |
+| Biblioteca externa de Excalidraw                                         | Las plantillas propias la sustituyen y su botón está oculto; falta comprobar que ningún atajo del motor abra «Explorar bibliotecas»                                                                                          | `features/canvas/`                      |
 
 ## Decisiones de implementación
 

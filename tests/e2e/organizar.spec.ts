@@ -10,6 +10,7 @@ async function freshStart(page: Page) {
   await page.goto('/');
   await page.evaluate(async () => {
     localStorage.clear();
+    localStorage.setItem('mindnote.welcome', '1'); // Bienvenida ya vista.
     const dbs = await indexedDB.databases();
     await Promise.all(
       dbs
