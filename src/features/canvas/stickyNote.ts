@@ -4,9 +4,12 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 /**
  * Nota adhesiva del lienzo (docs/DESIGN.md §3.5). Solo usa primitivas del motor, agrupadas, así
  * que se guarda en la escena como cualquier otro elemento y pasa por el filtro del tema oscuro.
- * Capas, de abajo arriba: cuerpo, banda adhesiva, triángulo «recorte» del color del lienzo y
- * esquina doblada. El texto no se crea de antemano (el motor descarta los textos vacíos): al
- * pulsar Intro o hacer doble clic sobre la nota, el motor crea el texto ligado al cuerpo.
+ * Capas, de abajo arriba: cuerpo, banda adhesiva, área de texto, triángulo «recorte» del color
+ * del lienzo y esquina doblada. El texto no se crea de antemano (el motor descarta los textos
+ * vacíos): al hacer doble clic sobre la nota, el motor crea el texto ligado al área de texto, un
+ * rectángulo sin borde del mismo color que la nota (invisible, pero se puede pulsar) con los
+ * márgenes de §3.5, y `watchStickyText` lo alinea arriba a la izquierda (plan 9.13). Las notas
+ * anteriores al 20/10/2026 no tienen área de texto: su texto va ligado al cuerpo, centrado.
  */
 export type StickyColor = 'mantequilla' | 'agua' | 'rosa' | 'brote' | 'durazno' | 'lavanda';
 
@@ -24,6 +27,8 @@ const INK = '#262118';
 export const STICKY_SIZE = 200;
 const BAND = 24;
 const FOLD = 28;
+/** Margen del texto (§3.5): 16 px a los lados y bajo la banda. */
+const TEXT_MARGIN = 16;
 
 interface Options {
   /** Esquina superior izquierda en coordenadas de la escena. */
@@ -93,6 +98,19 @@ export function buildStickyNote({
     {
       ...common,
       id: newId(),
+      type: 'rectangle',
+      x: x + TEXT_MARGIN,
+      y: y + BAND + TEXT_MARGIN / 2,
+      width: s - 2 * TEXT_MARGIN,
+      height: s - BAND - TEXT_MARGIN / 2 - FOLD,
+      strokeColor: 'transparent',
+      backgroundColor: palette.fill,
+      strokeWidth: 1,
+      boundElements: null,
+    },
+    {
+      ...common,
+      id: newId(),
       type: 'line',
       x: x + s - FOLD,
       y: y + s + 1,
@@ -133,4 +151,60 @@ export function buildStickyNote({
     repairBindings: true,
   }) as ExcalidrawElement[];
   return { elements, groupId, bodyId };
+}
+
+/** Papel de cada color de la tabla de §3.5 (en minúsculas): de qué nota y qué parte es. */
+const ROLES = new Map<string, { color: StickyColor; part: 'fill' | 'band' | 'fold' }>(
+  (
+    Object.entries(STICKY_COLORS) as Array<[StickyColor, (typeof STICKY_COLORS)[StickyColor]]>
+  ).flatMap(([color, parts]) =>
+    (['fill', 'band', 'fold'] as const).map((part) => [parts[part].toLowerCase(), { color, part }]),
+  ),
+);
+
+/** Color de nota de un relleno, si es uno de la tabla (cuerpo, banda o doblez). */
+export function stickyColorOf(backgroundColor: string): StickyColor | null {
+  return ROLES.get(backgroundColor.toLowerCase())?.color ?? null;
+}
+
+/** ¿Es el área de texto de una nota? Rectángulo agrupado, sin borde y con el relleno de una nota. */
+export function isStickyTextArea(element: ExcalidrawElement): boolean {
+  return (
+    element.type === 'rectangle' &&
+    element.strokeColor === 'transparent' &&
+    element.groupIds.length > 0 &&
+    ROLES.get(element.backgroundColor.toLowerCase())?.part === 'fill'
+  );
+}
+
+/**
+ * Grupos de la selección que son notas adhesivas: tienen un cuerpo (relleno de nota con borde
+ * tinta) y una banda del mismo color. Sirve para recolorear la nota entera desde la paleta.
+ */
+export function stickyGroups(
+  elements: readonly ExcalidrawElement[],
+  selected: ReadonlySet<string>,
+): Set<string> {
+  const groups = new Set<string>();
+  for (const element of elements) {
+    if (element.isDeleted || !selected.has(element.id)) continue;
+    for (const groupId of element.groupIds) {
+      const members = elements.filter((e) => !e.isDeleted && e.groupIds.includes(groupId));
+      const roles = members.map((e) => ROLES.get(e.backgroundColor.toLowerCase())?.part);
+      if (roles.includes('fill') && roles.includes('band')) groups.add(groupId);
+    }
+  }
+  return groups;
+}
+
+/** La nota de cada grupo de `groups`, en el color `color`: cuerpo, banda, área de texto y doblez. */
+export function recolorSticky<T extends ExcalidrawElement>(
+  element: T,
+  groups: ReadonlySet<string>,
+  color: StickyColor,
+): Partial<T> | null {
+  if (!element.groupIds.some((g) => groups.has(g))) return null;
+  const role = ROLES.get(element.backgroundColor.toLowerCase());
+  if (!role) return null;
+  return { backgroundColor: STICKY_COLORS[color][role.part] } as Partial<T>;
 }

@@ -137,7 +137,7 @@ El `hue-rotate` compensa la inversión: los tonos se conservan y solo cambia la 
 
 Fondo de escena (`viewBackgroundColor`): `#FFFDF4`. Se aplica a los lienzos nuevos; los existentes conservan el suyo. El trazo empieza en tinta (`currentItemStrokeColor`).
 
-La 0.18.1 no permite sustituir la paleta de su selector de color (no hay prop para ello): las tablas siguientes son la paleta prevista, pendiente de un selector propio.
+La 0.18.1 no permite sustituir la paleta de su selector de color (no hay prop para ello), así que la barra propia lleva un selector con estas tablas (desde el 20/10/2026, plan 9.14): la casilla «Colores» (solo con el lápiz activo o con algo seleccionado) muestra el trazo y el relleno vigentes y abre un popover con los 6 trazos y los 6 rellenos más «Sin relleno»; cada muestra se pinta con su valor «se ve en oscuro» en el tema oscuro. Se aplica a la selección y a lo que se dibuje después. El panel de propiedades del motor sigue disponible (grosor, estilo, opacidad, color libre).
 
 **Trazos**
 
@@ -223,7 +223,8 @@ Viven en el lienzo, así que usan **la misma paleta de rellenos del lienzo** y p
 | Lavanda | `#D8CCF0` | `#CCC0E1` | `#BCB1CD` | `#3F3554` |
 
 - En oscuro, la banda y el doblez quedan más claros que el cuerpo, por la inversión. Se siguen leyendo como banda y doblez.
-- Color por defecto: mantequilla. Los demás se eligen desde el panel de propiedades de la nota.
+- Color por defecto: mantequilla. Desde el 20/10/2026 (plan 9.13) se elige con el relleno de la paleta de la barra con la nota seleccionada: cambia cuerpo, banda, área de texto y doblez a la vez (el contorno tinta no), y las notas nuevas salen del último color elegido (preferencia de este navegador).
+- Texto (desde el 20/10/2026): la nota lleva un área de texto, un rectángulo sin borde del color de la nota bajo la banda, con 16 px de margen; el doble clic crea el texto ligado a ella y se alinea arriba a la izquierda (el motor lo centraría). Las notas anteriores no tienen área de texto: su texto sigue ligado al cuerpo y centrado.
 - El triángulo que recorta la esquina usa el color de fondo del lienzo; si algún día el lienzo admite otros fondos, debe tomar ese color.
 - Biblioteca provisional: `brand/notes/aline-notas.excalidrawlib`. Hasta que exista la herramienta, se importa en la biblioteca de Excalidraw y las notas se arrastran desde ahí.
 
@@ -434,7 +435,7 @@ Popover que se abre sobre la casilla de stickers, centrado en ella y a 16px por 
 - Orden: primero los personajes (a, nube, corazón, nota, lápiz, estallido) y después los acentos (rayo, chispas, bocadillo, exclamación, flecha, garabato, corona).
 - Clic o arrastre: el sticker se coloca en el lienzo como imagen, a 120px y con un giro aleatorio entre −10° y 10°. Con clic va al centro de la vista; arrastrado, donde se suelta. Queda seleccionado y se deshace con Ctrl+Z. El giro se puede quitar con la rotación normal.
 - **Verificado en la 0.18.1 (color en oscuro):** el filtro del tema oscuro (`invert(93%) hue-rotate(180deg)`) no puede mostrar un amarillo saturado, por mucho que se compense la imagen antes: el mantequilla necesitaría un azul negativo. Insertar PNG en vez de SVG (el motor contrarresta su filtro en los mapas de bits, no en los SVG) deja los rosas, verdes y corales casi exactos, pero el amarillo se veía melocotón. Por eso, en oscuro, los stickers se dibujan en una capa propia sin filtro (`src/features/canvas/stickerLayer.ts`). Se inserta el PNG de 512px (`brand/stickers/sticker-*-512.png`) y se guarda como cualquier imagen del lienzo; el selector muestra los SVG.
-- **Límites de esa capa (solo en oscuro):** los stickers se ven por encima del resto de elementos aunque estén detrás en el orden de capas; no respetan el recorte de un marco; y la exportación en oscuro (PNG, SVG, PDF) sigue pasando por el filtro del motor, así que ahí el amarillo se ve más apagado. Las notas adhesivas y las formas no cambian.
+- **Orden de capas y marcos (desde el 20/10/2026, plan 9.15):** en oscuro, desde el primer sticker de cada render la composición del motor se reparte en una pila de capas sobre el canvas estático: los stickers en capas sin filtro y lo que va encima de ellos en capas con el filtro del motor, así que el orden de capas se respeta (una forma delante de un sticker lo tapa). El recorte de un marco (`rect`/`roundRect` + `clip` del motor) se repite en las capas. Quedan debajo de las capas solo los contornos y nombres de los marcos, que el motor dibuja directamente. La exportación no se ve afectada: siempre es en claro y el motor no filtra las imágenes.
 - Accesibilidad: la casilla tiene `aria-haspopup="dialog"` y `aria-expanded`; el selector es un `dialog` con nombre "Stickers", cada sticker un botón con su nombre, y Escape lo cierra devolviendo el foco a la casilla.
 
 ### 7.2 Estados de la barra

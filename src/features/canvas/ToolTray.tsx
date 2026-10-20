@@ -11,6 +11,7 @@ import {
   stickerPreviewUrl,
   type StickerName,
 } from './stickers.ts';
+import { PaletteSlot, readStickyColor } from './PaletteSlot.tsx';
 import { buildStickyNote, STICKY_SIZE } from './stickyNote.ts';
 import {
   AFTER_SHAPES,
@@ -147,6 +148,8 @@ export function ToolTray({ api, theme }: Props) {
     const note = buildStickyNote({
       x: Math.round(cx - STICKY_SIZE / 2),
       y: Math.round(cy - STICKY_SIZE / 2),
+      // El color de la última nota recoloreada desde la paleta (plan 9.13).
+      color: readStickyColor(),
       canvasColor: appState.viewBackgroundColor,
     });
     const selectedElementIds: Record<string, true> = {};
@@ -465,6 +468,7 @@ export function ToolTray({ api, theme }: Props) {
           </div>
           {AFTER_SHAPES.map((tool) => slot(tool, 'main'))}
           <span className="tool-divider" aria-hidden="true" />
+          <PaletteSlot api={api} theme={theme} />
           {/* La caja abierta sube, pero sin punto: el punto marca solo la herramienta activa. */}
           <div className="tool-cell">
             <button

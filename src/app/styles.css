@@ -830,6 +830,67 @@ a {
   border-radius: 16px;
   box-shadow: var(--shadow-popover);
 }
+/* Paleta del lienzo (plan 9.14): muestra de trazo y relleno en la barra, y su selector. */
+.palette-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.palette-preview {
+  width: 26px;
+  height: 26px;
+  border: 4px solid;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border-soft);
+}
+.tool-palette {
+  position: relative;
+}
+.tool-palette .palette-popover {
+  position: absolute;
+  bottom: calc(100% + 50px);
+  left: 50%;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  transform: translateX(-50%);
+  padding: 14px;
+  background: var(--bg-popover);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 16px;
+  box-shadow: var(--shadow-popover);
+}
+.palette-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.palette-swatch {
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  padding: 0;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 50%;
+}
+.palette-swatch[aria-checked='true'] {
+  border-color: var(--border-ink);
+  box-shadow:
+    0 0 0 2px var(--bg-popover),
+    0 0 0 4px var(--focus);
+}
+/* «Sin relleno»: una diagonal sobre el papel. */
+.palette-swatch.is-none {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      var(--danger) calc(50% - 1px),
+      var(--danger) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    ),
+    var(--bg-canvas) !important;
+}
 .sticker-picker-title {
   margin: 0 0 8px;
   font-size: 13px;
@@ -1917,13 +1978,17 @@ button.section-title {
   container-type: inline-size;
 }
 
-/* Capa de stickers (stickerLayer.ts): sobre el canvas estático y sin el filtro del tema oscuro. */
+/* Capas de stickers (stickerLayer.ts): sobre el canvas estático; las de stickers, sin el filtro del
+   tema oscuro, y las de lo que va encima de un sticker, con él (como el estático). */
 .excalidraw .excalidraw__canvas.sticker-layer,
 .excalidraw.theme--dark canvas.sticker-layer {
   top: 0;
   left: 0;
   pointer-events: none;
   filter: none;
+}
+.excalidraw.theme--dark canvas.sticker-layer.sticker-layer-above {
+  filter: var(--theme-filter);
 }
 
 .tool-trays {

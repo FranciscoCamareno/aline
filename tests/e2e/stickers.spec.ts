@@ -157,3 +157,24 @@ test('cambiar de tema con un sticker en el lienzo lo mantiene fiel en los dos', 
     .poll(async () => (await displayedVersusOriginal(page)).median, { timeout: 10_000 })
     .toBeLessThanOrEqual(8);
 });
+
+test('en oscuro, lo que está encima de un sticker lo tapa, y al mandarlo atrás se ve (plan 9.15)', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await freshStart(page);
+  await insertStraight(page, 'a');
+  // Una nota adhesiva en el centro, encima del sticker (es posterior en el orden de capas).
+  await page.getByTestId('tool-sticky').click();
+  await expect(page.getByTestId('save-status')).toHaveText('Guardado en este dispositivo');
+  await expect
+    .poll(async () => (await displayedVersusOriginal(page)).median, { timeout: 10_000 })
+    .toBeGreaterThan(40);
+  // Se selecciona la nota (el centro de la vista) y «Enviar al fondo»: el sticker se ve otra vez.
+  const box = (await page.locator('.excalidraw canvas.interactive').boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.keyboard.press('ControlOrMeta+Shift+BracketLeft');
+  await expect
+    .poll(async () => (await displayedVersusOriginal(page)).median, { timeout: 10_000 })
+    .toBeLessThanOrEqual(8);
+});

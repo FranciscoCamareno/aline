@@ -399,9 +399,9 @@ Hoy el autocompletado `[[` solo existe en el editor de las notas (CodeMirror, `f
 
 | # | Tarea | Notas | Tamaño |
 | --- | --- | --- | --- |
-| 9.13 | Nota adhesiva: elegir el color (los del calendario) y texto arriba a la izquierda | `stickyNote.ts`; el motor centra el texto en un contenedor: alinearlo con las propiedades públicas del texto | S |
-| 9.14 | Selector de color con la paleta del lienzo (DESIGN.md §3.2) en la barra propia | La 0.18.1 no deja cambiar su paleta; el selector propio aplica el color con la API pública | M |
-| 9.15 | Stickers en oscuro: respetar el orden de capas y el recorte de los marcos, y exportar en oscuro sin el filtro | `stickerLayer.ts`; `stickers.spec.ts` mide el color | M |
+| 9.13 | Nota adhesiva: elegir el color (los del calendario) y texto arriba a la izquierda | **Hecha (20/10/2026).** Área de texto en la nota (rectángulo sin borde del color de la nota, márgenes de §3.5) y `features/canvas/stickyText.ts` alinea arriba a la izquierda el texto nuevo; color con el relleno de la paleta (recolorea cuerpo, banda, área y doblez) y las notas nuevas salen del último color. Las notas anteriores no cambian | S |
+| 9.14 | Selector de color con la paleta del lienzo (DESIGN.md §3.2) en la barra propia | **Hecha (20/10/2026).** `features/canvas/PaletteSlot.tsx`: casilla «Colores» en la barra (solo con el lápiz o con una selección, a petición del propietario) con trazos y rellenos de §3.2 (muestras con el color que se ve en oscuro); se aplica a la selección y a lo siguiente que se dibuje, y muestra el color de la selección | M |
+| 9.15 | Stickers en oscuro: respetar el orden de capas y el recorte de los marcos, y exportar en oscuro sin el filtro | **Hecha (20/10/2026).** `stickerLayer.ts` reparte la composición en una pila de capas (stickers sin filtro, lo de encima con filtro) y repite el recorte de los marcos; `stickers.spec.ts` comprueba que una forma delante tapa el sticker y que al mandarla atrás se ve. La exportación no necesitaba cambios (siempre en claro, el motor no filtra imágenes). El recorte de marcos no tiene recorrido e2e | M |
 
 **Etapa F — Interfaz**
 

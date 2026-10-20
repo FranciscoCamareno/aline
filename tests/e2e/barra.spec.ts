@@ -28,8 +28,12 @@ async function freshStart(page: Page) {
 }
 
 interface SceneEl {
+  id: string;
   type: string;
   isDeleted?: boolean;
+  containerId?: string | null;
+  verticalAlign?: string;
+  textAlign?: string;
   groupIds: string[];
   backgroundColor: string;
   strokeColor: string;
@@ -152,7 +156,8 @@ test('nota adhesiva: se inserta agrupada, mantequilla, desde la barra y con N', 
   await freshStart(page);
   await page.getByTestId('tool-sticky').click();
   await expect(page.getByTestId('save-status')).toHaveText('Guardado en este dispositivo');
-  await expect.poll(async () => (await savedElements(page)).length).toBe(4);
+  // Cuerpo, banda, área de texto, recorte y doblez.
+  await expect.poll(async () => (await savedElements(page)).length).toBe(5);
   const note = await savedElements(page);
   const groups = new Set(note.map((e) => e.groupIds.join(',')));
   expect(groups.size).toBe(1);
@@ -163,14 +168,14 @@ test('nota adhesiva: se inserta agrupada, mantequilla, desde la barra y con N', 
 
   await page.locator('.excalidraw').click({ position: { x: 300, y: 500 } });
   await page.keyboard.press('n');
-  await expect.poll(async () => (await savedElements(page)).length).toBe(8);
+  await expect.poll(async () => (await savedElements(page)).length).toBe(10);
 
   // Con el foco en un campo de texto, N no inserta nada.
   await page.getByTestId('active-title-rename').click();
   await page.getByTestId('active-title-input').press('n');
   await page.getByTestId('active-title-input').press('Escape');
   await page.waitForTimeout(700);
-  expect(await savedElements(page)).toHaveLength(8);
+  expect(await savedElements(page)).toHaveLength(10);
 });
 
 test('se escribe dentro de la nota adhesiva con doble clic', async ({ page }) => {
@@ -189,6 +194,66 @@ test('se escribe dentro de la nota adhesiva con doble clic', async ({ page }) =>
     .toBe(1);
   const text = (await savedElements(page)).find((e) => e.type === 'text')!;
   expect(text.groupIds).toEqual((await savedElements(page))[0]!.groupIds);
+  // Ligado al área de texto (sin borde, del color de la nota) y arriba a la izquierda (§3.5).
+  const area = (await savedElements(page)).find((e) => e.id === text.containerId)!;
+  expect(area).toMatchObject({ strokeColor: 'transparent', backgroundColor: '#FFE380' });
+  expect(text).toMatchObject({ verticalAlign: 'top', textAlign: 'left' });
+});
+
+test('paleta: recolorea una nota entera, las nuevas salen de ese color y pinta formas (plan 9.13–9.14)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  // La casilla de colores solo aparece con el lápiz o con algo seleccionado.
+  await expect(page.getByTestId('tool-palette')).toHaveCount(0);
+  await page.getByTestId('tool-freedraw').click();
+  await expect(page.getByTestId('tool-palette')).toBeVisible();
+  await page.getByTestId('tool-selection').click();
+  await expect(page.getByTestId('tool-palette')).toHaveCount(0);
+  await page.getByTestId('tool-sticky').click();
+  await expect.poll(async () => (await savedElements(page)).length).toBe(5);
+  // La nota recién insertada está seleccionada: el relleno «Rosa» cambia sus tres tonos.
+  await page.getByTestId('tool-palette').click();
+  await page.getByTestId('palette-fill-pink').click();
+  await expect
+    .poll(async () => (await savedElements(page)).map((e) => e.backgroundColor).sort())
+    .toEqual(['#D698AE', '#E8A5BE', '#F7AFCB', '#F7AFCB', '#FFFDF4'].sort());
+  // La paleta muestra el color de la nota seleccionada.
+  await expect(page.getByTestId('palette-fill-pink')).toHaveAttribute('aria-checked', 'true');
+  // El contorno tinta de la nota no cambia.
+  expect((await savedElements(page)).filter((e) => e.strokeColor === '#262118')).toHaveLength(2);
+
+  // Una nota nueva sale rosa.
+  await page.keyboard.press('Escape');
+  await page.locator('.excalidraw').click({ position: { x: 300, y: 500 } });
+  await page.keyboard.press('n');
+  await expect.poll(async () => (await savedElements(page)).length).toBe(10);
+  const pink = (await savedElements(page)).filter(
+    (e) => e.type === 'rectangle' && e.width === 200 && e.backgroundColor === '#F7AFCB',
+  );
+  expect(pink).toHaveLength(2);
+
+  // Una forma: trazo «Rojo» y relleno «Agua» desde la paleta.
+  await page.keyboard.press('Escape');
+  await page.getByTestId('tool-shape').click();
+  const box = (await page.locator('.excalidraw canvas.interactive').boundingBox())!;
+  // A la derecha: lejos de las notas (centro) y del panel de propiedades del motor (izquierda).
+  await page.mouse.move(box.x + box.width - 300, box.y + 250);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 200, box.y + 330, { steps: 6 });
+  await page.mouse.up();
+  await page.getByTestId('tool-palette').click();
+  await page.getByTestId('palette-stroke-red').click();
+  await page.getByTestId('palette-fill-water').click();
+  await expect
+    .poll(async () =>
+      (await savedElements(page))
+        // El rectángulo dibujado (los de las notas miden 200 o son el área de texto).
+        .filter((e) => e.type === 'rectangle' && e.width < 150)
+        .map((e) => [e.strokeColor, e.backgroundColor]),
+    )
+    .toEqual([['#B83A26', '#BFDFE2']]);
+  await expect(page.getByTestId('palette-fill-water')).toHaveAttribute('aria-checked', 'true');
 });
 
 test('stickers: la casilla y B abren el selector; el sticker se guarda como imagen', async ({

@@ -149,7 +149,29 @@
   },
   "canvas": {
     "draftRecovered": "A stroke left unfinished when the app closed was recovered.",
-    "dangling": "{{count}} loose connectors: select"
+    "dangling": "{{count}} loose connectors: select",
+    "palette": {
+      "label": "Colours",
+      "stroke": "Stroke",
+      "fill": "Fill",
+      "strokes": {
+        "ink": "Ink",
+        "red": "Red",
+        "water": "Water",
+        "green": "Green",
+        "ochre": "Ochre",
+        "violet": "Violet"
+      },
+      "fills": {
+        "none": "No fill",
+        "butter": "Butter",
+        "water": "Water",
+        "pink": "Pink",
+        "green": "Green",
+        "peach": "Peach",
+        "lavender": "Lavender"
+      }
+    }
   },
   "toolbar": {
     "label": "Tools",

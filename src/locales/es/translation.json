@@ -149,7 +149,29 @@
   },
   "canvas": {
     "draftRecovered": "Se recuperó un trazo que quedó a medias al cerrarse la aplicación.",
-    "dangling": "{{count}} conectores sueltos: seleccionar"
+    "dangling": "{{count}} conectores sueltos: seleccionar",
+    "palette": {
+      "label": "Colores",
+      "stroke": "Trazo",
+      "fill": "Relleno",
+      "strokes": {
+        "ink": "Tinta",
+        "red": "Rojo",
+        "water": "Agua",
+        "green": "Verde",
+        "ochre": "Ocre",
+        "violet": "Violeta"
+      },
+      "fills": {
+        "none": "Sin relleno",
+        "butter": "Mantequilla",
+        "water": "Agua",
+        "pink": "Rosa",
+        "green": "Verde",
+        "peach": "Durazno",
+        "lavender": "Lavanda"
+      }
+    }
   },
   "toolbar": {
     "label": "Herramientas",

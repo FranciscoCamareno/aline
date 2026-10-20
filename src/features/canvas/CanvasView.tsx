@@ -39,6 +39,7 @@ import {
   type CanvasWikiTarget,
 } from './canvasWikiLink.ts';
 import { attachStickerLayer } from './stickerLayer.ts';
+import { watchStickyText } from './stickyText.ts';
 import { TemplatesPanel } from './TemplatesPanel.tsx';
 import { insertTemplate, TEMPLATE_DRAG_TYPE } from './templates.ts';
 import { ToolTray } from './ToolTray.tsx';
@@ -323,6 +324,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   };
 
   useEffect(() => (api ? watchCanvasWikiLinks(api, setWikiTarget) : undefined), [api]);
+  useEffect(() => (api ? watchStickyText(api) : undefined), [api]);
   /** Al cerrar el selector de `[[`, el foco vuelve al lienzo para seguir con sus atajos. */
   const closeWikiLink = () => {
     setWikiTarget(null);
