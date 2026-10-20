@@ -50,16 +50,17 @@ function classify(error: unknown): never {
   if (error instanceof RemoteError) throw error;
   const name = error instanceof Error ? error.name : '';
   if (name === 'NotAllowedError' || name === 'SecurityError') {
-    throw new RemoteError('permission', 'Sin permiso de escritura en la carpeta');
+    throw new RemoteError('permission', 'folder-permission', name);
   }
-  if (name === 'QuotaExceededError') throw new RemoteError('quota', 'La carpeta no tiene espacio');
+  if (name === 'QuotaExceededError') throw new RemoteError('quota', 'folder-full');
   if (name === 'NotFoundError') {
-    throw new RemoteError(
-      'not-found',
-      'La carpeta ya no está disponible (¿desconectada o movida?)',
-    );
+    throw new RemoteError('not-found', 'folder-unavailable');
   }
-  throw new RemoteError('transient', error instanceof Error ? error.message : String(error));
+  throw new RemoteError(
+    'transient',
+    'folder-io',
+    error instanceof Error ? error.message : String(error),
+  );
 }
 
 /**
@@ -85,7 +86,7 @@ export class FolderRemoteStore implements RemoteStore {
       const bytes = await this.read(this.root, 'vault.json');
       if (!bytes) return null;
       const parsed = vaultSchema.safeParse(JSON.parse(utf8Decode(bytes)));
-      if (!parsed.success) throw new RemoteError('not-found', 'vault.json no es válido');
+      if (!parsed.success) throw new RemoteError('not-found', 'vault-invalid');
       return parsed.data;
     } catch (error) {
       return classify(error);
@@ -96,7 +97,7 @@ export class FolderRemoteStore implements RemoteStore {
     try {
       const existing = await this.readVault();
       if (existing && existing.id !== vault.id) {
-        throw new RemoteError('permission', 'La carpeta ya contiene otro almacén');
+        throw new RemoteError('permission', 'other-vault');
       }
       if (!existing) await this.write(this.root, 'vault.json', jsonBytes(vault), false);
       await this.write(this.root, 'README.md', utf8Encode(VAULT_README), false);

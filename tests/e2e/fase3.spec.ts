@@ -299,6 +299,51 @@ test('una imagen pegada se conserva al reabrir (CA-24)', async ({ page, context 
   expect(file?.dataURL).toMatch(/^mindnote-asset:[0-9a-f]{64}$/);
 });
 
+test('lienzo: [[ al escribir un texto lo enlaza, y en un texto vacío crea el título enlazado (plan 9.5)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  const canvasId = await activeId(page);
+  const noteId = await newNote(page, 'contenido del destino');
+  await renameActive(page, 'Destino');
+  await page.getByTestId('library-title-text').filter({ hasText: 'Lienzo sin título' }).click();
+  await expect(page.getByTestId('canvas-host')).toBeVisible();
+  await focusCanvas(page);
+  const o = await origin(page);
+  const wiki = async () => {
+    await page.keyboard.type('[[');
+    await expect(page.getByTestId('link-picker')).toBeVisible();
+    await page.keyboard.type('Dest');
+    await page.getByTestId('link-candidate').filter({ hasText: 'Destino' }).click();
+    await expect(page.getByTestId('link-picker')).toBeHidden();
+  };
+  const link = `aline://document/${noteId}`;
+  const texts = async () =>
+    (await scene(page, canvasId)).elements.filter((e) => e.type === 'text' && !e.isDeleted);
+
+  // Un texto con contenido: el texto queda sin corchetes y con el enlace.
+  await page.keyboard.press('t');
+  await page.mouse.click(o.x + 300, o.y + 200);
+  await expect(page.locator('.excalidraw-wysiwyg')).toBeVisible();
+  await page.keyboard.type('Ver ');
+  await wiki();
+  await expect
+    .poll(async () => (await texts()).map((e) => [e.text?.trim(), e.link]))
+    .toEqual([['Ver', link]]);
+
+  // Un texto vacío: el motor lo descarta y se crea uno con el título enlazado.
+  await page.keyboard.press('t');
+  await page.mouse.click(o.x + 300, o.y + 380);
+  await expect(page.locator('.excalidraw-wysiwyg')).toBeVisible();
+  await wiki();
+  await expect
+    .poll(async () => (await texts()).map((e) => [e.text?.trim(), e.link]))
+    .toEqual([
+      ['Ver', link],
+      ['Destino', link],
+    ]);
+});
+
 test('vincular un elemento a una nota, ver el backlink y renombrar sin romperlo (CA-06, CA-07)', async ({
   page,
 }) => {

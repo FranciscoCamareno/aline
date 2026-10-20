@@ -58,16 +58,65 @@ export interface RemoteStore {
   listReadableCopies(): Promise<ReadableCopy[]>;
 }
 
+/**
+ * Causa concreta de un fallo remoto. Es estable: la interfaz la traduce (`sync.errors.<código>`)
+ * y los adaptadores nunca devuelven frases para el usuario (plan 9.2).
+ */
+export const REMOTE_ERROR_CODES = [
+  // Autorización con Google.
+  'auth-required',
+  'auth-expired',
+  'auth-denied',
+  'popup-blocked',
+  'popup-closed',
+  'scope-denied',
+  'revoke-unconfirmed',
+  'gis-unavailable',
+  // Red y respuestas de Drive.
+  'offline',
+  'drive-busy',
+  'drive-quota',
+  'drive-forbidden',
+  'drive-not-found',
+  'drive-upload-failed',
+  // Carpeta de Drive del almacén.
+  'root-trashed',
+  'root-superseded',
+  'root-needs-key',
+  'root-not-encrypted',
+  'encryption-missing',
+  'encryption-invalid',
+  // Comunes a Drive y a la carpeta local.
+  'vault-invalid',
+  'vault-missing',
+  'other-vault',
+  // Carpeta local.
+  'folder-permission',
+  'folder-full',
+  'folder-unavailable',
+  'folder-io',
+] as const;
+
+export type RemoteErrorCode = (typeof REMOTE_ERROR_CODES)[number];
+
 /** Fallo de un almacén remoto, clasificado para decidir reintento y estado visible (§8.2). */
 export class RemoteError extends Error {
   readonly kind: 'permission' | 'offline' | 'quota' | 'transient' | 'not-found' | 'auth';
+  readonly code: RemoteErrorCode;
   /** Segundos sugeridos por el servidor (Retry-After). */
   readonly retryAfter: number | null;
 
-  constructor(kind: RemoteError['kind'], message: string, retryAfter: number | null = null) {
-    super(message);
+  /** `detail` es técnico (diagnóstico); nunca se muestra tal cual al usuario. */
+  constructor(
+    kind: RemoteError['kind'],
+    code: RemoteErrorCode,
+    detail: string | null = null,
+    retryAfter: number | null = null,
+  ) {
+    super(detail ?? code);
     this.name = 'RemoteError';
     this.kind = kind;
+    this.code = code;
     this.retryAfter = retryAfter;
   }
 }

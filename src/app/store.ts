@@ -54,8 +54,8 @@ export function linkFocus(target: InternalTarget): FocusTarget {
 export interface ViewCommand {
   seq: number;
   documentId: string;
-  /** `export`: el formato propio de cada vista; `export-docx` y `export-pdf`: documentos con formato. */
-  kind: 'export' | 'export-docx' | 'export-pdf';
+  /** `export`: el formato propio de cada vista; `export-docx`, `export-pdf` y `export-md`: documentos con formato. */
+  kind: 'export' | 'export-docx' | 'export-pdf' | 'export-md';
 }
 
 /**

@@ -532,6 +532,18 @@ export class VaultService {
    * Markdown de la versión vigente tal como se guarda (frontmatter + cuerpo, diseño §12.1).
    * Espera a los guardados pendientes para no exportar una versión anterior.
    */
+  /** Contenido vigente de un documento con formato, para exportarlo (sin sesión de edición). */
+  async exportRichDoc(documentId: Uuid): Promise<RichDocData> {
+    await this.pendingWrites(documentId);
+    const { head } = await this.loadHead(documentId, 'doc');
+    if (!head.contentRefs.body) return emptyRichDoc();
+    try {
+      return parseRichDoc(JSON.parse(await this.readText(head.contentRefs.body))).doc;
+    } catch {
+      throw new DomainError('invalid-content', 'Documento con formato ilegible');
+    }
+  }
+
   async exportNoteMarkdown(documentId: Uuid): Promise<string> {
     await this.pendingWrites(documentId);
     const { head } = await this.loadHead(documentId, isMarkdownKind);

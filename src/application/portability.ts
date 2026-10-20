@@ -1,4 +1,4 @@
-import type { DocumentRecord } from '../domain/revision.ts';
+import { folderKindFor, isFolderKind, type DocumentRecord } from '../domain/revision.ts';
 import { effectiveFolder, RECOVERY_FOLDER } from '../domain/folders.ts';
 import { parseNoteMarkdown } from '../domain/frontmatter.ts';
 import { parseInternalLink } from '../domain/links.ts';
@@ -328,43 +328,62 @@ export function folderPaths(relativePaths: readonly string[]): string[] {
   return [...out].sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
 }
 
+/** Lo que va a un archivo `.md` en la exportación por carpetas (plan 9.9). */
+export type MarkdownExportKind = 'note' | 'mddoc' | 'doc';
+
 /**
  * Árbol de archivos Markdown de una carpeta (o de todo el almacén con `rootId` null):
- * ruta relativa → id de nota. Las subcarpetas se convierten en directorios y los nombres
- * repetidos reciben un sufijo «(2)», «(3)»…
+ * ruta relativa → documento. Una carpeta de «Notas» lleva sus notas; una de «Documentos», sus
+ * documentos Markdown y con formato (estos se convierten al exportar). Todo el almacén pone las
+ * notas en la raíz y los documentos bajo `documentsDir`. Las subcarpetas se convierten en
+ * directorios y los nombres repetidos reciben un sufijo «(2)», «(3)»…
  */
 export function markdownTree(
   documents: readonly DocumentRecord[],
   rootId: string | null,
-): Map<string, string> {
+  documentsDir = 'Documentos',
+): Map<string, { id: string; kind: MarkdownExportKind }> {
   const live = documents.filter((d) => !d.deleted);
-  const folders = new Map(documents.filter((d) => d.kind === 'folder').map((d) => [d.id, d]));
-  const parentOf = new Map(live.map((d) => [d.id, effectiveFolder(d, folders)]));
-  const out = new Map<string, string>();
-  const walk = (folderId: string | null, prefix: string, seen: Set<string>) => {
-    const used = new Set<string>();
-    const unique = (name: string, ext: string) => {
-      let candidate = safeFilename(name, ext);
-      for (let n = 2; used.has(candidate.toLowerCase()); n++) {
-        candidate = safeFilename(`${name} (${n})`, ext);
+  const out = new Map<string, { id: string; kind: MarkdownExportKind }>();
+  const section = (folderKind: 'folder' | 'docfolder', root: string | null, base: string) => {
+    const kinds: readonly MarkdownExportKind[] =
+      folderKind === 'folder' ? ['note'] : ['mddoc', 'doc'];
+    const inSection = live.filter((d) => folderKindFor(d.kind) === folderKind);
+    const folders = new Map(documents.filter((d) => d.kind === folderKind).map((d) => [d.id, d]));
+    const parentOf = new Map(inSection.map((d) => [d.id, effectiveFolder(d, folders)]));
+    const walk = (folderId: string | null, prefix: string, seen: Set<string>) => {
+      const used = new Set<string>();
+      const unique = (name: string, ext: string) => {
+        let candidate = safeFilename(name, ext);
+        for (let n = 2; used.has(candidate.toLowerCase()); n++) {
+          candidate = safeFilename(`${name} (${n})`, ext);
+        }
+        used.add(candidate.toLowerCase());
+        return candidate;
+      };
+      const children = inSection
+        .filter((d) => parentOf.get(d.id) === folderId)
+        .sort((a, b) => a.title.localeCompare(b.title));
+      for (const doc of children) {
+        const kind = kinds.find((k) => k === doc.kind);
+        if (kind) out.set(prefix + unique(doc.title, 'md'), { id: doc.id, kind });
       }
-      used.add(candidate.toLowerCase());
-      return candidate;
+      for (const folder of children.filter((d) => d.kind === folderKind)) {
+        if (seen.has(folder.id)) continue; // defensa ante ciclos corruptos
+        const dir = unique(folder.title, 'dir').replace(/\.dir$/, '');
+        walk(folder.id, `${prefix}${dir}/`, new Set([...seen, folder.id]));
+      }
     };
-    const children = live
-      .filter((d) => parentOf.get(d.id) === folderId)
-      .sort((a, b) => a.title.localeCompare(b.title));
-    for (const doc of children) {
-      if (doc.kind === 'note') out.set(prefix + unique(doc.title, 'md'), doc.id);
-    }
-    for (const folder of children.filter((d) => d.kind === 'folder')) {
-      if (seen.has(folder.id)) continue; // defensa ante ciclos corruptos
-      const dir = unique(folder.title, 'dir').replace(/\.dir$/, '');
-      walk(folder.id, `${prefix}${dir}/`, new Set([...seen, folder.id]));
-    }
+    walk(root, base, new Set(root ? [root] : []));
+    // Todo el almacén: lo que quedó sin carpeta válida también se exporta (como en la biblioteca).
+    if (root === null) walk(RECOVERY_FOLDER, `${base}Recuperados/`, new Set());
   };
-  walk(rootId, '', new Set(rootId ? [rootId] : []));
-  // Todo el almacén: lo que quedó sin carpeta válida también se exporta (como en la biblioteca).
-  if (rootId === null) walk(RECOVERY_FOLDER, 'Recuperados/', new Set());
+  if (rootId === null) {
+    section('folder', null, '');
+    section('docfolder', null, `${safeFilename(documentsDir, 'dir').replace(/\.dir$/, '')}/`);
+  } else {
+    const root = documents.find((d) => d.id === rootId);
+    if (root && isFolderKind(root.kind)) section(root.kind, rootId, '');
+  }
   return out;
 }

@@ -14,6 +14,7 @@ import type { DriveEncryptionChoice } from '../../domain/encryption.ts';
 import type { Vault } from '../../domain/vault.ts';
 import { DriveModeChooser, DriveSecrets, DriveUnlock } from './DriveEncryption.tsx';
 import { GoogleButton } from './GoogleButton.tsx';
+import { syncErrorKey } from './syncErrors.ts';
 
 interface Props {
   services: AppServices;
@@ -144,7 +145,11 @@ export function StorageSection({ services, sync, onError }: Props) {
               time: time(remote.lastSyncAt),
             })}
           </p>
-          {remote.message && <p className="notice small">{remote.message}</p>}
+          {remote.problem && (
+            <p className="notice small" data-testid="remote-problem">
+              {t(syncErrorKey(remote.problem))}
+            </p>
+          )}
           {notice && <p className="notice small">{notice}</p>}
           {remote.phase === 'needs-key' && (
             <DriveUnlock onUnlock={(secret) => sync.unlockDrive(secret)} />

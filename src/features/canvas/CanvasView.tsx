@@ -33,6 +33,11 @@ import { LinkPicker } from '../knowledge/LinkPicker.tsx';
 import { ExportDialog } from './ExportDialog.tsx';
 import { insertSticker, STICKER_DRAG_TYPE, STICKER_NAMES, type StickerName } from './stickers.ts';
 import { removeExternalLinksFromEngineDialogs } from './engineDialogs.ts';
+import {
+  applyCanvasWikiLink,
+  watchCanvasWikiLinks,
+  type CanvasWikiTarget,
+} from './canvasWikiLink.ts';
 import { attachStickerLayer } from './stickerLayer.ts';
 import { TemplatesPanel } from './TemplatesPanel.tsx';
 import { insertTemplate, TEMPLATE_DRAG_TYPE } from './templates.ts';
@@ -87,6 +92,8 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const selectionKey = useRef('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  /** Texto en el que se escribió `[[`, con su selector abierto (plan 9.5). */
+  const [wikiTarget, setWikiTarget] = useState<CanvasWikiTarget | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const openExport = () => setExportOpen(true);
   const navigate = useUiStore((s) => s.navigate);
@@ -315,6 +322,17 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
     setPickerOpen(false);
   };
 
+  useEffect(() => (api ? watchCanvasWikiLinks(api, setWikiTarget) : undefined), [api]);
+  /** Al cerrar el selector de `[[`, el foco vuelve al lienzo para seguir con sus atajos. */
+  const closeWikiLink = () => {
+    setWikiTarget(null);
+    hostRef.current?.querySelector<HTMLElement>('.excalidraw')?.focus();
+  };
+  const finishWikiLink = (pick: { url: string; title: string }) => {
+    if (api && wikiTarget) applyCanvasWikiLink(api, wikiTarget, pick);
+    closeWikiLink();
+  };
+
   const selectDangling = () => {
     if (!api || !dangling.length) return;
     api.updateScene({
@@ -444,6 +462,21 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           onWeb={(url) => setElementLink(url)}
           onRemove={() => setElementLink(null)}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+      {wikiTarget && (
+        <LinkPicker
+          title={t('links.pickerTitle')}
+          sourceId={documentId}
+          service={service}
+          onPick={finishWikiLink}
+          onCreateNote={(title) => {
+            void onCreateNote(title).then((doc) =>
+              finishWikiLink({ url: internalLink(doc.id), title }),
+            );
+          }}
+          onWeb={(url) => finishWikiLink({ url, title: url })}
+          onClose={closeWikiLink}
         />
       )}
       <Excalidraw

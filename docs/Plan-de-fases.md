@@ -32,6 +32,7 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 | --- | --- | --- |
 | **Alfa local** | Fases 0, 1, 2 y 3 | Uso diario en el PC con almacenamiento del navegador y copias ZIP manuales. Sirve para probar el producto con contenido real antes de la sincronización |
 | **Beta utilizable** | Fases 4 y 5 | Los 22 RF «Debe» y las reglas obligatorias cumplidos en Windows; dos PC y el iPad sincronizados por Drive; exportación e importación |
+| **Versión 0.2.0** | Fase 9 | Drive cerrado, `[[` en todos los editores, tablas, eventos repetidos, punteros propios, barra lateral compacta y el núcleo de mapa mental |
 | **Versión 1.0** | Fase 6 | Los «Debería»: ramas colapsables, tarjetas de notas, galería, poda de versiones y lápiz completo |
 
 **Definición de beta utilizable.** El propietario puede usar el sistema como herramienta principal en el PC y como secundaria en el iPad sin riesgo conocido de pérdida de datos:
@@ -169,14 +170,15 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **→ Hito alfa local.**
 
-### Fase 4 — Almacenamiento externo y sincronización (implementada el 13/10/2026; falta la prueba con Google real)
+### Fase 4 — Almacenamiento externo y sincronización (implementada el 13/10/2026; Drive real funcionando desde el 19/10/2026)
 
 **Estado:**
 
 - **Hechas y probadas:** 4.1, 4.2, 4.3, 4.6 y 4.7 contra la carpeta local, en Chromium y Edge y con las pruebas del protocolo.
 - **Hechas y probadas contra una simulación de Google:** 4.4 y 4.5. Hay pruebas unitarias del protocolo y recorridos en Chromium y Edge con GIS falso y la Drive API simulada.
 - **4.8:** CSP con los endpoints exactos de Google, todavía en modo informe.
-- **Pendiente del propietario:** probar con Google real y, si no hay violaciones de CSP, pasarla a obligatoria (pasos más abajo).
+- **Google real (19/10/2026):** el propietario confirmó que la conexión con Google Drive real funciona en el despliegue y publicó la pantalla de consentimiento OAuth (sale del modo **Pruebas**: puede entrar cualquier cuenta de Google; el alcance `drive.file` no es sensible).
+- **Pendiente del propietario:** revisar la consola durante un recorrido completo y, si no hay violaciones de CSP, pasarla a obligatoria (paso 6 más abajo); probar con Google real el modo cifrado (pasos 4 y 5) y dos equipos sobre el mismo almacén.
 - **Alojamiento:** listo en https://aline.projeck.workers.dev. Es un Cloudflare Worker con assets estáticos (`wrangler.jsonc`) y aplica `public/_headers`.
 
 **Decisiones de esta parte:**
@@ -210,7 +212,7 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
   - cambio de modo desde «Cifrado y contraseña», con carpeta nueva, traslado automático de los demás equipos y papelera opcional para la anterior.
 - **Probado:** pruebas unitarias del protocolo cifrado y un recorrido e2e completo contra la simulación de Google, en Chromium y Edge.
 - **Pendiente:**
-  - prueba con Google real;
+  - prueba del modo cifrado con Google real (la conexión sin cifrar ya funciona, 19/10/2026);
   - medir PBKDF2 en el iPad;
   - comprobar que Safari conserva la clave no extraíble.
 
@@ -236,8 +238,8 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 1. En https://console.cloud.google.com, crear un proyecto (por ejemplo «aline») y habilitar **Google Drive API**. Habilitar **Google Picker API** solo si se quiere abrir archivos ajenos a la aplicación.
 2. Configurar la pantalla de consentimiento OAuth:
-   - tipo **Externo**, en modo **Pruebas**;
-   - tu cuenta como usuario de prueba;
+   - tipo **Externo**, en modo **Pruebas** al empezar, con tu cuenta como usuario de prueba;
+   - **hecho el 19/10/2026:** la aplicación está publicada, así que puede entrar cualquier cuenta;
    - alcance únicamente `https://www.googleapis.com/auth/drive.file`.
 3. Crear credenciales **ID de cliente OAuth** de tipo **Aplicación web**, con estos «Orígenes autorizados de JavaScript» (sin rutas):
    - `https://aline.projeck.workers.dev`
@@ -354,6 +356,82 @@ Decisiones del propietario: fuentes nuevas también en el lienzo parcheando el m
 | 8.3 | Documentos con formato: zoom de la hoja (50–200 %), panel de capítulos, paginación A4 propia de la vista «Hoja» con contador de páginas (se descartó `tiptap-pagination-plus`: inyecta su propia hoja de estilos con colores fijos y rehace la maquetación de la hoja) y comentarios propios (hilos con respuestas, resolver o reabrir, eliminar; Ctrl/⌘+Alt+M) | Comentarios en el JSON del documento (formato §2.5.3); lo demás es presentación | Hecha (17/10/2026) |
 | 8.4 | Imágenes en documentos con formato y Markdown (subir, pegar o arrastrar; archivos del almacén, nunca remotas); exportar a Word (`docx` 9.8.1, MIT, carga diferida; listas, títulos, fuentes, enlaces web e imágenes) y a PDF (impresión del navegador de una copia del contenido, A4) desde «Exportar» | Cambio de formato: assets en `doc` y `mddoc`; licencias BlueOak-1.0.0 (`sax`) y `(MIT OR GPL-3.0-or-later)` (`jszip`, usada bajo MIT) añadidas a la lista permitida | Hecha (17/10/2026) |
 | 8.5 | Documentos con formato al estilo de Google Docs: pestañas del documento (crear, renombrar, duplicar, eliminar; capítulos de la activa en el mismo panel), barra de herramientas en una fila compacta, burbuja al seleccionar texto (comentar y enlazar) y lista de fuentes que no se descoloca (se pinta en `document.body` y se recoloca al moverse la barra) | Cambio de formato compatible: `tabs` en `doc` (formato §2.5.3) | Hecha (17/10/2026) |
+
+### Fase 9 — Versión 0.2.0 (decidida el 19/10/2026)
+
+Punto de partida: la 0.1.0 publicada y Drive funcionando con Google real, con la aplicación OAuth publicada (19/10/2026). La 0.2.0 junta el cierre de Drive, lo que falta en documentos y calendario, el pulido del lienzo, dos mejoras de interfaz pedidas por el propietario (punteros propios y barra lateral compacta), mantenimiento y el núcleo de mapa mental de la fase 6. Las etapas van en este orden; cada una se cierra con `pnpm verify` y sus recorridos e2e y puede publicarse sola. Si el alcance crece (R-02), la etapa G pasa a una 0.3.0 sin tocar las demás.
+
+**Etapa A — Cerrar Drive**
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.1 | CSP obligatoria: cambiar `Content-Security-Policy-Report-Only` por `Content-Security-Policy` en `public/_headers` y ajustar la prueba que la comprueba | Solo después de que el propietario revise la consola en un recorrido completo con Google real (conectar, sincronizar, recargar y renovar, desconectar) sin avisos `[Report Only]`. Pasos 4–6 de la fase 4 para el modo cifrado y dos equipos | S |
+| 9.2 | Mensajes técnicos de sincronización traducidos: los adaptadores de Drive y de carpeta devuelven códigos (`DomainError` con `code` y datos), no frases; la interfaz los traduce con `t()` | **Hecha (19/10/2026).** `RemoteError` lleva un `code` estable (`REMOTE_ERROR_CODES` en `ports/RemoteStore.ts`) y el detalle técnico solo va al diagnóstico; el estado remoto guarda `problem` (código) en vez de texto; textos en `storage.errors.*`, y una prueba exige texto para cada código | S |
+
+**Etapa B — `[[` en todas partes**
+
+Hoy el autocompletado `[[` solo existe en el editor de las notas (CodeMirror, `features/notes/MarkdownEditor.tsx`); los documentos Markdown, los documentos con formato y el lienzo no lo tienen, y un `[[Título]]` escrito a mano se ve como texto en la vista previa. Lo primero es reproducir el caso del propietario en las notas, por si falla algo además de la falta en los otros editores.
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.3 | Comprobar el `[[` de las notas en el caso real del propietario (edición, vista dividida, vista previa) y corregir lo que falle | **Hecha (19/10/2026).** El autocompletado de las notas (CodeMirror) funciona y lo cubre el recorrido de la fase 3; no se encontró fallo. Si el propietario lo ve fallar, falta su caso concreto | S |
+| 9.4 | `[[` en documentos Markdown (Milkdown) y con formato (Tiptap): al escribir `[[` aparece el mismo selector (`LinkPicker`: todos los `isLinkableKind` y los eventos, más «Crear nota» como en FA-03a) y se inserta un enlace `aline://` por UUID con el título como texto | **Hecha (19/10/2026).** Al escribir el segundo `[` se quitan los dos y se abre el selector de Ctrl/⌘+K (`features/docs/wikiTrigger.ts`, desde `handleTextInput` de cada editor; no en bloques de código); lo escrito después va a su búsqueda. Cancelar devuelve los `[[`. Recorridos en `enlaces.spec.ts` | M |
+| 9.5 | `[[` en el lienzo: al editar un texto del lienzo, `[[` abre el selector y el elemento recibe el enlace en `element.link` (`aline://document/<id>`), quitando el `[[…` escrito | **Hecha (19/10/2026).** `features/canvas/canvasWikiLink.ts` escucha el `textarea` del motor, quita los `[[`, cierra su editor (el motor devuelve el foco a su contenedor al cerrarlo) y abre el selector; el enlace va al texto o a su contenedor. Si el texto quedó vacío, el motor lo borra y se crea un texto con el título enlazado. Cancelar no devuelve los corchetes. Recorrido en `fase3.spec.ts` | M |
+| 9.6 | `[[Título]]` escrito a mano: en la vista previa de las notas y en los documentos Markdown se muestra como enlace si resuelve a un único título, y como enlace roto si no | **Hecha (19/10/2026).** Vista previa de notas: plugin de remark en `features/notes/markdown.ts` (enlace `wiki-link`, o `broken-link` si el título no es único). Documentos Markdown: decoraciones (`features/docs/wikiMarksMd.ts`) que se siguen al pulsar. De paso, el saneado conservaba solo la primera regla `className` de `a` y quitaba `image-reference`: corregido | S |
+
+**Etapa C — Documentos**
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.7 | Tablas en los documentos con formato (insertar, filas y columnas, encabezado) y en los Markdown desde la barra (tabla GFM) | **Hecha (19/10/2026).** Tiptap: `@tiptap/extension-table` 3.31.4 (MIT, nueva dependencia directa; en `THIRD-PARTY-NOTICES.md` y `docs/licencias.md`), `TableKit` sin redimensionar columnas. Milkdown: la tabla GFM que ya traía `preset-gfm`, con los comandos de `@milkdown/prose/tables` y Tab/Mayús+Tab entre celdas; en la fila de encabezado no se ofrece quitarla ni insertar encima (GFM la exige). Menú común `TableMenu` (`toolbar.tsx`) e icono nuevo `brand/icons/ui/tabla.svg`. Word exporta tablas reales; PDF las imprime; las proyecciones de texto ya las recorrían. De paso: la barra del documento Markdown iba un paso por detrás de la selección (Milkdown avisa antes de actualizar la vista), corregido | M |
+| 9.8 | Exportar un documento con formato a Markdown (todas las pestañas, imágenes como archivos al lado) | **Hecha (19/10/2026).** `domain/richDocMarkdown.ts` (puro, probado): títulos, marcas, enlaces, listas anidadas, citas, código, separador, imágenes y tablas GFM; cada pestaña bajo su título. «Exportar → Documento en Markdown» descarga el `.md`, o un ZIP con `assets/` si hay imágenes (`app/importExport.ts`, también para el `.md` de los documentos Markdown) y avisa de lo descartado | M |
+| 9.9 | La exportación Markdown por carpetas incluye los documentos (`mddoc` tal cual, `doc` convertido con 9.8) y sus carpetas de documentos | **Hecha (19/10/2026).** `markdownTree` recorre las dos secciones: una carpeta de «Documentos» exporta sus documentos; todo el almacén pone las notas en la raíz y los documentos bajo `Documentos/`. Las imágenes van a `assets/` de cada carpeta | S |
+
+**Etapa D — Calendario** (DESIGN.md §8.6)
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.10 | Selector de fechas y horas propio con los tokens (sin el nativo del navegador) | Accesible con teclado | M |
+| 9.11 | Eventos repetidos: diaria, semanal (días), mensual y anual, con fin por fecha o por número; editar o borrar «este» o «toda la serie» | Cambio de formato del evento (`recurrence` opcional y excepciones): registrarlo en el diseño y en `formato-almacen.md` y regenerar los esquemas; `mergeCalendars` sigue uniendo por id | L |
+| 9.12 | Hoja de «hoy», semana que empiece el domingo (preferencia) y búsqueda de eventos en el buscador del calendario | Los eventos ya se indexan como elementos | S |
+
+**Etapa E — Lienzo**
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.13 | Nota adhesiva: elegir el color (los del calendario) y texto arriba a la izquierda | `stickyNote.ts`; el motor centra el texto en un contenedor: alinearlo con las propiedades públicas del texto | S |
+| 9.14 | Selector de color con la paleta del lienzo (DESIGN.md §3.2) en la barra propia | La 0.18.1 no deja cambiar su paleta; el selector propio aplica el color con la API pública | M |
+| 9.15 | Stickers en oscuro: respetar el orden de capas y el recorte de los marcos, y exportar en oscuro sin el filtro | `stickerLayer.ts`; `stickers.spec.ts` mide el color | M |
+
+**Etapa F — Interfaz**
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.16 | **Punteros propios de «aline»** para toda la interfaz: flecha (normal), mano que señala (enlaces y botones), mano abierta y cerrada (arrastrar filas, mover el lienzo), texto (I), cargando y trabajando (`wait`, `progress`), no permitido, mover, cambiar tamaño (horizontal, vertical y diagonales), cruz y ayuda | Con el trazo y las esquinas de los iconos de `brand/icons/ui/` y relleno de tinta con borde de papel, para que se vean en todos los esquemas claros y oscuros; punta exacta (*hotspot*) por puntero. Fuentes SVG en `brand/cursors/` (marca reservada, nivel 3) y PNG de 32 y 64 px generados por `pnpm assets` para pantallas de alta densidad (`image-set`). Los navegadores no animan punteros, así que «cargando» es estático. Se aplican con variables CSS en `styles.css`, siempre con el puntero del sistema como reserva. Antes de aplicarlos, una hoja de muestra para que el propietario los apruebe | M |
+| 9.17 | Punteros en el lienzo: los mismos para la mano, la selección y el texto; las herramientas de dibujo conservan los del motor (cruz, borrador, lápiz) | El motor pone el puntero en línea sobre su lienzo: se sobrescribe por herramienta activa (clase según `appState.activeTool`) y nada más. Si rompe algún recorrido o el modo lápiz, se deja solo fuera del lienzo | S |
+| 9.18 | Preferencia «Puntero»: «aline» o «del sistema» en Configuración → Apariencia | Accesibilidad: quien use un puntero grande del sistema lo conserva. En pantallas táctiles no aplica | S |
+| 9.19 | **Barra lateral compacta**: en Configuración → Apariencia, «Al plegar la barra lateral»: «Ocultarla» (como ahora) o «Dejar solo los iconos», con dos vistas previas seleccionables como las de los esquemas | Preferencia del dispositivo (localStorage, como el tema). En modo iconos queda una columna con desplegar, Notas, Documentos, Calendario, Nuevo, Buscar y, abajo, Perfil, con nombre emergente y foco visible; pulsar una sección abre su documento más reciente sin desplegar la barra. Las vistas previas se dibujan con los tokens (no son imágenes nuevas). En pantallas estrechas sigue siendo el panel superpuesto, y el modo Zen la oculta igual | M |
+
+**Etapa G — Mantenimiento y mapa mental** (adelanta parte de la fase 6)
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.20 | Espacio de las versiones y poda explícita (= 6.6) | RF-46, RN-13, CA-32; controles `VersionPrune`, que la sincronización ya publica y respeta | M |
+| 9.21 | Barra lateral virtualizada para miles de documentos | Hoy 2 500 documentos retrasan el lienzo unos 2,8 s; volver a medir con `pnpm test:rendimiento` | M |
+| 9.22 | Crear un hijo conectado con atajo (= 6.1) | RF-14, CA-04 | M |
+| 9.23 | Ramas colapsables con proyección visible (= 6.2) | Estrategia B de la fase 0 (opacidad 0 y bloqueados, nunca fuera de la escena); antes, las pruebas pendientes de la fase 0 | L |
+| 9.24 | Tarjetas de nota incrustadas en el lienzo (= 6.3) | RF-18, §9.3 | L |
+| 9.25 | Deshacer coordinado para los comandos propios (= 6.8) | Necesario en cuanto existan 9.22 y 9.23 | M |
+
+El modo «Solo lápiz» y los bloques manuscritos (6.7) siguen esperando la prueba 0.4 en el iPad y no entran en la 0.2.0.
+
+**Cierre de la versión**
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 9.26 | `version` 0.2.0 en `package.json`, README (versión, verificación y tabla de pendientes) y etiqueta `v0.2.0`; `pnpm verify` y e2e en Chromium y Edge; publicar en Cloudflare | El cambio de formato de 9.11 obliga a actualizar todos los dispositivos antes de usar eventos repetidos: avisarlo en el README, como con el calendario y los documentos | S |
+
+**Del propietario para esta fase:** revisar la consola para 9.1; probar el modo cifrado y dos equipos con Google real; aprobar la hoja de punteros (9.16) antes de aplicarlos; decidir si la etapa G entra entera o pasa a la 0.3.0.
 
 ## 4. Dependencias y ruta crítica
 

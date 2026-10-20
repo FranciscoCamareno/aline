@@ -3161,6 +3161,16 @@ a,
 .doc-content a {
   color: var(--link);
 }
+/* `[[Título]]` escrito a mano en un documento Markdown (plan 9.6): decoración, no enlace. */
+.doc-content .wiki-link {
+  color: var(--link);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.doc-content .wiki-link.broken-link {
+  color: var(--danger);
+  cursor: default;
+}
 .doc-content code {
   font-family: var(--font-mono);
   background: var(--bg-panel);
@@ -3248,14 +3258,37 @@ a,
   border-radius: 4px;
   color: var(--text-secondary);
 }
-.md-doc .doc-content table {
+/* Tablas de los dos editores de documentos (plan 9.7). */
+.doc-content table {
   border-collapse: collapse;
   margin: 0 0 0.75em;
+  table-layout: fixed;
+  width: 100%;
 }
-.md-doc .doc-content th,
-.md-doc .doc-content td {
+.doc-content th,
+.doc-content td {
   padding: 4px 10px;
   border: 1px solid var(--border-soft);
+  vertical-align: top;
+  position: relative;
+}
+.doc-content th {
+  background: var(--bg-panel);
+  font-weight: 700;
+  text-align: left;
+}
+.doc-content td > p,
+.doc-content th > p {
+  margin: 0;
+}
+/* Celdas seleccionadas con prosemirror-tables (arrastrar sobre varias celdas). */
+.doc-content .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--selection-soft);
+  opacity: 0.6;
+  pointer-events: none;
 }
 .md-doc .doc-content li[data-item-type='task'] {
   list-style: none;

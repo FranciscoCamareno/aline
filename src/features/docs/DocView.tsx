@@ -7,6 +7,7 @@ import {
   type JSONContent,
 } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { TableKit } from '@tiptap/extension-table';
 import TextAlign from '@tiptap/extension-text-align';
 import { FontFamily, FontSize, TextStyle } from '@tiptap/extension-text-style';
 import { Placeholder } from '@tiptap/extensions';
@@ -53,6 +54,7 @@ import {
   useSelectionLinker,
 } from '../knowledge/useSelectionLinker.tsx';
 import { tiptapBacklinkKey, tiptapBacklinkPlugin } from './backlinkMarksPm.ts';
+import { wikiTriggerAt } from './wikiTrigger.ts';
 import { BlockAnchors, ensureBlockAnchor, withoutEmptyAnchors } from './blockAnchors.ts';
 import { FontFamilyPicker, FontSizeControl } from './fontControls.tsx';
 import { parsePx } from './typography.ts';
@@ -62,6 +64,8 @@ import { Menu } from '../../app/ui/Menu.tsx';
 import { commentIdsIn, CommentMark, setCommentView, withoutCommentsAndAnchors } from './comments.ts';
 import { DocImage, DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
 import { browserDocxImage, docxBlob } from './exportDocx.ts';
+import { exportRichDocMarkdown } from '../../app/importExport.ts';
+import type { MarkdownLoss } from '../../domain/richDocMarkdown.ts';
 import { printRichDoc } from './printDoc.ts';
 import { SelectionBubble } from './SelectionBubble.tsx';
 import { downloadBlob } from '../../app/download.ts';
@@ -70,7 +74,14 @@ import { CommentsPanel } from './CommentsPanel.tsx';
 import { domSelectionRange } from './domSelection.ts';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
 import { Pagination, paginationKey, setPagination } from './pagination.ts';
-import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
+import {
+  BlockStyleSelect,
+  TableMenu,
+  ToolIconButton,
+  ToolMarkButton,
+  type BlockStyle,
+  type TableAction,
+} from './toolbar.tsx';
 
 interface Props {
   documentId: string;
@@ -146,6 +157,7 @@ function DocEditor({
   /** «Enlazar selección» vigente, para el atajo del editor (que se crea una sola vez). */
   const openLinkRef = useRef<() => void>(() => undefined);
   const copyLinkRef = useRef<() => void>(() => undefined);
+  const wikiLinkRef = useRef<(pos: number) => void>(() => undefined);
   const focus = useUiStore((s) => s.focus);
   const [arrivedByLink] = useState(() => {
     const pending = useUiStore.getState().focus;
@@ -165,6 +177,8 @@ function DocEditor({
   const imageInput = useRef<HTMLInputElement>(null);
   const [imageError, setImageError] = useState(false);
   const [exportError, setExportError] = useState(false);
+  /** Lo que la última exportación a Markdown no pudo conservar (plan 9.8). */
+  const [markdownLosses, setMarkdownLosses] = useState<MarkdownLoss[]>([]);
   /** Las órdenes de la cabecera anteriores al montaje no se ejecutan. */
   const handledCommand = useRef(useUiStore.getState().viewCommand?.seq ?? 0);
   const [zoom, setZoom] = useDocZoom();
@@ -235,6 +249,8 @@ function DocEditor({
       TextStyle,
       FontFamily,
       FontSize,
+      // Tablas (plan 9.7): sin redimensionar columnas, para no guardar anchos de pantalla.
+      TableKit.configure({ table: { resizable: false } }),
       // Comentarios (fase 8.3): marca `comment` con el id del hilo.
       CommentMark,
       // Imágenes del almacén (fase 8.4), pintadas con URL locales.
@@ -275,6 +291,14 @@ function DocEditor({
         void insertImagesRef.current(files, at);
         return true;
       },
+      // `[[`: selector de enlaces en el cursor (plan 9.4).
+      handleTextInput: (view, from, to, text) => {
+        const at = wikiTriggerAt(view.state, from, to, text);
+        if (at === null) return false;
+        view.dispatch(view.state.tr.delete(at, from));
+        wikiLinkRef.current(at);
+        return true;
+      },
       handleKeyDown: (_view, event) => {
         // Ctrl/⌘+Alt+M: comentar la selección (el atajo de los procesadores de texto).
         if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyM') {
@@ -304,12 +328,15 @@ function DocEditor({
     // Un editor por pestaña: se crea de nuevo al cambiar de pestaña.
   }, [activeTab]);
 
+  /** Posición donde se escribió `[[` mientras su selector está abierto. */
+  const wikiPending = useRef<number | null>(null);
   /** «Enlazar selección»: marca `link` sobre la selección, o el título enlazado si no hay texto. */
   const linker = useSelectionLinker({
     sourceId: opened.document.id,
     service,
     onCreateNote,
     apply: (range, pick) => {
+      wikiPending.current = null;
       if (!editor) return;
       const size = editor.state.doc.content.size;
       const from = Math.min(range.from, size);
@@ -327,7 +354,13 @@ function DocEditor({
           .run();
       }
     },
-    onClose: () => editor?.commands.focus(),
+    onClose: () => {
+      // Cerrar el selector abierto con `[[` sin elegir devuelve los corchetes escritos.
+      const at = wikiPending.current;
+      wikiPending.current = null;
+      if (at !== null && editor) editor.chain().focus().insertContentAt(at, '[[').run();
+      else editor?.commands.focus();
+    },
   });
   /** Sincroniza la selección con el DOM antes de usarla (ver domSelection.ts). */
   const syncSelection = () => {
@@ -374,6 +407,11 @@ function DocEditor({
   useEffect(() => {
     openLinkRef.current = openLink;
     copyLinkRef.current = copyLink;
+    wikiLinkRef.current = (pos) => {
+      if (readOnly !== null) return;
+      wikiPending.current = pos;
+      linker.open({ from: pos, to: pos });
+    };
   });
 
   /**
@@ -489,7 +527,13 @@ function DocEditor({
     () =>
       useUiStore.subscribe(({ viewCommand, documents: docs }) => {
         if (!editor || viewCommand?.documentId !== opened.document.id) return;
-        if (viewCommand.kind !== 'export-docx' && viewCommand.kind !== 'export-pdf') return;
+        if (
+          viewCommand.kind !== 'export-docx' &&
+          viewCommand.kind !== 'export-pdf' &&
+          viewCommand.kind !== 'export-md'
+        ) {
+          return;
+        }
         if (viewCommand.seq <= handledCommand.current) return;
         handledCommand.current = viewCommand.seq;
         const title = docs.find((d) => d.id === opened.document.id)?.title ?? opened.document.title;
@@ -498,12 +542,24 @@ function DocEditor({
           return;
         }
         setExportError(false);
+        setMarkdownLosses([]);
         snapshotActive();
+        const loadAsset = async (hash: string) =>
+          images.added.get(hash) ?? (await service.loadAsset(hash));
+        if (viewCommand.kind === 'export-md') {
+          void exportRichDocMarkdown(buildDoc(), title, {
+            tabLabel: (n) => t('docs.tabUntitled', { n }),
+            loadAsset,
+          })
+            .then(setMarkdownLosses)
+            .catch(() => setExportError(true));
+          return;
+        }
         void docxBlob(buildDoc(), {
             title,
             tabLabel: (n) => t('docs.tabUntitled', { n }),
             image: async (hash) => {
-              const asset = images.added.get(hash) ?? (await service.loadAsset(hash));
+              const asset = await loadAsset(hash);
               return asset ? browserDocxImage(asset) : null;
             },
           })
@@ -639,6 +695,13 @@ function DocEditor({
       {exportError && (
         <p className="notice" role="alert" data-testid="doc-export-error">
           {t('docs.exportFailed')}
+        </p>
+      )}
+      {markdownLosses.length > 0 && (
+        <p className="notice" role="status" data-testid="doc-markdown-losses">
+          {t('docs.markdownLosses', {
+            list: markdownLosses.map((loss) => t(`docs.markdownLoss.${loss}`)).join(', '),
+          })}
         </p>
       )}
       {imageError && (
@@ -823,9 +886,21 @@ function FormatControls({
       canUndo: e.can().undo(),
       canRedo: e.can().redo(),
       hasSelection: !e.state.selection.empty,
+      inTable: e.isActive('table'),
     }),
   });
   const chain = () => editor.chain().focus();
+  const runTable = (action: TableAction) => {
+    const c = chain();
+    if (action === 'insert') c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+    else if (action === 'row-before') c.addRowBefore().run();
+    else if (action === 'row-after') c.addRowAfter().run();
+    else if (action === 'col-before') c.addColumnBefore().run();
+    else if (action === 'col-after') c.addColumnAfter().run();
+    else if (action === 'delete-row') c.deleteRow().run();
+    else if (action === 'delete-col') c.deleteColumn().run();
+    else c.deleteTable().run();
+  };
 
   const setBlock = (block: BlockStyle) => {
     if (block === 'paragraph') chain().setParagraph().run();
@@ -926,6 +1001,7 @@ function FormatControls({
           disabled={disabled}
           onRun={onImage}
         />
+        <TableMenu inTable={state.inTable} disabled={disabled} onAction={runTable} />
       </div>
       <div className="doc-toolbar-group">
         <Menu

@@ -411,7 +411,37 @@
       "relocateAccept": "Accept the unencrypted folder",
       "relocateReencrypt": "Encrypt again in a new folder…"
     },
-    "revokeUnconfirmed": "Disconnected on this device, but Google did not confirm that the app’s permission was removed (for example, because the page was reloaded since the last authorization). You can remove it in your Google Account security settings, under “Third-party apps & services”."
+    "revokeUnconfirmed": "Disconnected on this device, but Google did not confirm that the app’s permission was removed (for example, because the page was reloaded since the last authorization). You can remove it in your Google Account security settings, under “Third-party apps & services”.",
+    "errors": {
+      "auth-required": "Google needs to be authorized again.",
+      "auth-expired": "The Google authorization expired; authorize again.",
+      "auth-denied": "Google did not grant authorization.",
+      "popup-blocked": "The browser blocked the Google window; press the button again.",
+      "popup-closed": "The Google window was closed without authorizing.",
+      "scope-denied": "Access to Drive files was not granted; tick it in the Google window.",
+      "revoke-unconfirmed": "Google did not confirm that the app’s permission was removed.",
+      "gis-unavailable": "Google sign-in could not be loaded. Check your connection.",
+      "offline": "No connection to the destination; it will retry.",
+      "drive-busy": "Google Drive is busy or not responding; it will retry.",
+      "drive-quota": "Your Google Drive is out of storage.",
+      "drive-forbidden": "Google Drive refused the operation for lack of permission.",
+      "drive-not-found": "A file was not found in Google Drive.",
+      "drive-upload-failed": "Google Drive did not accept the upload; it will retry.",
+      "root-trashed": "The Drive folder is in the trash.",
+      "root-superseded": "The Drive folder was replaced by another one.",
+      "root-needs-key": "The Drive folder is encrypted and this device does not have the key.",
+      "root-not-encrypted": "The Drive folder is not encrypted; encrypted content is not written to it.",
+      "encryption-missing": "encryption.json is missing from the Drive folder.",
+      "encryption-invalid": "The Drive folder’s encryption.json file is not valid.",
+      "vault-invalid": "The destination’s vault.json file is not valid.",
+      "vault-missing": "The destination does not contain a vault.",
+      "other-vault": "The destination already contains another vault; they are not mixed.",
+      "folder-permission": "No permission to write to the folder.",
+      "folder-full": "The folder is out of space.",
+      "folder-unavailable": "The folder is no longer available (disconnected or moved?).",
+      "folder-io": "The folder could not be read or written; it will retry.",
+      "unknown": "Unexpected sync error."
+    }
   },
   "export": {
     "open": "Export…",
@@ -444,7 +474,8 @@
     "failed": "Export failed. Try a lower scale or the selection only.",
     "working": "Exporting…",
     "run": "Export",
-    "noNotes": "There are no notes to export."
+    "noNotes": "There are no notes or documents to export.",
+    "documentsDir": "Documents"
   },
   "import": {
     "title": "Import finished",
@@ -491,8 +522,9 @@
     "exportNote": "Note as Markdown (.md)",
     "exportDocx": "Word document (.docx)",
     "exportPdf": "PDF (print and “Save as PDF”)…",
-    "exportMarkdownAll": "All notes as Markdown (.zip)",
-    "exportMarkdownFolder": "Notes in “{{folder}}” as Markdown (.zip)"
+    "exportMarkdownAll": "Notes and documents as Markdown (.zip)",
+    "exportMarkdownFolder": "“{{folder}}” as Markdown (.zip)",
+    "exportDocMarkdown": "Document as Markdown (.md)"
   },
   "stickers": {
     "a": "The “a”",
@@ -660,7 +692,25 @@
     "kindRich": "Formatted document",
     "kindMarkdown": "Markdown document",
     "markdownHint": "Saved as Markdown: it can be opened and edited outside the app (readable copy).",
-    "editorError": "The editor could not be opened ({{message}}). The document has not been changed."
+    "editorError": "The editor could not be opened ({{message}}). The document has not been changed.",
+    "table": {
+      "label": "Table",
+      "insert": "Insert table",
+      "rowBefore": "Insert row above",
+      "rowAfter": "Insert row below",
+      "colBefore": "Insert column left",
+      "colAfter": "Insert column right",
+      "deleteRow": "Delete row",
+      "deleteCol": "Delete column",
+      "deleteTable": "Delete table"
+    },
+    "markdownLosses": "Exported to Markdown without: {{list}}.",
+    "markdownLoss": {
+      "font": "fonts and sizes",
+      "underline": "underline",
+      "alignment": "alignment",
+      "comments": "comments"
+    }
   },
   "schemes": {
     "papel": {

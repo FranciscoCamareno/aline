@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { REMOTE_ERROR_CODES } from '../../src/ports/RemoteStore.ts';
 
 /**
  * Endurecimiento (plan 5.5, RNF-08, RNF-11): contraste de los colores del tema según WCAG 2.1 y
@@ -134,5 +135,11 @@ describe('traducciones (RNF-11)', () => {
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it('todo código de error remoto tiene texto (plan 9.2)', () => {
+    const all = new Set(keys(es));
+    const codes = [...REMOTE_ERROR_CODES, 'unknown'];
+    expect(codes.filter((code) => !all.has(`storage.errors.${code}`))).toEqual([]);
   });
 });

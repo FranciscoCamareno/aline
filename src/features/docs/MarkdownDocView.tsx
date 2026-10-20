@@ -14,12 +14,21 @@ import {
   wrapInHeadingCommand,
   wrapInOrderedListCommand,
 } from '@milkdown/preset-commonmark';
-import { gfm, toggleStrikethroughCommand } from '@milkdown/preset-gfm';
+import { gfm, insertTableCommand, toggleStrikethroughCommand } from '@milkdown/preset-gfm';
+import {
+  addColumnAfter,
+  addColumnBefore,
+  addRowAfter,
+  addRowBefore,
+  deleteColumn,
+  deleteRow,
+  deleteTable,
+  goToNextCell,
+} from '@milkdown/prose/tables';
 import { Plugin, Selection, TextSelection, type EditorState } from '@milkdown/prose/state';
 import { $prose, callCommand, getMarkdown } from '@milkdown/utils';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { downloadText } from '../../app/download.ts';
 import { logDiagnostic, registerFlusher } from '../../app/runtime.ts';
 import { linkFocus, useUiStore } from '../../app/store.ts';
 import { useAutosave } from '../../app/useAutosave.ts';
@@ -32,7 +41,6 @@ import {
 } from '../../domain/anchors.ts';
 import { assetHashOf } from '../../domain/docAssets.ts';
 import { internalLink, parseInternalLink } from '../../domain/links.ts';
-import { safeFilename } from '../../application/portability.ts';
 import type { KnowledgeService } from '../../application/KnowledgeService.ts';
 import type { OpenedNote, VaultService } from '../../application/VaultService.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
@@ -46,11 +54,21 @@ import {
   useSelectionLinker,
 } from '../knowledge/useSelectionLinker.tsx';
 import { milkdownBacklinkKey, milkdownBacklinkPlugin } from './backlinkMarksPm.ts';
+import { wikiMarksKey, wikiMarksPlugin } from './wikiMarksMd.ts';
+import { wikiTriggerAt } from './wikiTrigger.ts';
 import { DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
+import { downloadMarkdown } from '../../app/importExport.ts';
 import { domSelectionRange } from './domSelection.ts';
 import { LayoutToggle, useDocLayout } from './layout.tsx';
 import { SelectionBubble } from './SelectionBubble.tsx';
-import { BlockStyleSelect, ToolIconButton, ToolMarkButton, type BlockStyle } from './toolbar.tsx';
+import {
+  BlockStyleSelect,
+  TableMenu,
+  ToolIconButton,
+  ToolMarkButton,
+  type BlockStyle,
+  type TableAction,
+} from './toolbar.tsx';
 
 interface Props {
   documentId: string;
@@ -165,6 +183,8 @@ interface FormatState {
   bulletList: boolean;
   orderedList: boolean;
   blockquote: boolean;
+  table: boolean;
+  tableHeaderRow: boolean;
 }
 
 const EMPTY_FORMAT: FormatState = {
@@ -175,6 +195,8 @@ const EMPTY_FORMAT: FormatState = {
   bulletList: false,
   orderedList: false,
   blockquote: false,
+  table: false,
+  tableHeaderRow: false,
 };
 
 function formatState(state: EditorState): FormatState {
@@ -202,6 +224,8 @@ function formatState(state: EditorState): FormatState {
     bulletList: inside('bullet_list'),
     orderedList: inside('ordered_list'),
     blockquote: inside('blockquote'),
+    table: inside('table'),
+    tableHeaderRow: inside('table_header_row'),
   };
 }
 
@@ -291,6 +315,9 @@ function MarkdownDocEditor({
   /** «Enlazar selección» vigente, para el atajo del editor (que se crea una sola vez). */
   const openLinkRef = useRef<() => void>(() => undefined);
   const copyLinkRef = useRef<() => void>(() => undefined);
+  const wikiLinkRef = useRef<(pos: number) => void>(() => undefined);
+  /** Resolución vigente de los `[[Título]]` escritos a mano (plan 9.6). */
+  const wikiResolveRef = useRef<(title: string) => string | null>(() => null);
   const focus = useUiStore((s) => s.focus);
   const copyToStore = useUiStore((s) => s.copyLink);
   /** El fragmento del último enlace seguido cambió o ya no está. */
@@ -337,7 +364,22 @@ function MarkdownDocEditor({
       () =>
         new Plugin({
           props: {
-            handleKeyDown: (_view, event) => {
+            // `[[`: selector de enlaces en el cursor (plan 9.4).
+            handleTextInput: (view, from, to, text) => {
+              const at = wikiTriggerAt(view.state, from, to, text);
+              if (at === null) return false;
+              view.dispatch(view.state.tr.delete(at, from));
+              wikiLinkRef.current(at);
+              return true;
+            },
+            handleKeyDown: (view, event) => {
+              // Tab y Mayús+Tab pasan de celda en las tablas (Milkdown solo trae Ctrl+]).
+              if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                if (goToNextCell(event.shiftKey ? -1 : 1)(view.state, view.dispatch)) {
+                  event.preventDefault();
+                  return true;
+                }
+              }
               const action = isCopyLinkShortcut(event)
                 ? copyLinkRef.current
                 : isLinkShortcut(event)
@@ -419,8 +461,10 @@ function MarkdownDocEditor({
           .get(listenerCtx)
           // Solo los cambios del usuario: abrir el documento no crea una revisión.
           .markdownUpdated((_ctx, markdown) => pushMarkdown(markdown))
+          // Milkdown avisa mientras aplica la transacción, cuando la vista aún tiene el estado
+          // anterior: se lee al terminar el `dispatch`, o la barra iría un paso por detrás.
           .selectionUpdated((listenerCtx) =>
-            setFormat(formatState(listenerCtx.get(editorViewCtx).state)),
+            queueMicrotask(() => setFormat(formatState(listenerCtx.get(editorViewCtx).state))),
           )
           .updated((listenerCtx) => setFormat(formatState(listenerCtx.get(editorViewCtx).state)));
       })
@@ -435,6 +479,7 @@ function MarkdownDocEditor({
       .use(linkShortcut)
       .use(imagePlugin)
       .use($prose(() => milkdownBacklinkPlugin()))
+      .use($prose(() => wikiMarksPlugin(() => wikiResolveRef.current)))
       .create()
       .then((created) => {
         if (destroyed) {
@@ -477,15 +522,31 @@ function MarkdownDocEditor({
         handledCommand.current = viewCommand.seq;
         void (autosave.pending ? autosave.flush() : Promise.resolve())
           .then(() => service.exportNoteMarkdown(documentId))
-          .then((markdown) =>
-            downloadText(safeFilename(title, 'md'), markdown, 'text/markdown;charset=utf-8'),
-          );
+          // Las imágenes del almacén salen como archivos junto al `.md` (en un ZIP).
+          .then((markdown) => downloadMarkdown(markdown, title, (hash) => service.loadAsset(hash)));
       }),
     [autosave, documentId, service, title],
   );
 
+  // Los títulos cambian al renombrar o crear documentos: se vuelven a resolver los `[[…]]`.
+  useEffect(() => {
+    wikiResolveRef.current = (title) => {
+      const found = knowledge.resolveTitle(title, documents);
+      return found && found !== 'ambiguous' ? found.id : null;
+    };
+    if (!editor) return;
+    const view = editor.ctx.get(editorViewCtx);
+    view.dispatch(view.state.tr.setMeta(wikiMarksKey, true));
+  }, [documents, editor, knowledge]);
+
   /** Enlaces: los internos se abren en la app; los externos solo con Ctrl/⌘ y sin opener. */
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
+    const wiki = (event.target as HTMLElement).closest<HTMLElement>('[data-wiki-target]');
+    const wikiTarget = wiki ? parseInternalLink(internalLink(wiki.dataset['wikiTarget'] ?? '')) : null;
+    if (wikiTarget) {
+      navigate(linkFocus(wikiTarget));
+      return;
+    }
     const anchor = (event.target as HTMLElement).closest('a');
     const href = anchor?.getAttribute('href');
     if (!href) return;
@@ -510,6 +571,26 @@ function MarkdownDocEditor({
   const setBlock = (block: BlockStyle) => {
     if (block === 'paragraph') run(turnIntoTextCommand.key);
     else run(wrapInHeadingCommand.key, Number(block.slice(1)));
+  };
+  /** Menú «Tabla» (plan 9.7): tabla GFM de 3 × 3; filas y columnas con los comandos de prosemirror-tables. */
+  const runTable = (action: TableAction) => {
+    if (!editor) return;
+    if (action === 'insert') {
+      run(insertTableCommand.key, { row: 3, col: 3 });
+      return;
+    }
+    const view = editor.ctx.get(editorViewCtx);
+    const command = {
+      'row-before': addRowBefore,
+      'row-after': addRowAfter,
+      'col-before': addColumnBefore,
+      'col-after': addColumnAfter,
+      'delete-row': deleteRow,
+      'delete-col': deleteColumn,
+      'delete-table': deleteTable,
+    }[action];
+    command(view.state, view.dispatch);
+    view.focus();
   };
   const disabled = readOnly !== null || !editor;
   const getEditorView = useCallback(() => {
@@ -541,12 +622,15 @@ function MarkdownDocEditor({
     insertImagesRef.current = insertImages;
   });
 
+  /** Posición donde se escribió `[[` mientras su selector está abierto. */
+  const wikiPending = useRef<number | null>(null);
   /** «Enlazar selección»: marca `link` sobre la selección, o el título enlazado si no hay texto. */
   const linker = useSelectionLinker({
     sourceId: documentId,
     service,
     onCreateNote,
     apply: (range, pick) => {
+      wikiPending.current = null;
       if (!editor) return;
       const view = editor.ctx.get(editorViewCtx);
       const { state } = view;
@@ -562,7 +646,15 @@ function MarkdownDocEditor({
       view.dispatch(tr.scrollIntoView());
       view.focus();
     },
-    onClose: () => editor?.ctx.get(editorViewCtx).focus(),
+    onClose: () => {
+      if (!editor) return;
+      const view = editor.ctx.get(editorViewCtx);
+      // Cerrar el selector abierto con `[[` sin elegir devuelve los corchetes escritos.
+      const at = wikiPending.current;
+      wikiPending.current = null;
+      if (at !== null) view.dispatch(view.state.tr.insertText('[[', at));
+      view.focus();
+    },
   });
   /** Sincroniza la selección con el DOM antes de usarla (ver domSelection.ts). */
   const syncSelection = () => {
@@ -598,6 +690,11 @@ function MarkdownDocEditor({
   useEffect(() => {
     openLinkRef.current = openLink;
     copyLinkRef.current = copyLink;
+    wikiLinkRef.current = (pos) => {
+      if (readOnly !== null) return;
+      wikiPending.current = pos;
+      linker.open({ from: pos, to: pos });
+    };
   });
 
   // Fragmentos de este documento con backlinks: se resaltan en el editor (fase 7.F).
@@ -759,6 +856,12 @@ function MarkdownDocEditor({
             label={t('docs.insertImage')}
             disabled={disabled}
             onRun={() => imageInput.current?.click()}
+          />
+          <TableMenu
+            inTable={format.table}
+            inHeaderRow={format.tableHeaderRow}
+            disabled={disabled}
+            onAction={runTable}
           />
           <CopiedNotice />
         </div>

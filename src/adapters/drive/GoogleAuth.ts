@@ -51,12 +51,12 @@ function loadGis(): Promise<GoogleOAuth2> {
     script.onload = () => {
       const google = (window as unknown as { google?: GoogleGlobal }).google;
       if (google?.accounts?.oauth2) resolve(google.accounts.oauth2);
-      else reject(new RemoteError('offline', 'Google Identity Services no se cargó'));
+      else reject(new RemoteError('offline', 'gis-unavailable', 'GIS sin oauth2 tras cargar'));
     };
     script.onerror = () => {
       loading = null;
       script.remove();
-      reject(new RemoteError('offline', 'No se pudo cargar Google Identity Services'));
+      reject(new RemoteError('offline', 'gis-unavailable', 'No se pudo cargar GIS'));
     };
     document.head.appendChild(script);
   });
@@ -96,10 +96,11 @@ export class GoogleAuth implements RemoteAuth {
           new RemoteError(
             'auth',
             error.type === 'popup_failed_to_open'
-              ? 'El navegador bloqueó la ventana de Google; vuelve a pulsar el botón'
+              ? 'popup-blocked'
               : error.type === 'popup_closed'
-                ? 'Se cerró la ventana de Google sin autorizar'
-                : (error.message ?? 'Google no concedió la autorización'),
+                ? 'popup-closed'
+                : 'auth-denied',
+            error.message ?? error.type ?? null,
           ),
         );
       this.client ??= oauth.initTokenClient({
@@ -113,10 +114,14 @@ export class GoogleAuth implements RemoteAuth {
       this.client.requestAccessToken({ prompt: '' });
     });
     if (response.error || !response.access_token) {
-      throw new RemoteError('auth', response.error_description ?? response.error ?? 'Sin token');
+      throw new RemoteError(
+        'auth',
+        'auth-denied',
+        response.error_description ?? response.error ?? 'Sin token',
+      );
     }
     if (!oauth.hasGrantedAllScopes(response, DRIVE_SCOPE)) {
-      throw new RemoteError('permission', 'No se concedió el permiso de archivos de Drive');
+      throw new RemoteError('permission', 'scope-denied');
     }
     this.token = response.access_token;
     this.expiresAt = Date.now() + Number(response.expires_in ?? 3600) * 1000;
@@ -138,7 +143,7 @@ export class GoogleAuth implements RemoteAuth {
     this.expiresAt = 0;
     if (!token || !this.oauth) {
       // Tras recargar no queda token en memoria: no hay con qué revocar.
-      throw new RemoteError('auth', 'No hay una sesión de Google activa con la que revocar');
+      throw new RemoteError('auth', 'revoke-unconfirmed', 'Sin sesión de Google activa');
     }
     const oauth = this.oauth;
     const response = await new Promise<RevocationResponse | null>((resolve) => {
@@ -156,9 +161,8 @@ export class GoogleAuth implements RemoteAuth {
     if (!response?.successful) {
       throw new RemoteError(
         'auth',
-        response?.error_description ??
-          response?.error ??
-          'Google no confirmó la revocación del permiso',
+        'revoke-unconfirmed',
+        response?.error_description ?? response?.error ?? null,
       );
     }
   }

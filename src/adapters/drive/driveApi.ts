@@ -76,7 +76,7 @@ export class DriveClient {
     init: { body?: BodyInit; headers?: Record<string, string> } = {},
   ): Promise<Response> {
     const token = this.getToken();
-    if (!token) throw new RemoteError('auth', 'Necesita autorización de Google');
+    if (!token) throw new RemoteError('auth', 'auth-required');
     let response: Response;
     try {
       response = await this.fetchImpl(url, {
@@ -85,10 +85,7 @@ export class DriveClient {
         headers: { Authorization: `Bearer ${token}`, ...(init.headers ?? {}) },
       });
     } catch (error) {
-      throw new RemoteError(
-        'offline',
-        error instanceof Error ? error.message : 'Sin conexión con Google Drive',
-      );
+      throw new RemoteError('offline', 'offline', error instanceof Error ? error.message : null);
     }
     if (response.ok) return response;
     const retryAfter = Number(response.headers.get('Retry-After')) || null;
@@ -103,19 +100,19 @@ export class DriveClient {
     } catch {
       // Cuerpo sin JSON: basta con el código.
     }
-    if (response.status === 401) throw new RemoteError('auth', message);
-    if (response.status === 404) throw new RemoteError('not-found', message);
+    if (response.status === 401) throw new RemoteError('auth', 'auth-expired', message);
+    if (response.status === 404) throw new RemoteError('not-found', 'drive-not-found', message);
     if (response.status === 429 || response.status >= 500)
-      throw new RemoteError('transient', message, retryAfter);
+      throw new RemoteError('transient', 'drive-busy', message, retryAfter);
     if (response.status === 403) {
       if (/rateLimitExceeded|userRateLimitExceeded/.test(reason)) {
-        throw new RemoteError('transient', message, retryAfter);
+        throw new RemoteError('transient', 'drive-busy', message, retryAfter);
       }
       if (/storageQuotaExceeded|quotaExceeded/.test(reason))
-        throw new RemoteError('quota', message);
-      throw new RemoteError('permission', message);
+        throw new RemoteError('quota', 'drive-quota', message);
+      throw new RemoteError('permission', 'drive-forbidden', message);
     }
-    throw new RemoteError('permission', message);
+    throw new RemoteError('permission', 'drive-forbidden', message);
   }
 
   /** files.list con paginación completa. */
@@ -218,10 +215,10 @@ export class DriveClient {
       },
     );
     const session = start.headers.get('Location');
-    if (!session) throw new RemoteError('transient', 'Drive no devolvió la sesión de subida');
+    if (!session) throw new RemoteError('transient', 'drive-upload-failed', 'Sin sesión de subida');
     // El token solo viaja a la API de subidas de Google (auditoría 13/10/2026, O01).
     if (!isUploadSession(session)) {
-      throw new RemoteError('permission', 'Drive devolvió una sesión de subida no válida');
+      throw new RemoteError('permission', 'drive-upload-failed', 'Sesión de subida no válida');
     }
     const res = await this.request('PUT', session, {
       body: bytes as Uint8Array<ArrayBuffer>,
@@ -291,7 +288,8 @@ export class DriveClient {
       };
       changes.push(...(res.changes ?? []));
       if (res.newStartPageToken) return { changes, newStartPageToken: res.newStartPageToken };
-      if (!res.nextPageToken) throw new RemoteError('transient', 'Feed de cambios incompleto');
+      if (!res.nextPageToken)
+        throw new RemoteError('transient', 'drive-busy', 'Feed de cambios incompleto');
       token = res.nextPageToken;
     }
   }

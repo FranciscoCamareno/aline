@@ -95,8 +95,11 @@ export async function buildDocx(doc: RichDocData, options: DocxOptions) {
     return children;
   };
 
-  const paragraphs: InstanceType<typeof docx.Paragraph>[] = [];
-  const add = (options: IParagraphOptions) => paragraphs.push(new docx.Paragraph(options));
+  type Block = InstanceType<typeof docx.Paragraph> | InstanceType<typeof docx.Table>;
+  const paragraphs: Block[] = [];
+  /** Dónde se añaden los bloques: el cuerpo, o la celda de tabla que se está exportando. */
+  let target: Block[] = paragraphs;
+  const add = (options: IParagraphOptions) => target.push(new docx.Paragraph(options));
 
   const image = async (node: RichNode, extra: IParagraphOptions = {}) => {
     const hash = assetHashOf(node.attrs?.['src']);
@@ -187,6 +190,37 @@ export async function buildDocx(doc: RichDocData, options: DocxOptions) {
       case 'image':
         await image(node, { alignment: AlignmentType.CENTER });
         return;
+      case 'table': {
+        // Tablas (plan 9.7): la primera fila es encabezado si sus celdas lo son.
+        const rows: InstanceType<typeof docx.TableRow>[] = [];
+        for (const row of node.content ?? []) {
+          const cells: InstanceType<typeof docx.TableCell>[] = [];
+          for (const cell of row.content ?? []) {
+            const outer = target;
+            const children: Block[] = [];
+            target = children;
+            for (const child of cell.content ?? []) await block(child, { level: 0, quote: false });
+            target = outer;
+            cells.push(
+              new docx.TableCell({
+                children: children.length ? children : [new docx.Paragraph({ children: [] })],
+                ...(cell.type === 'tableHeader'
+                  ? { shading: { type: docx.ShadingType.CLEAR, fill: 'F2EFE6', color: 'auto' } }
+                  : {}),
+              }),
+            );
+          }
+          const header = (row.content ?? []).every((c) => c.type === 'tableHeader');
+          rows.push(new docx.TableRow({ children: cells, tableHeader: header && rows.length === 0 }));
+        }
+        if (rows.length) {
+          target.push(
+            new docx.Table({ rows, width: { size: 100, type: docx.WidthType.PERCENTAGE } }),
+          );
+          add({ children: [] }); // Word necesita un párrafo entre dos tablas seguidas.
+        }
+        return;
+      }
       default:
         // Nodo desconocido (de una versión posterior): su texto, para no perder nada.
         if (node.content) for (const child of node.content) await block(child, context);

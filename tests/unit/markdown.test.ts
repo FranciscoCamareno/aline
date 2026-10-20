@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { renderMarkdownPreview } from '../../src/features/notes/markdown.ts';
 
 describe('vista previa Markdown', () => {
+  it('muestra los [[Título]] escritos a mano como enlaces o rotos (plan 9.6)', () => {
+    const ids: Record<string, string> = { plan: 'doc-1' };
+    const html = renderMarkdownPreview(
+      'Ver [[Plan]], [[Plan|el plan]] y [[Nada]].\n\n`[[Plan]]` en código',
+      (title) => ids[title.toLowerCase()] ?? null,
+    );
+    expect(html).toContain('<a href="aline://document/doc-1" class="wiki-link">Plan</a>');
+    expect(html).toContain('<a href="aline://document/doc-1" class="wiki-link">el plan</a>');
+    expect(html).toContain('class="wiki-link broken-link">Nada</a>');
+    expect(html).toContain('<code>[[Plan]]</code>');
+    // Sin resolutor (p. ej. en la exportación) el texto queda como estaba.
+    expect(renderMarkdownPreview('Ver [[Plan]]')).toContain('Ver [[Plan]]');
+  });
+
   it('presenta formato básico y GFM', () => {
     const html = renderMarkdownPreview(
       '# Título\n\n- [x] hecho\n\n| a | b |\n|---|---|\n| 1 | 2 |',

@@ -18,6 +18,7 @@ import { NoteView } from '../features/notes/NoteView.tsx';
 import { SettingsDialog, type SettingsSection } from '../features/status/SettingsDialog.tsx';
 import { QUOTA_WARNING_RATIO, quotaRatio, StatusPanel } from '../features/status/StatusPanel.tsx';
 import { describeError } from '../ports/Diagnostics.ts';
+import { RemoteError } from '../ports/RemoteStore.ts';
 import { runEmergencyExport } from './emergency.ts';
 import { ImportReportDialog } from '../features/library/ImportReportDialog.tsx';
 import { exportMarkdownZip, importFiles, type ImportReport } from './importExport.ts';
@@ -126,8 +127,9 @@ export function App() {
     (error: unknown) => {
       console.error(error);
       logDiagnostic('error', 'action-failed', describeError(error));
-      const code = error instanceof DomainError ? error.code : 'unknown';
-      setActionError(t(`errors.${code}`));
+      // Los fallos de los destinos remotos traen su propio código (plan 9.2).
+      if (error instanceof RemoteError) setActionError(t(`storage.errors.${error.code}`));
+      else setActionError(t(`errors.${error instanceof DomainError ? error.code : 'unknown'}`));
     },
     [t],
   );
@@ -370,7 +372,10 @@ export function App() {
     async (folderId: string | null) => {
       try {
         await flushAllWrites();
-        const count = await exportMarkdownZip(services!, folderId);
+        const count = await exportMarkdownZip(services!, folderId, {
+          documentsDir: t('export.documentsDir'),
+          tabLabel: (n) => t('docs.tabUntitled', { n }),
+        });
         if (!count) setActionError(t('export.noNotes'));
       } catch (error) {
         reportError(error);
@@ -598,6 +603,12 @@ export function App() {
                       label: t('nav.exportPdf'),
                       icon: 'descargar' as const,
                       onSelect: () => sendViewCommand(active.id, 'export-pdf'),
+                    },
+                    {
+                      id: 'doc-export-md',
+                      label: t('nav.exportDocMarkdown'),
+                      icon: 'documento-md' as const,
+                      onSelect: () => sendViewCommand(active.id, 'export-md'),
                     },
                   ]
                 : []),

@@ -411,7 +411,37 @@
       "relocateAccept": "Aceptar la carpeta sin cifrar",
       "relocateReencrypt": "Volver a cifrar en una carpeta nueva…"
     },
-    "revokeUnconfirmed": "Se desconectó en este equipo, pero Google no confirmó que haya retirado el permiso de la aplicación (por ejemplo, porque la página se recargó desde la última autorización). Puedes retirarlo en la configuración de seguridad de tu cuenta de Google, en «Aplicaciones y servicios de terceros»."
+    "revokeUnconfirmed": "Se desconectó en este equipo, pero Google no confirmó que haya retirado el permiso de la aplicación (por ejemplo, porque la página se recargó desde la última autorización). Puedes retirarlo en la configuración de seguridad de tu cuenta de Google, en «Aplicaciones y servicios de terceros».",
+    "errors": {
+      "auth-required": "Hace falta volver a autorizar a Google.",
+      "auth-expired": "La autorización de Google caducó; vuelve a autorizar.",
+      "auth-denied": "Google no concedió la autorización.",
+      "popup-blocked": "El navegador bloqueó la ventana de Google; vuelve a pulsar el botón.",
+      "popup-closed": "Se cerró la ventana de Google sin autorizar.",
+      "scope-denied": "No se concedió el permiso de archivos de Drive; márcalo en la ventana de Google.",
+      "revoke-unconfirmed": "Google no confirmó que haya retirado el permiso de la aplicación.",
+      "gis-unavailable": "No se pudo cargar el inicio de sesión de Google. Comprueba la conexión.",
+      "offline": "Sin conexión con el destino; se reintentará.",
+      "drive-busy": "Google Drive está ocupado o no responde; se reintentará.",
+      "drive-quota": "Tu Google Drive no tiene espacio.",
+      "drive-forbidden": "Google Drive rechazó la operación por falta de permiso.",
+      "drive-not-found": "No se encontró un archivo en Google Drive.",
+      "drive-upload-failed": "Google Drive no aceptó la subida; se reintentará.",
+      "root-trashed": "La carpeta de Drive está en la papelera.",
+      "root-superseded": "La carpeta de Drive fue sustituida por otra.",
+      "root-needs-key": "La carpeta de Drive está cifrada y este equipo no tiene la clave.",
+      "root-not-encrypted": "La carpeta de Drive no está cifrada; no se escribe contenido cifrado en ella.",
+      "encryption-missing": "Falta encryption.json en la carpeta de Drive.",
+      "encryption-invalid": "El archivo encryption.json de la carpeta de Drive no es válido.",
+      "vault-invalid": "El archivo vault.json del destino no es válido.",
+      "vault-missing": "El destino no contiene un almacén.",
+      "other-vault": "El destino ya contiene otro almacén; no se mezclan.",
+      "folder-permission": "Sin permiso de escritura en la carpeta.",
+      "folder-full": "La carpeta no tiene espacio.",
+      "folder-unavailable": "La carpeta ya no está disponible (¿desconectada o movida?).",
+      "folder-io": "No se pudo leer o escribir en la carpeta; se reintentará.",
+      "unknown": "Error inesperado al sincronizar."
+    }
   },
   "export": {
     "open": "Exportar…",
@@ -444,7 +474,8 @@
     "failed": "No se pudo exportar. Prueba con una escala menor o solo con la selección.",
     "working": "Exportando…",
     "run": "Exportar",
-    "noNotes": "No hay notas que exportar."
+    "noNotes": "No hay notas ni documentos que exportar.",
+    "documentsDir": "Documentos"
   },
   "import": {
     "title": "Importación terminada",
@@ -491,8 +522,9 @@
     "exportNote": "Nota en Markdown (.md)",
     "exportDocx": "Documento de Word (.docx)",
     "exportPdf": "PDF (imprimir y «Guardar como PDF»)…",
-    "exportMarkdownAll": "Todas las notas en Markdown (.zip)",
-    "exportMarkdownFolder": "Notas de «{{folder}}» en Markdown (.zip)"
+    "exportMarkdownAll": "Notas y documentos en Markdown (.zip)",
+    "exportMarkdownFolder": "«{{folder}}» en Markdown (.zip)",
+    "exportDocMarkdown": "Documento en Markdown (.md)"
   },
   "stickers": {
     "a": "La «a»",
@@ -660,7 +692,25 @@
     "kindRich": "Documento con formato",
     "kindMarkdown": "Documento Markdown",
     "markdownHint": "Se guarda como Markdown: se puede abrir y editar fuera de la aplicación (copia legible).",
-    "editorError": "No se pudo abrir el editor ({{message}}). El documento no se ha modificado."
+    "editorError": "No se pudo abrir el editor ({{message}}). El documento no se ha modificado.",
+    "table": {
+      "label": "Tabla",
+      "insert": "Insertar tabla",
+      "rowBefore": "Insertar fila arriba",
+      "rowAfter": "Insertar fila abajo",
+      "colBefore": "Insertar columna a la izquierda",
+      "colAfter": "Insertar columna a la derecha",
+      "deleteRow": "Eliminar fila",
+      "deleteCol": "Eliminar columna",
+      "deleteTable": "Eliminar tabla"
+    },
+    "markdownLosses": "Exportado a Markdown sin: {{list}}.",
+    "markdownLoss": {
+      "font": "fuentes y tamaños",
+      "underline": "subrayado",
+      "alignment": "alineación",
+      "comments": "comentarios"
+    }
   },
   "schemes": {
     "papel": {

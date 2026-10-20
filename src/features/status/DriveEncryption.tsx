@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { downloadText } from '../../app/download.ts';
 import { generateRecoveryCode, WrongSecretError } from '../../app/syncRuntime.ts';
 import { MIN_PASSWORD_LENGTH, type DriveEncryptionChoice } from '../../domain/encryption.ts';
+import { problemOf, syncErrorKey } from './syncErrors.ts';
 
 type Mode = DriveEncryptionChoice['mode'];
 
@@ -220,7 +221,7 @@ export function DriveUnlock({ onUnlock }: { onUnlock: (secret: string) => Promis
       await onUnlock(secret);
       setSecret('');
     } catch (e) {
-      setError(e instanceof WrongSecretError ? t('storage.enc.wrong') : String(e));
+      setError(t(e instanceof WrongSecretError ? 'storage.enc.wrong' : syncErrorKey(problemOf(e))));
     } finally {
       setBusy(false);
     }
@@ -278,7 +279,9 @@ export function DriveSecrets({
       reset();
       setMessage(done);
     } catch (e) {
-      setMessage(e instanceof WrongSecretError ? t('storage.enc.wrong') : String(e));
+      setMessage(
+        t(e instanceof WrongSecretError ? 'storage.enc.wrong' : syncErrorKey(problemOf(e))),
+      );
     }
   };
 

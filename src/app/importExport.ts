@@ -6,6 +6,9 @@ import {
   markdownTree,
   safeFilename,
 } from '../application/portability.ts';
+import { markdownAssetRefs } from '../domain/docAssets.ts';
+import type { RichDocData } from '../domain/richDoc.ts';
+import { relinkAssets, richDocToMarkdown, type MarkdownLoss } from '../domain/richDocMarkdown.ts';
 import type { DocumentRecord } from '../domain/revision.ts';
 import { describeError } from '../ports/Diagnostics.ts';
 import { utf8Encode } from '../shared/hash.ts';
@@ -104,25 +107,111 @@ export async function importFiles(
   return report;
 }
 
+/** Extensión de archivo de una imagen del almacén (DOC_IMAGE_TYPES). */
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+};
+
+type AssetLoader = (hash: string) => Promise<{ mimeType: string; bytes: Uint8Array } | undefined>;
+
 /**
- * Exporta como ZIP las notas Markdown de una carpeta (con sus subcarpetas) o de todo el almacén
- * (RF-35, diseño §12.1). Cada archivo es la versión vigente con su frontmatter.
+ * Las imágenes que cita un Markdown (`mindnote-asset:<sha256>`) pasan a ser archivos de
+ * `<dir>assets/` y el texto las cita con su ruta relativa (plan 9.8). Las que ya no existen se
+ * quedan como estaban: nunca se falla por una cita rota.
+ */
+async function withAssetFiles(
+  markdown: string,
+  loadAsset: AssetLoader,
+  files: Map<string, Uint8Array>,
+  dir: string,
+): Promise<string> {
+  const paths = new Map<string, string>();
+  for (const hash of markdownAssetRefs(markdown)) {
+    const asset = await loadAsset(hash);
+    if (!asset) continue;
+    const name = `assets/${hash.slice(0, 16)}.${IMAGE_EXTENSIONS[asset.mimeType] ?? 'bin'}`;
+    files.set(dir + name, asset.bytes);
+    paths.set(hash, name);
+  }
+  const depth = dir.split('/').length - 1;
+  return relinkAssets(markdown, (hash) => {
+    const name = paths.get(hash);
+    return name ? '../'.repeat(depth) + name : `mindnote-asset:${hash}`;
+  });
+}
+
+function downloadZip(name: string, files: Map<string, Uint8Array>): Promise<void> {
+  return createZipWorkerArchiver()
+    .zip(files)
+    .then((bytes) =>
+      downloadBlob(
+        safeFilename(name, 'zip'),
+        new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/zip' }),
+      ),
+    );
+}
+
+/**
+ * «Exportar → Markdown» de un documento con formato (plan 9.8): un `.md`, o un ZIP con el `.md`
+ * y sus imágenes en `assets/` si tiene alguna. Devuelve lo que Markdown no pudo conservar.
+ */
+export async function exportRichDocMarkdown(
+  doc: RichDocData,
+  title: string,
+  options: { tabLabel: (n: number) => string; loadAsset: AssetLoader },
+): Promise<MarkdownLoss[]> {
+  const { markdown, dropped } = richDocToMarkdown(doc, options);
+  await downloadMarkdown(markdown, title, options.loadAsset);
+  return dropped;
+}
+
+/** Un `.md`, o un ZIP con el `.md` y sus imágenes en `assets/` si cita alguna del almacén. */
+export async function downloadMarkdown(
+  markdown: string,
+  title: string,
+  loadAsset: AssetLoader,
+): Promise<void> {
+  const files = new Map<string, Uint8Array>();
+  const linked = await withAssetFiles(markdown, loadAsset, files, '');
+  if (!files.size) {
+    downloadBlob(
+      safeFilename(title, 'md'),
+      new Blob([linked], { type: 'text/markdown;charset=utf-8' }),
+    );
+    return;
+  }
+  files.set(safeFilename(title, 'md'), utf8Encode(linked));
+  await downloadZip(title, files);
+}
+
+/**
+ * Exporta como ZIP los Markdown de una carpeta (con sus subcarpetas) o de todo el almacén
+ * (RF-35, diseño §12.1; documentos desde el plan 9.9): las notas y los documentos Markdown tal
+ * como se guardan, con su frontmatter, y los documentos con formato convertidos. Las imágenes
+ * van a `assets/` junto a cada archivo.
  */
 export async function exportMarkdownZip(
   services: AppServices,
   folderId: string | null,
+  labels: { documentsDir: string; tabLabel: (n: number) => string },
 ): Promise<number> {
-  const documents = await services.service.listDocuments();
-  const tree = markdownTree(documents, folderId);
+  const { service } = services;
+  const documents = await service.listDocuments();
+  const tree = markdownTree(documents, folderId, labels.documentsDir);
   const files = new Map<string, Uint8Array>();
-  for (const [path, id] of tree) {
-    files.set(path, utf8Encode(await services.service.exportNoteMarkdown(id)));
+  const loadAsset: AssetLoader = (hash) => service.loadAsset(hash);
+  for (const [path, { id, kind }] of tree) {
+    const markdown =
+      kind === 'doc'
+        ? richDocToMarkdown(await service.exportRichDoc(id), labels).markdown
+        : await service.exportNoteMarkdown(id);
+    const dir = path.slice(0, path.lastIndexOf('/') + 1);
+    files.set(path, utf8Encode(await withAssetFiles(markdown, loadAsset, files, dir)));
   }
-  const bytes = await createZipWorkerArchiver().zip(files);
   const folder = folderId ? documents.find((d) => d.id === folderId)?.title : null;
-  downloadBlob(
-    safeFilename(`${folder ?? services.vault.name} - Markdown ${fileTimestamp()}`, 'zip'),
-    new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'application/zip' }),
-  );
+  await downloadZip(`${folder ?? services.vault.name} - Markdown ${fileTimestamp()}`, files);
   return tree.size;
 }

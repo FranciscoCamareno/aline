@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { expect, test, type Download, type Page } from '@playwright/test';
+import { unzipSync } from 'fflate';
 
 /**
  * Imágenes en los documentos (fase 8.4) y exportar un documento con formato a Word (.docx) y a
@@ -193,4 +195,120 @@ test('exportar un documento con formato a Word y a PDF', async ({ page }) => {
   });
   await expect(page.locator('.print-root')).toHaveCount(0);
   await expect(page.locator('html')).not.toHaveClass(/printing-doc/);
+});
+
+async function downloaded(download: Promise<Download>): Promise<{ name: string; bytes: Buffer }> {
+  const file = await download;
+  return { name: file.suggestedFilename(), bytes: await readFile((await file.path())!) };
+}
+
+const decode = (bytes: Uint8Array | undefined) => new TextDecoder().decode(bytes);
+
+for (const [item, kind] of [
+  ['Documento con formato', 'doc'],
+  ['Documento Markdown', 'mddoc'],
+] as const) {
+  test(`${kind}: insertar una tabla, añadir y quitar filas y columnas, y guardarla (plan 9.7)`, async ({
+    page,
+  }) => {
+    await freshStart(page);
+    await newDocument(page, item);
+    const docId = await activeId(page);
+    const table = page.getByTestId('doc-editor').locator('table');
+    const tableAction = async (id: string) => {
+      await page.getByTestId('doc-table').click();
+      await page.getByTestId(`doc-table-${id}`).click();
+    };
+    await tableAction('insert');
+    await expect(table.locator('tr')).toHaveCount(3);
+    await expect(table.locator('tr').first().locator('th')).toHaveCount(3);
+    // El cursor queda en la primera celda: se escribe y se pasa a la siguiente con Tab.
+    await page.keyboard.type('Tarea');
+    await page.keyboard.press('Tab');
+    await page.keyboard.type('Estado');
+    await tableAction('row-after');
+    await expect(table.locator('tr')).toHaveCount(4);
+    await tableAction('col-after');
+    await expect(table.locator('tr').first().locator('th, td')).toHaveCount(4);
+    // «Eliminar columna» quita la del cursor: la de «Estado».
+    await tableAction('delete-col');
+    await expect(table.locator('tr').first().locator('th, td')).toHaveCount(3);
+    if (kind === 'mddoc') {
+      await page.getByTestId('doc-table').click();
+      await expect(page.getByTestId('doc-table-delete-row')).toBeDisabled();
+      await expect(page.getByTestId('doc-table-row-before')).toBeDisabled();
+      await page.keyboard.press('Escape');
+    }
+    // Se quita la última fila (en un documento Markdown, la de encabezado no se puede quitar).
+    await table.locator('tr').last().locator('td').first().click();
+    await tableAction('delete-row');
+    await expect(table.locator('tr')).toHaveCount(3);
+    await saved(page);
+    await expect
+      .poll(async () => (await head(page, docId)).body)
+      .toMatch(kind === 'doc' ? /"type":"table"/ : /\| Tarea +\| +\| +\|/);
+
+    await tableAction('delete-table');
+    await expect(table).toHaveCount(0);
+  });
+}
+
+test('exportar un documento con formato a Markdown: tabla, imagen en assets/ y lo que se pierde (plan 9.8)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  await newDocument(page, 'Documento con formato');
+  await page.keyboard.type('Informe');
+  await page.getByTestId('doc-underline').click();
+  await page.keyboard.type(' sub');
+  await page.keyboard.press('Enter');
+  await page
+    .getByTestId('doc-image-input')
+    .setInputFiles({ name: 'grafico.png', mimeType: 'image/png', buffer: PNG });
+  await expectShown(page);
+  // La imagen recién insertada queda seleccionada: la tabla va después, al final.
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.getByTestId('doc-table').click();
+  await page.getByTestId('doc-table-insert').click();
+  await page.keyboard.type('Celda');
+  await expect(page.getByTestId('doc-editor').locator('img.doc-image')).toHaveCount(1);
+  await saved(page);
+
+  await page.getByTestId('export-menu').click();
+  const pending = page.waitForEvent('download');
+  await page.getByTestId('doc-export-md').click();
+  const zip = await downloaded(pending);
+  expect(zip.name).toMatch(/\.zip$/);
+  const files = unzipSync(new Uint8Array(zip.bytes));
+  const names = Object.keys(files);
+  expect(names).toHaveLength(2);
+  const image = names.find((name) => /^assets\/[0-9a-f]{16}\.png$/.test(name));
+  expect(image).toBeTruthy();
+  const markdown = decode(files[names.find((name) => name.endsWith('.md'))!]);
+  expect(markdown).toContain('Informe sub');
+  expect(markdown).toContain(`![grafico](${image})`);
+  expect(markdown).toMatch(/\| Celda \|/);
+  await expect(page.getByTestId('doc-markdown-losses')).toContainText('subrayado');
+});
+
+test('la exportación Markdown por carpetas lleva también los documentos (plan 9.9)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  await newDocument(page, 'Documento con formato');
+  await page.keyboard.type('Texto con formato');
+  await saved(page);
+  await newDocument(page, 'Documento Markdown');
+  await page.keyboard.type('Texto en Markdown');
+  await saved(page);
+
+  await page.getByTestId('export-menu').click();
+  const zip = page.waitForEvent('download');
+  await page.getByTestId('export-markdown').click();
+  const files = unzipSync(new Uint8Array((await downloaded(zip)).bytes));
+  const docs = Object.keys(files).filter((name) => name.startsWith('Documentos/'));
+  expect(docs).toHaveLength(2);
+  const texts = docs.map((name) => decode(files[name]));
+  expect(texts.some((t) => t.includes('Texto con formato'))).toBe(true);
+  expect(texts.some((t) => t.includes('Texto en Markdown'))).toBe(true);
 });

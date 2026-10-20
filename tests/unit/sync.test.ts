@@ -149,7 +149,7 @@ describe('sincronización por carpeta (plan 4.2, 4.6, 4.7)', () => {
         await store.publishRevision(rev, op);
         if (failNext) {
           failNext = false;
-          throw new RemoteError('permission', 'respuesta perdida');
+          throw new RemoteError('permission', 'drive-forbidden', 'respuesta perdida');
         }
       },
     }));
@@ -268,7 +268,8 @@ describe('sincronización por carpeta (plan 4.2, 4.6, 4.7)', () => {
       remote: {
         ...bind(store),
         pull: async (cursor) => {
-          if (failures-- > 0) throw new RemoteError('transient', 'red', failures === 0 ? 3 : null);
+          if (failures-- > 0)
+            throw new RemoteError('transient', 'offline', 'red', failures === 0 ? 3 : null);
           return store.pull(cursor);
         },
       },

@@ -139,7 +139,7 @@ export async function readDriveEncryption(
   const [file] = await client.list(
     `${hasProperty('mindnote', 'encryption')} and ${hasProperty('root', rootId)} and ${notTrashed}`,
   );
-  if (!file) throw new RemoteError('not-found', 'Falta encryption.json en la carpeta de Drive');
+  if (!file) throw new RemoteError('not-found', 'encryption-missing');
   // Se valida antes de derivar ninguna clave: un descriptor manipulado no impone su coste.
   const bytes = await client.download(file.id);
   let parsed;
@@ -151,7 +151,7 @@ export async function readDriveEncryption(
   } catch {
     parsed = null;
   }
-  if (!parsed?.success) throw new RemoteError('not-found', 'encryption.json no es válido');
+  if (!parsed?.success) throw new RemoteError('not-found', 'encryption-invalid');
   return parsed.data;
 }
 
@@ -164,7 +164,7 @@ export async function writeDriveEncryption(
   const [file] = await client.list(
     `${hasProperty('mindnote', 'encryption')} and ${hasProperty('root', rootId)} and ${notTrashed}`,
   );
-  if (!file) throw new RemoteError('not-found', 'Falta encryption.json en la carpeta de Drive');
+  if (!file) throw new RemoteError('not-found', 'encryption-missing');
   await client.updateMedia(
     file.id,
     jsonBytes(encryptionFileSchema.parse(encryption)),
@@ -238,18 +238,13 @@ export class DriveRemoteStore implements RemoteStore {
    */
   async readVault(): Promise<Vault | null> {
     const root = await this.client.getFile(this.rootId);
-    if (root.trashed) throw new RemoteError('not-found', 'La carpeta de Drive está en la papelera');
+    if (root.trashed) throw new RemoteError('not-found', 'root-trashed');
     if (root.appProperties?.['supersededBy']) {
-      throw new RemoteError('not-found', 'La carpeta de Drive fue sustituida por otra');
+      throw new RemoteError('not-found', 'root-superseded');
     }
     const encrypted = root.appProperties?.['encrypted'] === 'true';
     if (encrypted !== Boolean(this.cipher)) {
-      throw new RemoteError(
-        'permission',
-        encrypted
-          ? 'La carpeta de Drive está cifrada y este equipo no tiene la clave'
-          : 'La carpeta de Drive no está cifrada; no se escribe contenido cifrado en ella',
-      );
+      throw new RemoteError('permission', encrypted ? 'root-needs-key' : 'root-not-encrypted');
     }
     return this.readVaultInfo();
   }
@@ -266,7 +261,7 @@ export class DriveRemoteStore implements RemoteStore {
     } catch {
       parsed = null;
     }
-    if (!parsed?.success) throw new RemoteError('not-found', 'vault.json no es válido');
+    if (!parsed?.success) throw new RemoteError('not-found', 'vault-invalid');
     this.vaultId = parsed.data.id;
     return parsed.data;
   }
@@ -274,7 +269,7 @@ export class DriveRemoteStore implements RemoteStore {
   async initializeVault(vault: Vault, encrypted = Boolean(this.cipher)): Promise<void> {
     const existing = await this.readVaultInfo();
     if (existing && existing.id !== vault.id) {
-      throw new RemoteError('permission', 'La carpeta de Drive ya contiene otro almacén');
+      throw new RemoteError('permission', 'other-vault');
     }
     this.vaultId = vault.id;
     if (!existing) {
@@ -554,7 +549,7 @@ export class DriveRemoteStore implements RemoteStore {
   private async ids(): Promise<{ vaultId: string }> {
     if (this.vaultId) return { vaultId: this.vaultId };
     const vault = await this.readVaultInfo();
-    if (!vault) throw new RemoteError('not-found', 'La carpeta de Drive no contiene un almacén');
+    if (!vault) throw new RemoteError('not-found', 'vault-missing');
     return { vaultId: vault.id };
   }
 

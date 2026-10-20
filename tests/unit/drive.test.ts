@@ -12,7 +12,7 @@ import { DexieSyncStore } from '../../src/adapters/indexeddb/DexieSyncStore.ts';
 import { DexieVaultRepository } from '../../src/adapters/indexeddb/DexieVaultRepository.ts';
 import { SyncEngine, VaultMismatchError } from '../../src/application/SyncEngine.ts';
 import { VaultService } from '../../src/application/VaultService.ts';
-import { RemoteError } from '../../src/ports/RemoteStore.ts';
+import { RemoteError, type RemoteErrorCode } from '../../src/ports/RemoteStore.ts';
 import {
   createEncryption,
   deriveVaultKeys,
@@ -315,20 +315,21 @@ describe('Google Drive (plan 4.5) contra una simulación de la API', () => {
   it('clasifica los errores de Drive y respeta Retry-After', async () => {
     const drive = new FakeDrive();
     const client = new DriveClient(drive.fetch, () => drive.token);
-    const cases: Array<[Response, RemoteError['kind'], number | null]> = [
-      [error(401, 'authError', 'x'), 'auth', null],
-      [error(403, 'userRateLimitExceeded', 'x', 7), 'transient', 7],
-      [error(403, 'storageQuotaExceeded', 'x'), 'quota', null],
-      [error(403, 'insufficientFilePermissions', 'x'), 'permission', null],
-      [error(404, 'notFound', 'x'), 'not-found', null],
-      [error(429, 'rateLimitExceeded', 'x', 2), 'transient', 2],
-      [error(503, 'backendError', 'x'), 'transient', null],
+    const cases: Array<[Response, RemoteError['kind'], RemoteErrorCode, number | null]> = [
+      [error(401, 'authError', 'x'), 'auth', 'auth-expired', null],
+      [error(403, 'userRateLimitExceeded', 'x', 7), 'transient', 'drive-busy', 7],
+      [error(403, 'storageQuotaExceeded', 'x'), 'quota', 'drive-quota', null],
+      [error(403, 'insufficientFilePermissions', 'x'), 'permission', 'drive-forbidden', null],
+      [error(404, 'notFound', 'x'), 'not-found', 'drive-not-found', null],
+      [error(429, 'rateLimitExceeded', 'x', 2), 'transient', 'drive-busy', 2],
+      [error(503, 'backendError', 'x'), 'transient', 'drive-busy', null],
     ];
-    for (const [response, kind, retryAfter] of cases) {
+    for (const [response, kind, code, retryAfter] of cases) {
       drive.hook = () => response;
       const failure = await client.list('trashed = false').catch((e: unknown) => e);
       expect(failure).toBeInstanceOf(RemoteError);
       expect((failure as RemoteError).kind).toBe(kind);
+      expect((failure as RemoteError).code).toBe(code);
       expect((failure as RemoteError).retryAfter).toBe(retryAfter);
     }
     drive.hook = null;
@@ -337,14 +338,14 @@ describe('Google Drive (plan 4.5) contra una simulación de la API', () => {
       () => 't',
     );
     expect(
-      ((await offline.list('trashed = false').catch((e: unknown) => e)) as RemoteError).kind,
+      ((await offline.list('trashed = false').catch((e: unknown) => e)) as RemoteError).code,
     ).toBe('offline');
     // Sin token (vencido o sin autorizar) no se hace ninguna petición.
     const before = drive.requests.length;
     const noToken = new DriveClient(drive.fetch, () => null);
     expect(
-      ((await noToken.list('trashed = false').catch((e: unknown) => e)) as RemoteError).kind,
-    ).toBe('auth');
+      ((await noToken.list('trashed = false').catch((e: unknown) => e)) as RemoteError).code,
+    ).toBe('auth-required');
     expect(drive.requests.length).toBe(before);
   });
 

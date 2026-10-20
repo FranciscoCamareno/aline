@@ -3,7 +3,7 @@ import { SyncEngine, VaultMismatchError } from '../application/SyncEngine.ts';
 import type { DriveEncryptionChoice } from '../domain/encryption.ts';
 import type { Vault } from '../domain/vault.ts';
 import { describeError } from '../ports/Diagnostics.ts';
-import { RemoteError } from '../ports/RemoteStore.ts';
+import { RemoteError, type RemoteErrorCode } from '../ports/RemoteStore.ts';
 import type { VaultKeys } from '../shared/crypto.ts';
 import {
   driveConnection,
@@ -59,13 +59,17 @@ export type RemotePhase =
   | 'unavailable'
   | 'error';
 
+/** Causa de un fallo de sincronización; `unknown` cuando no viene de un destino remoto. */
+export type RemoteProblem = RemoteErrorCode | 'unknown';
+
 export interface RemoteStatus {
   kind: 'folder' | 'drive';
   name: string;
   phase: RemotePhase;
   pending: number;
   lastSyncAt: string | null;
-  message: string | null;
+  /** Causa del último fallo, traducida en la interfaz (`sync.errors.<código>`); nunca texto. */
+  problem: RemoteProblem | null;
   /** Solo Drive: la carpeta está cifrada de extremo a extremo. */
   encrypted: boolean;
   /** Solo Drive: hay una carpeta anterior (otro modo) que se puede mover a la papelera. */
@@ -501,17 +505,17 @@ export class SyncRuntime {
         return;
       }
       if (error instanceof VaultMismatchError) {
-        this.setStatus(this.make('mismatch', error.message));
+        this.setStatus(this.make('mismatch', null));
       } else if (error instanceof RemoteError && error.kind === 'auth') {
-        this.setStatus(this.make('needs-auth', error.message));
+        this.setStatus(this.make('needs-auth', error.code));
       } else if (error instanceof RemoteError && error.kind === 'permission') {
         this.setStatus(
-          this.make(binding.kind === 'drive' ? 'error' : 'needs-permission', error.message),
+          this.make(binding.kind === 'drive' ? 'error' : 'needs-permission', error.code),
         );
       } else if (error instanceof RemoteError && error.kind === 'not-found') {
-        this.setStatus(this.make('unavailable', error.message));
+        this.setStatus(this.make('unavailable', error.code));
       } else {
-        this.setStatus(this.make('error', error instanceof Error ? error.message : String(error)));
+        this.setStatus(this.make('error', error instanceof RemoteError ? error.code : 'unknown'));
       }
     }
   }
@@ -641,7 +645,7 @@ export class SyncRuntime {
 
   private requireDrive(): DriveConnection {
     if (!this.drive?.auth.getAccessToken()) {
-      throw new RemoteError('auth', 'Necesita autorización de Google');
+      throw new RemoteError('auth', 'auth-required');
     }
     return this.drive;
   }
@@ -667,7 +671,7 @@ export class SyncRuntime {
     return (await handle.requestPermission({ mode: 'readwrite' })) === 'granted';
   }
 
-  private make(phase: RemotePhase, message: string | null): RemoteStatus {
+  private make(phase: RemotePhase, problem: RemoteProblem | null): RemoteStatus {
     const drive = this.binding?.kind === 'drive' ? this.binding : null;
     return {
       kind: this.binding?.kind ?? 'folder',
@@ -675,7 +679,7 @@ export class SyncRuntime {
       phase,
       pending: this.status?.pending ?? 0,
       lastSyncAt: this.status?.lastSyncAt ?? null,
-      message,
+      problem,
       encrypted: drive?.encrypted ?? false,
       previousFolder: Boolean(drive?.previousFolderId),
     };

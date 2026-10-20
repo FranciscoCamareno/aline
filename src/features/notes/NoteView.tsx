@@ -99,7 +99,14 @@ export function NoteView({ documentId, title, service, knowledge, onCreateNote }
     [autosave, documentId, service, title],
   );
 
-  const previewHtml = useMemo(() => renderMarkdownPreview(body), [body]);
+  const previewHtml = useMemo(
+    () =>
+      renderMarkdownPreview(body, (title) => {
+        const found = knowledge.resolveTitle(title, documents);
+        return found && found !== 'ambiguous' ? found.id : null;
+      }),
+    [body, documents, knowledge],
+  );
 
   // Enlaces internos se abren en la app; externos en otra pestaña sin opener (diseño §13).
   const onPreviewClick = (event: MouseEvent<HTMLDivElement>) => {

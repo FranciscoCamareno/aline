@@ -201,14 +201,24 @@ describe('Markdown (RF-35)', () => {
       doc('n5', 'note', 'Huérfana', 'f3'),
       doc('c1', 'canvas', 'Mapa', 'f1'),
       doc('n6', 'note', 'En papelera', null, true),
+      // Sección «Documentos» (plan 9.9): sus carpetas y sus dos tipos de documento.
+      doc('df1', 'docfolder', 'Informes', null),
+      doc('d1', 'doc', 'Anual', 'df1'),
+      doc('m1', 'mddoc', 'Notas sueltas', null),
+      doc('d2', 'doc', 'Huérfano', 'f1'), // carpeta de la otra sección: no vale
     ];
+    const note = (id: string) => ({ id, kind: 'note' });
     expect([...markdownTree(docs, null)]).toEqual([
-      ['Suelta.md', 'n4'],
-      ['Proyectos/Plan.md', 'n1'],
-      ['Proyectos/Plan (2).md', 'n2'],
-      ['Proyectos/Beta/Tareas_ hoy.md', 'n3'],
-      ['Recuperados/Huérfana.md', 'n5'],
+      ['Suelta.md', note('n4')],
+      ['Proyectos/Plan.md', note('n1')],
+      ['Proyectos/Plan (2).md', note('n2')],
+      ['Proyectos/Beta/Tareas_ hoy.md', note('n3')],
+      ['Recuperados/Huérfana.md', note('n5')],
+      ['Documentos/Notas sueltas.md', { id: 'm1', kind: 'mddoc' }],
+      ['Documentos/Informes/Anual.md', { id: 'd1', kind: 'doc' }],
+      ['Documentos/Recuperados/Huérfano.md', { id: 'd2', kind: 'doc' }],
     ]);
+    expect([...markdownTree(docs, 'df1')]).toEqual([['Anual.md', { id: 'd1', kind: 'doc' }]]);
     expect([...markdownTree(docs, 'f1').keys()]).toEqual([
       'Plan.md',
       'Plan (2).md',

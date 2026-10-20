@@ -9,7 +9,8 @@ con historial de versiones. No necesita cuenta ni servidor; la carpeta local y G
 El diseño técnico es [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md) y el plan
 de trabajo, [docs/Plan-de-fases.md](docs/Plan-de-fases.md). Están implementadas las fases 0 a 5
 y 7 a 8; para la beta faltan las pruebas en el iPad y dos semanas de uso real, y la fase 6
-(ramas colapsables, tarjetas de nota, modo «Solo lápiz»…) sigue pendiente.
+(ramas colapsables, tarjetas de nota, modo «Solo lápiz»…) sigue pendiente. La siguiente
+versión, la 0.2.0, está planificada como fase 9 del plan.
 
 **Versión actual: 0.1.0** (etiqueta `v0.1.0`; se muestra en «Estado y diagnóstico»). Publicada en
 https://aline.projeck.workers.dev (Cloudflare Workers, recursos estáticos de `dist/`).
@@ -119,7 +120,13 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   herramientas compacta, burbuja al seleccionar texto para comentar o enlazar, zoom de la hoja,
   vista «Hoja» partida en páginas A4 y comentarios con respuestas (resolver, reabrir, eliminar).
   Imágenes del equipo (también en los documentos Markdown; nunca remotas) y exportación a Word
-  (.docx) y PDF.
+  (.docx), PDF y Markdown (con las imágenes en `assets/`, en un ZIP; avisa de lo que Markdown no
+  conserva: fuentes, subrayado, alineación y comentarios).
+- **Tablas** en los dos tipos de documento (menú «Tabla»: insertar, filas y columnas, eliminar;
+  Tab y Mayús+Tab pasan de celda). En los documentos Markdown son tablas GFM, así que la fila de
+  encabezado no se puede quitar. Se exportan a Word, PDF y Markdown.
+- La exportación Markdown por carpetas (o de todo el almacén) lleva también los documentos: los
+  Markdown tal cual, los con formato convertidos, y sus imágenes en `assets/`.
 - **Plantillas del lienzo** (DESIGN.md §9): guardar una selección (también con imágenes y
   stickers) e insertarla con un clic o arrastrándola. Sustituyen a la biblioteca de Excalidraw.
 - **Barra lateral y cabecera** (DESIGN.md §6): secciones Notas → Documentos → Calendario. «Nuevo»
@@ -177,8 +184,11 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   etiquetas no distinguen mayúsculas y viajan en el frontmatter.
 - **Enlaces:** vincular un elemento del lienzo a una nota, a otro lienzo o a una web (botón
   «Vincular» con un elemento seleccionado; se puede crear la nota en el momento). En notas, `[[`
-  sugiere destinos por título e inserta un enlace por UUID, o crea la nota. Renombrar no rompe
-  enlaces. Los `[[Título]]` importados se resuelven solo si el título es único.
+  sugiere destinos por título e inserta un enlace por UUID, o crea la nota; en los documentos y
+  en los textos del lienzo, `[[` abre el selector de enlaces (en el lienzo, el enlace va al
+  elemento). Renombrar no rompe enlaces. Los `[[Título]]` escritos a mano o importados se
+  resuelven solo si el título es único, y se muestran como enlace (o roto) en la vista previa de
+  las notas y en los documentos Markdown.
 - **Todo enlazable** (fase 7): en notas y documentos, «Enlazar selección» (Ctrl/⌘+K) enlaza con
   cualquier documento o evento del calendario, y «Copiar enlace a la selección» (Ctrl/⌘+Mayús+K)
   crea un enlace a un fragmento concreto (cita del texto y, en documentos con formato, id de
@@ -390,16 +400,15 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
   el sistema de archivos privado del navegador (OPFS), que tiene la misma API pero no pasa por
   el diálogo ni por los permisos de una carpeta del usuario.
 - Dos ordenadores reales sincronizando con una misma carpeta (p. ej. en una unidad de red).
-- **Google Drive real.** Nada de lo siguiente se ha probado:
-  - la ventana de Google ni el consentimiento;
-  - el token real ni su caducidad a la hora;
-  - la Drive API real (consultas `appProperties`, feed de cambios, subidas reanudables);
-  - las cuotas;
-  - la CSP con Google;
-  - el cambio de cuenta.
-
-  Las pruebas usan una simulación hecha a partir de la documentación de la API. La comprobación
-  real la tiene que hacer el propietario con su cuenta (pasos en `docs/Plan-de-fases.md`, fase 4).
+- **Google Drive real.** El propietario confirmó el 19/10/2026 que la conexión con Google real
+  funciona en el despliegue (inicio de sesión y conexión) y que la pantalla de
+  consentimiento OAuth está publicada: puede entrar cualquier cuenta de Google, no solo las de
+  prueba (el alcance `drive.file` no es sensible). No consta todavía:
+  - si la consola muestra avisos `[Report Only]` de la CSP (para pasarla a obligatoria, 4.8);
+  - el modo cifrado contra Drive real, el código de recuperación y el cambio de modo con
+    traslado de otro equipo;
+  - dos equipos reales sobre el mismo almacén de Drive;
+  - la caducidad del token a la hora, las cuotas y el cambio de cuenta.
 
 - Drive en Safari/iPad: ventanas emergentes de Google y almacenamiento.
 - Cifrado:
@@ -416,29 +425,27 @@ Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes d
 error `not-implemented` en vez de simular un éxito.
 El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
 
-| Área                                                                     | Estado                                                                                                                                                                                                                       | Dónde                                   |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Google Drive: comprobación con la cuenta real                            | Implementado y probado contra una simulación de la API. Falta la prueba con Google real y pasar la CSP a obligatoria (4.8)                                                                                                   | `adapters/drive/`, `public/_headers`    |
-| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                                  | —                                       |
-| Poda selectiva de versiones y espacio que ocupan (RF-46)                 | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                                                            | `features/history/`                     |
-| Enlaces `[[Título]]` escritos a mano en la vista previa                  | Se resuelven en backlinks y enlaces rotos, pero en la vista previa se muestran como texto; el autocompletado ya inserta enlaces por UUID                                                                                     | `features/notes/`                       |
-| Barra lateral con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                                                     | `features/library/`                     |
-| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                                 | `app/importExport.ts`                   |
-| Mensajes técnicos de sincronización solo en español                      | Los textos de la interfaz están traducidos, pero los mensajes de error que llegan del adaptador (Drive, carpeta) se muestran en español también con la interfaz en inglés                                                    | `adapters/drive`, `adapters/filesystem` |
-| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                                | —                                       |
-| Sidecar: ramas colapsables y notas incrustadas                           | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                                                            | `domain/sidecar.ts`                     |
-| Pila de deshacer coordinada para comandos propios                        | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                                                        | —                                       |
-| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6         | `features/canvas/CanvasView.tsx`        |
-| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                         | `application/KnowledgeService.ts`       |
-| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                          | `domain/frontmatter.ts`                 |
-| Paleta del lienzo (DESIGN.md §3.2)                                       | La barra de herramientas propia ya está; falta un selector de color con la paleta del lienzo (la 0.18.1 no deja cambiar la suya)                                                                                             | `features/canvas/CanvasView.tsx`        |
-| Nota adhesiva: color y texto (DESIGN.md §3.5)                            | Se inserta con la barra o con N, siempre en mantequilla; falta elegir el color y que el texto quede arriba a la izquierda (el motor lo centra)                                                                               | `features/canvas/stickyNote.ts`         |
-| Stickers en oscuro (DESIGN.md «Selector de stickers»)                    | Conservan su color con una capa sin filtro, pero quedan por encima de las formas aunque estén detrás en el orden de capas, no respetan el recorte de un marco y la exportación en oscuro los muestra con el filtro del motor | `features/canvas/stickerLayer.ts`       |
-| Calendario: lo que falta (DESIGN.md §8.6)                                | Selector de fechas propio, hoja de «hoy», eventos repetidos, semana desde el domingo y búsqueda de eventos                                                                                                                   | `features/calendar/`                    |
-| Calendario y plantillas con versiones antiguas de la app                 | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento: actualizar todos los dispositivos antes de usarlos                                                                                                   | `domain/revision.ts`                    |
-| Documentos: lo que falta (beta)                                          | Con formato: tablas y exportar a Markdown. Markdown: tablas desde la barra, autocompletado `[[…]]` y entrar en la exportación Markdown por carpetas (que solo lleva notas). Ambos: pruebas en el iPad                        | `features/docs/`                        |
-| Documentos con versiones antiguas de la app                              | Una versión anterior al 15/10/2026 no reconoce `doc`, ni una anterior al 16/10/2026 `mddoc` y `docfolder`: actualizar todos los dispositivos antes de usarlos                                                                | `domain/revision.ts`                    |
-| Biblioteca externa de Excalidraw                                         | Las plantillas propias la sustituyen y su botón está oculto; falta comprobar que ningún atajo del motor abra «Explorar bibliotecas»                                                                                          | `features/canvas/`                      |
+| Área                                                                     | Estado                                                                                                                                                                                                                       | Dónde                                |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Google Drive: cerrar la comprobación real                                | Funciona con Google real y la aplicación OAuth está publicada (19/10/2026). Falta revisar la CSP en la consola y pasarla a obligatoria (4.8), y probar con Google real el modo cifrado y dos equipos                         | `adapters/drive/`, `public/_headers` |
+| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                                  | —                                    |
+| Poda selectiva de versiones y espacio que ocupan (RF-46)                 | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                                                            | `features/history/`                  |
+| Barra lateral con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                                                     | `features/library/`                  |
+| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                                 | `app/importExport.ts`                |
+| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                                | —                                    |
+| Sidecar: ramas colapsables y notas incrustadas                           | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                                                            | `domain/sidecar.ts`                  |
+| Pila de deshacer coordinada para comandos propios                        | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                                                        | —                                    |
+| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6         | `features/canvas/CanvasView.tsx`     |
+| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                         | `application/KnowledgeService.ts`    |
+| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                          | `domain/frontmatter.ts`              |
+| Paleta del lienzo (DESIGN.md §3.2)                                       | La barra de herramientas propia ya está; falta un selector de color con la paleta del lienzo (la 0.18.1 no deja cambiar la suya)                                                                                             | `features/canvas/CanvasView.tsx`     |
+| Nota adhesiva: color y texto (DESIGN.md §3.5)                            | Se inserta con la barra o con N, siempre en mantequilla; falta elegir el color y que el texto quede arriba a la izquierda (el motor lo centra)                                                                               | `features/canvas/stickyNote.ts`      |
+| Stickers en oscuro (DESIGN.md «Selector de stickers»)                    | Conservan su color con una capa sin filtro, pero quedan por encima de las formas aunque estén detrás en el orden de capas, no respetan el recorte de un marco y la exportación en oscuro los muestra con el filtro del motor | `features/canvas/stickerLayer.ts`    |
+| Calendario: lo que falta (DESIGN.md §8.6)                                | Selector de fechas propio, hoja de «hoy», eventos repetidos, semana desde el domingo y búsqueda de eventos                                                                                                                   | `features/calendar/`                 |
+| Calendario y plantillas con versiones antiguas de la app                 | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento: actualizar todos los dispositivos antes de usarlos                                                                                                   | `domain/revision.ts`                 |
+| Documentos: lo que falta (beta)                                          | Pruebas en el iPad de los dos tipos de documento                                                                                                                                                                             | `features/docs/`                     |
+| Documentos con versiones antiguas de la app                              | Una versión anterior al 15/10/2026 no reconoce `doc`, ni una anterior al 16/10/2026 `mddoc` y `docfolder`: actualizar todos los dispositivos antes de usarlos                                                                | `domain/revision.ts`                 |
+| Biblioteca externa de Excalidraw                                         | Las plantillas propias la sustituyen y su botón está oculto; falta comprobar que ningún atajo del motor abra «Explorar bibliotecas»                                                                                          | `features/canvas/`                   |
 
 ## Decisiones de implementación
 

@@ -106,7 +106,7 @@ test('cabecera: Historial, Enlaces y Exportar a la vista; lo demás en «⋯»',
   await page.getByTestId('export-menu').click();
   await expect(page.getByRole('menu', { name: 'Exportar' }).getByRole('menuitem')).toHaveText([
     'Imagen, PDF o .excalidraw…',
-    'Todas las notas en Markdown (.zip)',
+    'Notas y documentos en Markdown (.zip)',
   ]);
   await page.getByTestId('canvas-export').click();
   const exportDialog = page.getByRole('dialog');

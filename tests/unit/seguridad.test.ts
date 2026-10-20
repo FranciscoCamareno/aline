@@ -438,7 +438,7 @@ describe('H07: desconectar distingue la revocación confirmada de la que no', ()
     await note(h, 'se queda en el equipo');
     await bindEncrypted(h);
     h.connection.auth.disconnect = async () => {
-      throw new RemoteError('auth', 'sin confirmar');
+      throw new RemoteError('auth', 'revoke-unconfirmed');
     };
     expect(await h.runtime.disconnect()).toEqual({ revoked: false });
     expect(await h.repo.getDevicePreference('binding')).toBeNull();

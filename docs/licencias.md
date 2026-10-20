@@ -1,6 +1,6 @@
 # Inventario de licencias
 
-Generado con `node scripts/licenses.ts` el 2026-10-17 a partir de `pnpm licenses list --prod`. No editar a mano.
+Generado con `node scripts/licenses.ts` el 2026-10-20 a partir de `pnpm licenses list --prod`. No editar a mano.
 
 Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso previsto. Se admiten las licencias permisivas de la lista del script; cualquier otra aparece en «Por revisar» y hace fallar `--check`.
 
@@ -8,7 +8,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 
 | Licencia | Paquetes |
 | --- | --- |
-| MIT | 367 |
+| MIT | 368 |
 | ISC | 39 |
 | OFL-1.1 | 24 |
 | Apache-2.0 | 12 |
@@ -197,6 +197,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @tiptap/extension-ordered-list | 3.31.4 | MIT |
 | @tiptap/extension-paragraph | 3.31.4 | MIT |
 | @tiptap/extension-strike | 3.31.4 | MIT |
+| @tiptap/extension-table | 3.31.4 | MIT |
 | @tiptap/extension-text | 3.31.4 | MIT |
 | @tiptap/extension-text-align | 3.31.4 | MIT |
 | @tiptap/extension-text-style | 3.31.4 | MIT |

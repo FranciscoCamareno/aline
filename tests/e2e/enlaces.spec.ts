@@ -194,6 +194,78 @@ test('documento Markdown: Ctrl+K enlaza la selección y se guarda como enlace Ma
   await expect(page.getByTestId('active-title-text')).toHaveText('Destino');
 });
 
+/** `[[` abre el selector; lo que se sigue escribiendo va a su búsqueda (plan 9.4). */
+async function wikiPick(page: Page, query: string, title: string) {
+  await page.keyboard.type('[[');
+  await expect(page.getByTestId('link-picker')).toBeVisible();
+  await expect(page.getByTestId('link-search')).toBeFocused();
+  await page.keyboard.type(query);
+  await page.getByTestId('link-candidate').filter({ hasText: title }).click();
+  await expect(page.getByTestId('link-picker')).toBeHidden();
+}
+
+for (const [item, kind] of [
+  ['Documento con formato', 'doc'],
+  ['Documento Markdown', 'mddoc'],
+] as const) {
+  test(`${kind}: [[ abre el selector, enlaza con el título y cancelar devuelve los corchetes`, async ({
+    page,
+  }) => {
+    await freshStart(page);
+    const noteId = await newNote(page, 'contenido');
+    await renameActive(page, 'Destino');
+
+    const docId = await newDocument(page, item, 'Ver ');
+    await wikiPick(page, 'Dest', 'Destino');
+    const anchor = page.getByTestId('doc-editor').locator('a');
+    await expect(anchor).toHaveText('Destino');
+    await expect(anchor).toHaveAttribute('href', `aline://document/${noteId}`);
+    await expect(page.getByTestId('doc-editor')).not.toContainText('[');
+    await saved(page);
+    await expect.poll(() => headBody(page, docId)).toContain(`aline://document/${noteId}`);
+
+    // Escape: no se enlaza nada y los dos corchetes vuelven a su sitio.
+    await page.keyboard.type(' y ');
+    await page.keyboard.type('[[');
+    await expect(page.getByTestId('link-picker')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('link-picker')).toBeHidden();
+    await page.keyboard.type('nada');
+    await expect(page.getByTestId('doc-editor')).toContainText('Destino y [[nada');
+    await expect(anchor).toHaveCount(1);
+  });
+}
+
+test('[[Título]] escrito a mano: enlace en la vista previa de la nota y en un documento Markdown (plan 9.6)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  const noteId = await newNote(page, 'contenido');
+  await renameActive(page, 'Destino');
+
+  // Nota: la vista previa muestra el título resuelto como enlace y el que no existe como roto.
+  await newNote(page, '');
+  await page.keyboard.insertText('Ver [[Destino]] y [[Nada]]');
+  await saved(page);
+  const preview = page.getByTestId('note-preview');
+  await expect(preview.locator('a.wiki-link:not(.broken-link)')).toHaveText('Destino');
+  await expect(preview.locator('a.wiki-link.broken-link')).toHaveText('Nada');
+  await preview.locator('a.wiki-link:not(.broken-link)').click();
+  await expect(page.getByTestId('active-title-text')).toHaveText('Destino');
+
+  // Documento Markdown: cancelar el selector deja los corchetes y el título se pinta como enlace.
+  await newDocument(page, 'Documento Markdown', 'Ver ');
+  await page.keyboard.type('[[');
+  await expect(page.getByTestId('link-picker')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.type('Destino]]');
+  const wiki = page.getByTestId('doc-editor').locator('.wiki-link');
+  await expect(wiki).toHaveText('[[Destino]]');
+  await expect(wiki).toHaveAttribute('data-wiki-target', noteId);
+  await wiki.click();
+  await expect(page.getByTestId('active-title-text')).toHaveText('Destino');
+});
+
 test('enlazar con un evento del calendario y abrirlo desde la nota', async ({ page }) => {
   await freshStart(page);
   await page.getByRole('tab', { name: 'Calendario' }).click();

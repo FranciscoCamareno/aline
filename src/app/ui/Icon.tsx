@@ -64,6 +64,7 @@ export type IconName =
   | 'historial'
   | 'idioma'
   | 'imagen'
+  | 'tabla'
   | 'info'
   | 'lienzo'
   | 'mas'
