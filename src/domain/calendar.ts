@@ -341,3 +341,13 @@ export function editSeries(
   else delete next.recurrence;
   return next;
 }
+
+/** Número de semana ISO 8601 (la que contiene el jueves; semanas de lunes a domingo). */
+export function isoWeek(date: IsoDate): number {
+  const thursday = addDays(date, 3 - weekdayIndex(date));
+  const firstThursday = addDays(
+    `${thursday.slice(0, 4)}-01-04`,
+    3 - weekdayIndex(`${thursday.slice(0, 4)}-01-04`),
+  );
+  return 1 + Math.round(daysBetween(firstThursday, thursday) / 7);
+}

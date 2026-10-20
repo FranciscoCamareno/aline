@@ -9,6 +9,7 @@ import { planReorder, sortByKey } from '../../domain/order.ts';
 import type { DocumentKind, DocumentRecord } from '../../domain/revision.ts';
 import { hasConflict, isContentKind, isDocsKind, isFolderKind } from '../../domain/revision.ts';
 import { tagKey } from '../../domain/tags.ts';
+import type { EventColor } from '../../domain/calendar.ts';
 import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
 import type { SettingsSection } from '../status/SettingsDialog.tsx';
 import { RenameableTitle } from './RenameableTitle.tsx';
@@ -35,6 +36,8 @@ interface Props {
   /** Archivar o desarchivar desde el menú «⋯» de la fila. */
   onArchive: (documentId: string, archived: boolean) => Promise<void>;
   onCreateCalendar: (title: string) => Promise<void>;
+  /** Color de un calendario, elegido por el usuario. */
+  onSetCalendarColor: (documentId: string, color: EventColor) => Promise<void>;
   /** Documento nuevo de la sección «Documentos»: con formato (Tiptap) o Markdown (Milkdown). */
   onCreateDoc: (editor: DocEditorKind, folderId: string | null) => Promise<void>;
   /** Abre Configuración en una sección (menú de Perfil del pie). */
@@ -83,6 +86,7 @@ export function LibrarySidebar({
   onReorder,
   onArchive,
   onCreateCalendar,
+  onSetCalendarColor,
   onCreateDoc,
   onOpenSettings,
 }: Props) {
@@ -624,6 +628,7 @@ export function LibrarySidebar({
       {section === 'calendar' ? (
         <CalendarSidebar
           onCreateCalendar={onCreateCalendar}
+          onSetColor={onSetCalendarColor}
           onRename={onRename}
           onTrash={onTrash}
         />

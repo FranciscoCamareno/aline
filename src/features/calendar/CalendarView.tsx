@@ -8,6 +8,7 @@ import {
   addMonths,
   expandEvents,
   firstOfMonth,
+  isoWeek,
   localDate,
   monthGrid,
   monthOf,
@@ -22,7 +23,8 @@ import { describeError } from '../../ports/Diagnostics.ts';
 import { ConflictPanel } from '../history/ConflictPanel.tsx';
 import { useCalendarStore } from './calendarStore.ts';
 import { EventDialog } from './EventDialog.tsx';
-import { useWeekStart } from './calendarPrefs.ts';
+import { CalendarAgenda } from './CalendarAgenda.tsx';
+import { setCalendarPanel, useCalendarPanel, useWeekStart } from './calendarPrefs.ts';
 import { layoutDay, layoutWeek } from './layout.ts';
 
 /** Aparición de un evento (plan 9.11) con el calendario al que pertenece. */
@@ -85,6 +87,7 @@ export function CalendarView({ service }: { service: VaultService }) {
   const weekRef = useRef<HTMLDivElement>(null);
   const locale = i18n.language.startsWith('en') ? 'en' : 'es';
   const weekStart = useWeekStart();
+  const panelOpen = useCalendarPanel();
   /** Sábado o domingo, empiece la semana el día que empiece. */
   const isWeekend = (date: IsoDate) => weekdayIndex(date) >= 5;
 
@@ -137,16 +140,17 @@ export function CalendarView({ service }: { service: VaultService }) {
     const start = startOfWeek(selected, weekStart);
     return [start, addDays(start, 6)];
   }, [view, year, month, selected, weekStart]);
-  const events: ShownEvent[] = useMemo(
+  /** Eventos de los calendarios visibles, sin desplegar las repeticiones. */
+  const visibleEvents = useMemo(
     () =>
-      expandEvents(
-        Object.entries(calendars)
-          .filter(([id]) => !hidden.includes(id))
-          .flatMap(([calendarId, c]) => c.data.events.map((e) => ({ ...e, calendarId }))),
-        range[0],
-        range[1],
-      ),
-    [calendars, hidden, range],
+      Object.entries(calendars)
+        .filter(([id]) => !hidden.includes(id))
+        .flatMap(([calendarId, c]) => c.data.events.map((e) => ({ ...e, calendarId }))),
+    [calendars, hidden],
+  );
+  const events: ShownEvent[] = useMemo(
+    () => expandEvents(visibleEvents, range[0], range[1]),
+    [visibleEvents, range],
   );
 
   const monthName = new Intl.DateTimeFormat(locale, { month: 'long' }).format(
@@ -185,11 +189,34 @@ export function CalendarView({ service }: { service: VaultService }) {
   const chipLabel = (event: ShownEvent) =>
     event.start ? `${event.start} ${event.title || t('calendar.untitled')}` : event.title;
 
+  // Bajo el título: la semana (número y días) o el día que se ve.
+  const shortDate = (date: IsoDate) =>
+    new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' })
+      .format(asDate(date))
+      .replace('.', '');
+  const subtitle =
+    view === 'week'
+      ? t('calendar.weekSubtitle', {
+          week: isoWeek(range[0]),
+          from: shortDate(range[0]),
+          to: shortDate(range[1]),
+        })
+      : view === 'day'
+        ? capitalize(longDate(selected))
+        : null;
+
   const header = (
     <header className="calendar-header">
-      <h1 className="calendar-title">
-        {capitalize(monthName)} <span className="calendar-year">{year}</span>
-      </h1>
+      <div className="calendar-heading">
+        <h1 className="calendar-title">
+          {capitalize(monthName)} <span className="calendar-year">{year}</span>
+        </h1>
+        {subtitle && (
+          <p className="calendar-subtitle" data-testid="calendar-subtitle">
+            {subtitle}
+          </p>
+        )}
+      </div>
       <div className="calendar-nav">
         <button
           type="button"
@@ -256,6 +283,17 @@ export function CalendarView({ service }: { service: VaultService }) {
           {t('calendar.newEvent')}
         </button>
       )}
+      <button
+        type="button"
+        className="icon-button calendar-panel-toggle"
+        aria-label={t('calendar.togglePanel')}
+        title={t('calendar.togglePanel')}
+        aria-pressed={panelOpen}
+        data-testid="calendar-panel-toggle"
+        onClick={() => setCalendarPanel(!panelOpen)}
+      >
+        <Icon name="panel-lateral" />
+      </button>
     </header>
   );
 
@@ -407,10 +445,26 @@ export function CalendarView({ service }: { service: VaultService }) {
           <div className="week-grid" style={{ '--hour': `${HOUR}px` } as CSSProperties}>
             <div className="week-hours" aria-hidden="true">
               {Array.from({ length: 24 }, (_, h) => (
-                <span key={h} style={{ top: h * HOUR }}>
-                  {h === 0 ? '' : `${h}:00`}
+                <span
+                  key={h}
+                  style={{ top: h * HOUR }}
+                  // La etiqueta que tapa la hora actual se oculta.
+                  className={
+                    days.includes(today) && Math.abs(h * 60 - minutesNow) < 20 ? 'covered' : ''
+                  }
+                >
+                  {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
                 </span>
               ))}
+              {days.includes(today) && (
+                <span
+                  className="now-badge"
+                  style={{ top: (minutesNow / 60) * HOUR }}
+                  data-testid="now-badge"
+                >
+                  {`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`}
+                </span>
+              )}
             </div>
             {days.map((date) => (
               <div
@@ -467,25 +521,37 @@ export function CalendarView({ service }: { service: VaultService }) {
 
   return (
     <div className="calendar-view" data-testid="calendar-view">
-      {header}
-      {error && (
-        <p className="notice" role="alert">
-          {error}
-        </p>
+      <div className="calendar-main">
+        {header}
+        {error && (
+          <p className="notice" role="alert">
+            {error}
+          </p>
+        )}
+        {conflicted.length > 0 && (
+          <p className="banner banner-danger" role="alert" data-testid="calendar-conflict-banner">
+            {t('calendar.conflict', { names: conflicted.map((d) => d.title).join(', ') })}{' '}
+            <button
+              type="button"
+              data-testid="calendar-open-conflict"
+              onClick={() => setResolving(conflicted[0]!.id)}
+            >
+              {t('conflict.resolve')}
+            </button>
+          </p>
+        )}
+        {view === 'month' ? monthView() : timeView(view === 'day')}
+      </div>
+      {panelOpen && (
+        <CalendarAgenda
+          events={visibleEvents}
+          calendarNames={Object.fromEntries(
+            Object.values(calendars).map((c) => [c.document.id, c.document.title]),
+          )}
+          now={now}
+          onOpen={edit}
+        />
       )}
-      {conflicted.length > 0 && (
-        <p className="banner banner-danger" role="alert" data-testid="calendar-conflict-banner">
-          {t('calendar.conflict', { names: conflicted.map((d) => d.title).join(', ') })}{' '}
-          <button
-            type="button"
-            data-testid="calendar-open-conflict"
-            onClick={() => setResolving(conflicted[0]!.id)}
-          >
-            {t('conflict.resolve')}
-          </button>
-        </p>
-      )}
-      {view === 'month' ? monthView() : timeView(view === 'day')}
       {draft && <EventDialog service={service} />}
       {conflictDoc && (
         <ConflictPanel

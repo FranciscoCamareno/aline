@@ -37,3 +37,34 @@ export function setWeekStart(value: 0 | 1): void {
   }
   for (const listener of listeners) listener();
 }
+
+/** Panel derecho del calendario (hoja de «hoy» y próximos eventos): abierto o plegado. */
+const PANEL_KEY = 'mindnote.calendarPanel';
+const panelListeners = new Set<() => void>();
+let panelOpen = (() => {
+  try {
+    return localStorage.getItem(PANEL_KEY) !== 'closed';
+  } catch {
+    return true;
+  }
+})();
+
+export function useCalendarPanel(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      panelListeners.add(listener);
+      return () => panelListeners.delete(listener);
+    },
+    () => panelOpen,
+  );
+}
+
+export function setCalendarPanel(open: boolean): void {
+  panelOpen = open;
+  try {
+    localStorage.setItem(PANEL_KEY, open ? 'open' : 'closed');
+  } catch {
+    // Preferencia no persistida.
+  }
+  for (const listener of panelListeners) listener();
+}

@@ -717,6 +717,9 @@ export function App() {
           onArchive={setArchived}
           onOpenSettings={openSettings}
           onCreateDoc={createDocsDocument}
+          onSetCalendarColor={(id, color) =>
+            useCalendarStore.getState().setCalendarColor(services.service, id, color)
+          }
           onCreateCalendar={(title) =>
             useCalendarStore
               .getState()

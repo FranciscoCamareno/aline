@@ -651,7 +651,19 @@
     "weekStartSunday": "Sunday",
     "searchEvents": "Search events…",
     "searchNoResults": "No event with that text.",
-    "todaySheet": "Today is {{date}}"
+    "todaySheet": "Today is {{date}}",
+    "panel": "Today and upcoming",
+    "upcoming": "Upcoming",
+    "nextDays_one": "Next day",
+    "nextDays_other": "Next {{count}} days",
+    "noUpcoming": "No events in the coming days.",
+    "noMoreToday": "No more events today.",
+    "agendaToday": "Today, {{date}}",
+    "agendaTomorrow": "Tomorrow, {{date}}",
+    "togglePanel": "Show or hide today and upcoming",
+    "weekSubtitle": "Week {{week}} · {{from}} – {{to}}",
+    "changeColor": "Change colour",
+    "colorOf": "Colour of “{{name}}”"
   },
   "templates": {
     "title": "Templates",

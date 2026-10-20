@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import todaySheet from '../../../brand/calendar/hoja-hoy.svg?raw';
 import { linkFocus, useUiStore } from '../../app/store.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
 import { normalizeForSearch } from '../../application/searchIndex.ts';
-import { localDate } from '../../domain/calendar.ts';
+import { EVENT_COLORS, localDate, type EventColor } from '../../domain/calendar.ts';
 import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import { RenameableTitle } from '../library/RenameableTitle.tsx';
 import { useCalendarStore } from './calendarStore.ts';
@@ -14,18 +13,21 @@ interface Props {
   onCreateCalendar: (title: string) => Promise<void>;
   onRename: (documentId: string, title: string) => Promise<void>;
   onTrash: (documentId: string) => Promise<void>;
+  onSetColor: (documentId: string, color: EventColor) => Promise<void>;
 }
 
 /**
  * Sección «Calendario» de la biblioteca: «Nuevo evento» (el botón principal de la sección) y
  * «Mis calendarios», con una casilla por calendario para mostrarlo u ocultarlo en la vista.
  */
-export function CalendarSidebar({ onCreateCalendar, onRename, onTrash }: Props) {
+export function CalendarSidebar({ onCreateCalendar, onRename, onTrash, onSetColor }: Props) {
   const { t } = useTranslation();
   const documents = useUiStore((s) => s.documents);
   const { calendars, hidden, toggleHidden, openDraft } = useCalendarStore();
   const [newName, setNewName] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; seq: number } | null>(null);
+  /** Calendario con la paleta de colores abierta. */
+  const [coloring, setColoring] = useState<string | null>(null);
   const list = documents
     .filter((d) => d.kind === 'calendar' && !d.deleted)
     .sort((a, b) => a.title.localeCompare(b.title));
@@ -59,8 +61,6 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash }: Props) 
         <Icon name="mas" size={18} />
         {t('calendar.newEvent')}
       </button>
-
-      <TodaySheet />
 
       <input
         type="search"
@@ -175,6 +175,12 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash }: Props) 
                     onSelect: () => setRenaming((r) => ({ id: doc.id, seq: (r?.seq ?? 0) + 1 })),
                   },
                   {
+                    id: 'calendar-color',
+                    label: t('calendar.changeColor'),
+                    icon: 'color',
+                    onSelect: () => setColoring(doc.id),
+                  },
+                  {
                     id: 'calendar-trash',
                     label: t('library.trash'),
                     icon: 'eliminar',
@@ -185,42 +191,41 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash }: Props) 
                   },
                 ]}
               />
+              {coloring === doc.id && (
+                <fieldset
+                  className="color-choice calendar-color-choice"
+                  data-testid="calendar-color-choice"
+                  onKeyDown={(e) => e.key === 'Escape' && setColoring(null)}
+                >
+                  <legend className="visually-hidden">
+                    {t('calendar.colorOf', { name: doc.title })}
+                  </legend>
+                  {EVENT_COLORS.map((option) => (
+                    <label
+                      key={option}
+                      className={`color-swatch event-${option}`}
+                      title={t(`calendar.colors.${option}`)}
+                    >
+                      <input
+                        type="radio"
+                        name={`calendar-color-${doc.id}`}
+                        checked={color === option}
+                        autoFocus={color === option}
+                        aria-label={t(`calendar.colors.${option}`)}
+                        data-testid={`calendar-color-${option}`}
+                        onChange={() => {
+                          setColoring(null);
+                          void onSetColor(doc.id, option);
+                        }}
+                      />
+                    </label>
+                  ))}
+                </fieldset>
+              )}
             </li>
           );
         })}
       </ul>
     </div>
-  );
-}
-
-const escapeXml = (text: string) =>
-  text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-
-/**
- * Hoja de «hoy» (DESIGN.md §8.5): el taco ilustrado de `brand/calendar/hoja-hoy.svg` con el día
- * de hoy. Es un objeto ilustrado, como los de la barra: no cambia en oscuro.
- */
-function TodaySheet() {
-  const { i18n, t } = useTranslation();
-  const locale = i18n.language.startsWith('en') ? 'en' : 'es';
-  const today = new Date();
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(today);
-  const month = new Intl.DateTimeFormat(locale, { month: 'long' }).format(today);
-  const svg = todaySheet
-    .replace('>MARTES<', `>${escapeXml(weekday.toLocaleUpperCase(locale))}<`)
-    .replace('>13<', `>${today.getDate()}<`)
-    .replace('>octubre<', `>${escapeXml(month)}<`);
-  const label = t('calendar.todaySheet', {
-    date: new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(today),
-  });
-  return (
-    <div
-      className="today-sheet"
-      role="img"
-      aria-label={label}
-      data-testid="today-sheet"
-      // SVG propio del repositorio (brand/), sin scripts; solo cambian tres textos escapados.
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
   );
 }

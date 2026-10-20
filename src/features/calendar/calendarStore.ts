@@ -48,6 +48,8 @@ interface CalendarState {
     calendarId: string,
     update: (events: CalendarEvent[]) => CalendarEvent[],
   ) => Promise<void>;
+  /** Cambia el color de un calendario (y el de sus eventos que tenían el anterior). */
+  setCalendarColor: (service: VaultService, calendarId: string, color: EventColor) => Promise<void>;
   createCalendar: (service: VaultService, title: string, color: EventColor) => Promise<void>;
   toggleHidden: (calendarId: string) => void;
   openDraft: (draft: EventDraft) => void;
@@ -122,11 +124,54 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
     );
   },
 
-  async saveEvents(service, calendarId, update) {
-    const loaded = get().calendars[calendarId];
-    if (!loaded) return;
-    const data: CalendarData = { ...loaded.data, events: update(loaded.data.events) };
-    // Se muestra al momento; si el guardado falla, se vuelve al contenido guardado.
+  saveEvents(service, calendarId, update) {
+    return saveData(calendarId, service, (data) => ({ ...data, events: update(data.events) }));
+  },
+
+  setCalendarColor(service, calendarId, color) {
+    // Los eventos con el color del calendario lo siguen; los que se pintaron aparte, no.
+    return saveData(calendarId, service, (data) => ({
+      ...data,
+      color,
+      events: data.events.map((e) => (e.color === data.color ? { ...e, color } : e)),
+    }));
+  },
+
+  async createCalendar(service, title, color) {
+    const doc = await service.createCalendar(title, color);
+    useUiStore.getState().upsertDocument(doc);
+  },
+
+  toggleHidden(calendarId) {
+    const hidden = get().hidden.includes(calendarId)
+      ? get().hidden.filter((id) => id !== calendarId)
+      : [...get().hidden, calendarId];
+    set({ hidden });
+    try {
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
+    } catch {
+      // Preferencia no persistida; no afecta al contenido.
+    }
+  },
+
+  openDraft: (draft) => set({ draft }),
+  closeDraft: () => set({ draft: null }),
+}));
+
+/**
+ * Guarda un cambio del calendario entero: se muestra al momento y es una revisión nueva; si el
+ * guardado falla, se vuelve al contenido guardado.
+ */
+async function saveData(
+  calendarId: string,
+  service: VaultService,
+  update: (data: CalendarData) => CalendarData,
+): Promise<void> {
+  const { getState: get, setState: set } = useCalendarStore;
+  const loaded = get().calendars[calendarId];
+  if (!loaded) return;
+  const data: CalendarData = update(loaded.data);
+  {
     set((s) => ({ calendars: { ...s.calendars, [calendarId]: { ...loaded, data } } }));
     const status = useUiStore.getState().setSaveStatus;
     status('pending-changes');
@@ -150,25 +195,5 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
       status('error');
       throw error;
     }
-  },
-
-  async createCalendar(service, title, color) {
-    const doc = await service.createCalendar(title, color);
-    useUiStore.getState().upsertDocument(doc);
-  },
-
-  toggleHidden(calendarId) {
-    const hidden = get().hidden.includes(calendarId)
-      ? get().hidden.filter((id) => id !== calendarId)
-      : [...get().hidden, calendarId];
-    set({ hidden });
-    try {
-      localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
-    } catch {
-      // Preferencia no persistida; no afecta al contenido.
-    }
-  },
-
-  openDraft: (draft) => set({ draft }),
-  closeDraft: () => set({ draft: null }),
-}));
+  }
+}

@@ -651,7 +651,19 @@
     "weekStartSunday": "Domingo",
     "searchEvents": "Buscar eventos…",
     "searchNoResults": "Ningún evento con ese texto.",
-    "todaySheet": "Hoy es {{date}}"
+    "todaySheet": "Hoy es {{date}}",
+    "panel": "Hoy y próximos",
+    "upcoming": "Próximos",
+    "nextDays_one": "Próximo día",
+    "nextDays_other": "Próximos {{count}} días",
+    "noUpcoming": "No hay eventos en los próximos días.",
+    "noMoreToday": "No quedan eventos hoy.",
+    "agendaToday": "Hoy, {{date}}",
+    "agendaTomorrow": "Mañana, {{date}}",
+    "togglePanel": "Mostrar u ocultar hoy y próximos",
+    "weekSubtitle": "Semana {{week}} · {{from}} – {{to}}",
+    "changeColor": "Cambiar color",
+    "colorOf": "Color de «{{name}}»"
   },
   "templates": {
     "title": "Plantillas",

@@ -428,3 +428,52 @@ test('semana desde el domingo, hoja de «hoy» y buscar eventos (plan 9.12)', as
   await expect(headers.first()).toHaveText('Dom');
   await expect(headers.last()).toHaveText('Sáb');
 });
+
+test('panel de hoy y próximos, color de cada calendario y semana en la cabecera', async ({
+  page,
+}) => {
+  await freshStart(page);
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  const panel = page.getByTestId('calendar-panel');
+  await expect(panel.getByTestId('today-sheet')).toBeVisible();
+  // La hoja de «hoy» ya no está en la barra lateral.
+  await expect(page.locator('.calendar-sidebar').getByTestId('today-sheet')).toHaveCount(0);
+  await expect(panel).toContainText('No hay eventos en los próximos días.');
+
+  // Un evento de todo el día de hoy aparece en «Hoy» y se abre desde el panel.
+  await page.getByTestId('new-event').click();
+  await page.getByTestId('event-title').fill('Plan de la semana');
+  await page.getByTestId('event-save').click();
+  const item = panel.getByTestId('agenda-item').filter({ hasText: 'Plan de la semana' });
+  await expect(item).toContainText('Todo el día · Personal');
+  await expect(panel.getByTestId('agenda-day').first()).toContainText('Hoy');
+  await item.click();
+  await expect(page.getByTestId('event-title')).toHaveValue('Plan de la semana');
+  await page.keyboard.press('Escape');
+
+  // Color del calendario: su casilla y los eventos que tenían su color lo siguen.
+  await expect(item).toHaveClass(/event-mantequilla/);
+  await page.getByTestId('calendar-actions').click();
+  await page.getByTestId('calendar-color').click();
+  await page.getByTestId('calendar-color-lavanda').click();
+  await expect(page.getByTestId('calendar-color-choice')).toHaveCount(0);
+  await expect(page.locator('.calendar-check')).toHaveClass(/event-lavanda/);
+  await expect(item).toHaveClass(/event-lavanda/);
+  await expect(page.getByTestId('save-status')).toHaveText('Guardado en este dispositivo');
+  await page.reload();
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  await expect(page.locator('.calendar-check')).toHaveClass(/event-lavanda/);
+
+  // Semana: número y días bajo el título; la hora actual en la columna de horas.
+  await page.getByTestId('calendar-view-week').click();
+  await expect(page.getByTestId('calendar-subtitle')).toContainText(/Semana \d+ · /);
+  await expect(page.getByTestId('now-badge')).toHaveText(/^\d{2}:\d{2}$/);
+
+  // El panel se pliega y se recuerda.
+  await page.getByTestId('calendar-panel-toggle').click();
+  await expect(panel).toHaveCount(0);
+  await page.reload();
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  await expect(page.getByTestId('calendar-view')).toBeVisible();
+  await expect(page.getByTestId('calendar-panel')).toHaveCount(0);
+});

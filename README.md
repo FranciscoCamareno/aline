@@ -112,7 +112,8 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   documento del almacén; si dos equipos lo cambian a la vez, se combinan por evento. Eventos
   repetidos (cada N días, semanas en varios días, meses o años; hasta una fecha, N veces o
   siempre) con «Solo este / Toda la serie» al editar o borrar; selector de fechas y campo de hora
-  propios; hoja de «hoy», buscador de eventos y semana desde el lunes o el domingo.
+  propios; panel derecho plegable con la hoja de «hoy» y los próximos 7 días; color de cada
+  calendario a elección; buscador de eventos y semana desde el lunes o el domingo.
 - **Documentos** (beta): sección de la barra lateral con su menú «Nuevo», buscador,
   «Todos/Recientes» y carpetas propias. Dos tipos: **documento con formato** (Tiptap;
   `kind: 'doc'`, JSON) y **documento Markdown** (Milkdown; `kind: 'mddoc'`, mismo formato que una

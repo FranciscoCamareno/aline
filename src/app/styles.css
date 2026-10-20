@@ -2348,11 +2348,156 @@ a,
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px 24px;
   background: var(--bg-canvas);
   font-variant-numeric: tabular-nums;
+}
+/* La vista (cabecera y retícula) y, a su derecha, el panel de «hoy» y próximos. */
+.calendar-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px 24px;
+}
+.calendar-heading {
+  display: grid;
+  gap: 2px;
+}
+.calendar-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+/* El icono del panel lateral, reflejado: el panel está a la derecha. */
+.calendar-panel-toggle .icon {
+  transform: scaleX(-1);
+}
+.calendar-panel-toggle[aria-pressed='true'] {
+  background: var(--selection-soft);
+}
+
+/* Panel derecho: hoja de «hoy» y próximos 7 días, agrupados por día. */
+.calendar-panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 10px;
+  width: 280px;
+  padding: 20px 16px;
+  overflow-y: auto;
+  border-left: 1px solid var(--border-soft);
+  background: var(--bg-panel);
+}
+.calendar-panel .today-sheet {
+  align-self: center;
+  width: 128px;
+  margin: 0 0 8px;
+}
+.agenda-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.agenda-head .section-title {
+  margin: 0;
+}
+.agenda-day {
+  display: grid;
+  gap: 4px;
+}
+.agenda-day-title {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.agenda-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.agenda-item {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 0;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-weight: 400;
+  text-align: left;
+}
+.agenda-item:hover {
+  background: var(--selection-soft);
+}
+.agenda-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border: 1px solid var(--border-ink);
+  border-radius: 3px;
+  background: var(--event-bg);
+}
+.agenda-text {
+  display: grid;
+  min-width: 0;
+}
+.agenda-title {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+/* En pantallas estrechas, el panel se superpone a la vista en lugar de estrecharla. */
+@media (max-width: 1100px) {
+  .calendar-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    box-shadow: var(--shadow-panel);
+  }
+}
+
+/* Hora actual en la columna de horas (la etiqueta que tapa se oculta). */
+.week-hours .covered {
+  visibility: hidden;
+}
+.week-hours .now-badge {
+  right: 4px;
+  z-index: 3;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--now-line);
+  color: var(--bg-canvas);
+  font-weight: 700;
+}
+/* Color de un calendario (plan 9.12, revisado): la paleta bajo su fila. */
+.calendar-list li:has(.calendar-color-choice) {
+  flex-wrap: wrap;
+}
+.calendar-list .calendar-color-choice {
+  flex-basis: 100%;
+  gap: 6px;
+  padding: 4px 0 6px 28px;
+}
+.calendar-list .calendar-color-choice .color-swatch {
+  width: 22px;
+  height: 22px;
 }
 
 .calendar-header {
@@ -2729,12 +2874,7 @@ a,
   min-height: 0;
   overflow-y: auto;
 }
-/* Hoja de «hoy» (DESIGN.md §8.5) y buscador de eventos (plan 9.12). */
-.today-sheet {
-  justify-self: center;
-  width: 104px;
-  margin: 4px 0;
-}
+/* Hoja de «hoy» (DESIGN.md §8.5, en el panel derecho) y buscador de eventos (plan 9.12). */
 .today-sheet svg {
   display: block;
   width: 100%;
@@ -2748,6 +2888,7 @@ a,
 }
 .calendar-search-hit {
   display: flex;
+  justify-content: flex-start;
   align-items: center;
   gap: 8px;
   width: 100%;
