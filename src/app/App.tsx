@@ -27,6 +27,8 @@ import { flushAllWrites, logDiagnostic } from './runtime.ts';
 import { bootstrap, type AppServices } from './services.ts';
 import { StartupError } from './StartupError.tsx';
 import { shouldShowWelcome, WelcomeDialog } from './WelcomeDialog.tsx';
+import { useSidebarCollapse } from './sidebarPref.ts';
+import { LibraryRail } from '../features/library/LibraryRail.tsx';
 import { EVENT_COLORS } from '../domain/calendar.ts';
 import { CalendarView } from '../features/calendar/CalendarView.tsx';
 import { DocView } from '../features/docs/DocView.tsx';
@@ -81,6 +83,7 @@ export function App() {
   /** Bienvenida de la primera apertura: idioma y tema (se recuerda en este navegador). */
   const [welcomeOpen, setWelcomeOpen] = useState(shouldShowWelcome);
   const zenMode = useUiStore((s) => s.zen);
+  const sidebarCollapse = useSidebarCollapse();
   const { documents, activeId, saveStatus, libraryOpen, selectedFolder, section } = useUiStore(
     useShallow((s) => ({
       documents: s.documents,
@@ -502,19 +505,24 @@ export function App() {
     selectedFolder && documents.some((d) => d.id === selectedFolder && !d.deleted)
       ? selectedFolder
       : null;
+  /** Barra lateral plegada en «solo iconos» (plan 9.19). */
+  const rail = !libraryOpen && !zen && sidebarCollapse === 'rail';
   const storageAlert =
     saveStatus === 'out-of-space' ? 'outOfSpace' : quotaHigh ? 'quotaHigh' : null;
 
   return (
-    <div className={`shell ${libraryOpen ? 'library-open' : ''}${zen ? ' zen' : ''}`}>
+    <div
+      className={`shell ${libraryOpen ? 'library-open' : ''}${zen ? ' zen' : ''}${rail ? ' library-rail-on' : ''}`}
+    >
       {/* En el modo Zen del lienzo no hay cabecera ni barra lateral; vuelven al salir. */}
       {!zen && (
         <header className="topbar">
           {!libraryOpen && (
             <>
+              {/* Con la barra de iconos, su botón y el logotipo sobran aquí (salvo en estrecho). */}
               <button
                 type="button"
-                className="icon-button"
+                className="icon-button topbar-library-toggle"
                 aria-label={t('app.toggleLibrary')}
                 title={t('app.toggleLibrary')}
                 aria-expanded={false}
@@ -522,7 +530,12 @@ export function App() {
               >
                 <Icon name="panel-lateral" />
               </button>
-              <img className="brand" src={schemeLogo(scheme)} alt={t('app.name')} height={24} />
+              <img
+                className="brand topbar-brand"
+                src={schemeLogo(scheme)}
+                alt={t('app.name')}
+                height={24}
+              />
             </>
           )}
           {inCalendar && <span className="doc-title">{t('calendar.title')}</span>}
@@ -704,6 +717,13 @@ export function App() {
 
       {libraryOpen && !zen && (
         <div className="library-backdrop" aria-hidden="true" onClick={toggleLibrary} />
+      )}
+      {rail && (
+        <LibraryRail
+          onCreate={(kind) => createDocument(kind)}
+          onCreateDoc={(editor) => createDocsDocument(editor)}
+          onOpenSettings={openSettings}
+        />
       )}
       {libraryOpen && !zen && (
         <LibrarySidebar

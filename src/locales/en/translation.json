@@ -534,7 +534,16 @@
     "lightSchemes": "Light scheme",
     "darkSchemes": "Dark scheme",
     "pair": "pair: {{scheme}}",
-    "followSystemHint": "Light by day and dark by night, with the schemes chosen below."
+    "followSystemHint": "Light by day and dark by night, with the schemes chosen below.",
+    "sidebarCollapse": "When collapsing the sidebar",
+    "sidebarHide": "Hide it",
+    "sidebarHideNote": "It disappears completely; the header button brings it back.",
+    "sidebarRail": "Keep only the icons",
+    "sidebarRailNote": "A column stays with sections, New, Search and Profile.",
+    "cursors": "Pointer",
+    "cursorsHint": "aline’s own or the system’s (for example, if you use a large pointer).",
+    "cursorsAline": "aline",
+    "cursorsSystem": "System"
   },
   "nav": {
     "links": "Links",
@@ -862,5 +871,8 @@
     "archiveLead": "Archived items are not shown in the sidebar, but search still finds them and their links keep working.",
     "archiveEmpty": "Nothing is archived.",
     "unarchive": "Unarchive"
+  },
+  "rail": {
+    "search": "Search"
   }
 }

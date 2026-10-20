@@ -534,7 +534,16 @@
     "lightSchemes": "Esquema claro",
     "darkSchemes": "Esquema oscuro",
     "pair": "par: {{scheme}}",
-    "followSystemHint": "Claro de día y oscuro de noche, con los esquemas elegidos abajo."
+    "followSystemHint": "Claro de día y oscuro de noche, con los esquemas elegidos abajo.",
+    "sidebarCollapse": "Al plegar la barra lateral",
+    "sidebarHide": "Ocultarla",
+    "sidebarHideNote": "Desaparece del todo; se despliega con el botón de la cabecera.",
+    "sidebarRail": "Dejar solo los iconos",
+    "sidebarRailNote": "Queda una columna con secciones, Nuevo, Buscar y Perfil.",
+    "cursors": "Puntero",
+    "cursorsHint": "Los de aline o los del sistema (por ejemplo, si usas un puntero grande).",
+    "cursorsAline": "aline",
+    "cursorsSystem": "Del sistema"
   },
   "nav": {
     "links": "Enlaces",
@@ -862,5 +871,8 @@
     "archiveLead": "Lo archivado no aparece en la barra lateral, pero se encuentra con la búsqueda y sus enlaces siguen funcionando.",
     "archiveEmpty": "No hay nada archivado.",
     "unarchive": "Desarchivar"
+  },
+  "rail": {
+    "search": "Buscar"
   }
 }

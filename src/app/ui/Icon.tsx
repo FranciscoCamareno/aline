@@ -66,6 +66,7 @@ export type IconName =
   | 'imagen'
   | 'tabla'
   | 'color'
+  | 'puntero'
   | 'info'
   | 'lienzo'
   | 'mas'

@@ -485,6 +485,16 @@ Sustituye al desplegable de tema de la cabecera. Referencia: `brand/icons/theme/
 - **Esquemas:** el interruptor alterna entre el esquema claro y el oscuro elegidos en Preferencias (§2.5); su carril oscuro usa `--bg-popover` del esquema.
 - **Seguir al sistema:** es una opción de Preferencias (glifo `tema-sistema`), no del interruptor. Si está activa, el interruptor refleja el tema resuelto y, al tocarlo, se pasa a modo manual.
 
+### 7.5 Punteros (32×32)
+
+Desde el 20/10/2026 (plan 9.16–9.18; segunda versión, aprobada por el propietario). Archivos en `brand/cursors/`: un SVG por puntero, `cursors.json` (la palabra clave de CSS que sustituye cada uno y su punta) y la hoja de muestra `muestra-punteros.html` (vista previa `punteros-preview.png`).
+
+- **Estilo adhesivo troquelado**, como una pegatina: la forma con contorno tinta de 1,5 px y relleno de papel, rodeada de un borde de papel de 2,5 px y un filo gris suave (tinta al 38 %). Se ve igual sobre fondos claros y oscuros, así que no hay versión oscura. Las líneas (texto, flechas dobles, cruz, mover) son un tubo de papel con la línea tinta dentro.
+- La flecha es corta y redondeada, sin cola. El mantequilla queda solo en «cargando» (un arco) y «ayuda» (el círculo del «?»); «no permitido» va en rojo.
+- 15 punteros: flecha (`default`), mano que señala (`pointer`), mano abierta y cerrada (`grab`, `grabbing`), texto, cargando y trabajando (`wait`, `progress`, estáticos: los navegadores no animan punteros), no permitido, mover, los cuatro de cambiar tamaño, cruz (`crosshair`) y ayuda.
+- Se aplican con variables CSS (`var(--cursor-pointer, pointer)`) que `app/cursors.ts` define con el SVG y su punta; sin ellas (preferencia «Del sistema» en Configuración → Apariencia) queda el puntero del sistema. Se usan los SVG directamente, sin PNG: los navegadores los admiten y los dibujan nítidos en alta densidad.
+- En el lienzo, el motor escribe su puntero en línea; `features/canvas/canvasCursors.ts` cambia las palabras clave por las variables. Las herramientas de dibujo conservan los del motor: la cruz de las formas y los dibujados del lápiz y el borrador.
+
 ## 8. Calendario
 
 Archivos: `brand/calendar/` (vistas en PNG y SVG, hoja de "hoy") y los iconos `calendario`, `calendario-hoy`, `evento-mas` y `repetir` en `brand/icons/ui/`, más el objeto `calendario` en `icons/tools/`.

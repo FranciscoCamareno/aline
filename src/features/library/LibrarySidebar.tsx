@@ -12,6 +12,7 @@ import { tagKey } from '../../domain/tags.ts';
 import type { EventColor } from '../../domain/calendar.ts';
 import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
 import type { SettingsSection } from '../status/SettingsDialog.tsx';
+import { ProfileMenu } from './ProfileMenu.tsx';
 import { RenameableTitle } from './RenameableTitle.tsx';
 import { schemeLogo } from '../../app/schemes.ts';
 
@@ -92,7 +93,7 @@ export function LibrarySidebar({
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { scheme } = useTheme();
   const documents = useUiStore((s) => s.documents);
   const activeId = useUiStore((s) => s.activeId);
@@ -136,8 +137,6 @@ export function LibrarySidebar({
     () => visible.filter((d) => (inDocs ? isDocsKind(d.kind) : isContentKind(d.kind))),
     [visible, inDocs],
   );
-  const trashed = documents.filter((d) => d.deleted);
-  const archivedCount = live.filter((d) => d.archived).length;
   const recent = content.slice(0, RECENT_COUNT);
 
   const tags = useMemo(() => {
@@ -815,55 +814,7 @@ export function LibrarySidebar({
 
       {/* Pie: solo Perfil, con su menú (configuración, temas, idioma, papelera y estado). */}
       <div className="library-foot">
-        <Menu
-          className="profile-menu"
-          trigger={
-            <>
-              <Icon name="usuario" size={18} />
-              <span className="profile-menu-label">{t('profile.title')}</span>
-              <Icon name="chevron-arriba" size={16} />
-            </>
-          }
-          label={t('profile.title')}
-          triggerClassName="foot-button profile-trigger"
-          testId="open-profile"
-          placement="top-start"
-          items={[
-            {
-              id: 'settings-storage',
-              label: t('settings.menu.storage'),
-              icon: 'nube',
-              onSelect: () => onOpenSettings('storage'),
-            },
-            {
-              id: 'settings-appearance',
-              label: t('settings.menu.themes'),
-              icon: 'tema-sistema',
-              onSelect: () => onOpenSettings('appearance'),
-            },
-            {
-              id: 'settings-language',
-              label: t('settings.menu.language'),
-              icon: 'idioma',
-              hint: i18n.language.startsWith('en') ? 'EN' : 'ES',
-              onSelect: () => onOpenSettings('language'),
-            },
-            {
-              id: 'settings-archive',
-              label: t('settings.menu.archive'),
-              icon: 'archivar',
-              hint: String(archivedCount),
-              onSelect: () => onOpenSettings('archive'),
-            },
-            {
-              id: 'settings-trash',
-              label: t('settings.menu.trash'),
-              icon: 'eliminar',
-              hint: String(trashed.length),
-              onSelect: () => onOpenSettings('trash'),
-            },
-          ]}
-        />
+        <ProfileMenu onOpenSettings={onOpenSettings} />
       </div>
     </nav>
   );

@@ -10,6 +10,7 @@ import { App } from './app/App.tsx';
 import { installFontFaces } from './app/fonts.ts';
 import './app/i18n.ts';
 import { initTheme } from './app/theme.ts';
+import { applyCursors } from './app/cursors.ts';
 import './app/styles.css';
 import { registerCanvasFonts } from './features/canvas/canvasFonts.ts';
 
@@ -28,6 +29,8 @@ installFontFaces();
 registerCanvasFonts();
 
 initTheme();
+// Punteros de «aline» o del sistema (preferencia de este navegador, plan 9.18).
+applyCursors();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Falta el elemento #root');

@@ -13,6 +13,8 @@ import { useUiStore } from '../../app/store.ts';
 import type { SyncRuntime } from '../../app/syncRuntime.ts';
 import { setScheme, setThemePreference, useTheme } from '../../app/theme.ts';
 import { setWeekStart, useWeekStart } from '../calendar/calendarPrefs.ts';
+import { setSidebarCollapse, useSidebarCollapse } from '../../app/sidebarPref.ts';
+import { setCursorPreference, useCursorPreference } from '../../app/cursors.ts';
 import { Icon, KindIcon, type IconName } from '../../app/ui/Icon.tsx';
 import { isFolderKind } from '../../domain/revision.ts';
 import { StorageSection } from './StorageSection.tsx';
@@ -122,7 +124,13 @@ export function SettingsDialog({
                 )}
               </>
             )}
-            {section === 'appearance' && <AppearanceSettings />}
+            {section === 'appearance' && (
+              <>
+                <AppearanceSettings />
+                <CursorSettings />
+                <SidebarCollapseSettings />
+              </>
+            )}
             {section === 'language' && (
               <>
                 <LanguageSettings />
@@ -139,6 +147,80 @@ export function SettingsDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Punteros de «aline» o del sistema (plan 9.18): quien use un puntero grande del sistema lo conserva. */
+function CursorSettings() {
+  const { t } = useTranslation();
+  const preference = useCursorPreference();
+  return (
+    <label className="preference-row">
+      <Icon name="puntero" size={18} />
+      <span>
+        {t('preferences.cursors')}
+        <small className="muted">{t('preferences.cursorsHint')}</small>
+      </span>
+      <select
+        aria-label={t('preferences.cursors')}
+        value={preference}
+        data-testid="cursor-preference"
+        onChange={(e) => setCursorPreference(e.target.value === 'system' ? 'system' : 'aline')}
+      >
+        <option value="aline">{t('preferences.cursorsAline')}</option>
+        <option value="system">{t('preferences.cursorsSystem')}</option>
+      </select>
+    </label>
+  );
+}
+
+/**
+ * «Al plegar la barra lateral» (plan 9.19): ocultarla o dejar solo los iconos. Las vistas previas
+ * se dibujan con los tokens (no son imágenes): una ventana con o sin columna de iconos.
+ */
+function SidebarCollapseSettings() {
+  const { t } = useTranslation();
+  const mode = useSidebarCollapse();
+  return (
+    <section className="scheme-group" aria-labelledby="sidebar-collapse-title">
+      <h4 id="sidebar-collapse-title" className="section-title">
+        {t('preferences.sidebarCollapse')}
+      </h4>
+      <div className="scheme-grid" role="radiogroup" aria-labelledby="sidebar-collapse-title">
+        {(['hide', 'rail'] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={mode === value}
+            className={`scheme-card${mode === value ? ' is-selected' : ''}`}
+            data-testid={`sidebar-collapse-${value}`}
+            onClick={() => setSidebarCollapse(value)}
+          >
+            <span className={`collapse-preview collapse-preview--${value}`} aria-hidden="true">
+              <span className="collapse-preview-rail">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="collapse-preview-top" />
+              <span className="collapse-preview-body">
+                <i />
+                <i />
+                <i />
+              </span>
+            </span>
+            <span className="scheme-name">
+              {t(value === 'hide' ? 'preferences.sidebarHide' : 'preferences.sidebarRail')}
+              {mode === value && <Icon name="check" size={16} />}
+            </span>
+            <span className="scheme-note">
+              {t(value === 'hide' ? 'preferences.sidebarHideNote' : 'preferences.sidebarRailNote')}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -331,3 +331,81 @@ test('el estado de guardado va junto al icono de Historial', async ({ page }) =>
   expect(history.x - (status.x + status.width)).toBeLessThan(16);
   expect(Math.abs(status.y + status.height / 2 - (history.y + history.height / 2))).toBeLessThan(8);
 });
+
+test('barra lateral en «solo iconos»: se elige en Apariencia y deja una columna útil (plan 9.19)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  const library = page.getByRole('navigation', { name: 'Biblioteca' });
+
+  // Por defecto, plegar la oculta del todo.
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-appearance').click();
+  await expect(page.getByTestId('sidebar-collapse-hide')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('sidebar-collapse-rail').click();
+  await expect(page.getByTestId('sidebar-collapse-rail')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+
+  // Plegar deja la columna de iconos (y la cabecera no repite su botón).
+  await library.getByRole('button', { name: /biblioteca/i }).click();
+  const rail = page.getByTestId('library-rail');
+  await expect(rail).toBeVisible();
+  expect((await rail.boundingBox())!.width).toBeLessThanOrEqual(60);
+  await expect(page.locator('.topbar-library-toggle')).toBeHidden();
+
+  // Secciones, Nuevo y Buscar desde la columna.
+  await page.getByTestId('rail-section-documents').click();
+  await expect(page.getByTestId('rail-section-documents')).toHaveAttribute('aria-selected', 'true');
+  await page.getByTestId('rail-new').click();
+  await page.getByTestId('rail-new-doc-markdown').click();
+  await expect(page.getByTestId('doc-editor')).toBeVisible();
+  await page.getByTestId('rail-section-library').click();
+  await page.getByTestId('rail-search').click();
+  await expect(page.getByTestId('library-search')).toBeFocused();
+  await expect(rail).toHaveCount(0);
+
+  // Se recuerda: tras recargar y plegar, sigue la columna; Perfil también está en ella.
+  await page.reload();
+  await expect(library).toBeVisible();
+  await library.getByRole('button', { name: /biblioteca/i }).click();
+  await expect(page.getByTestId('library-rail')).toBeVisible();
+  await page.getByTestId('open-profile').click();
+  await expect(page.getByTestId('settings-trash')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByTestId('rail-expand').click();
+  await expect(library).toBeVisible();
+});
+
+test('punteros de aline en la interfaz y en el lienzo, o los del sistema (plan 9.16–9.18)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  const cursorOf = (testId: string) =>
+    page.getByTestId(testId).evaluate((el) => getComputedStyle(el).cursor);
+  const canvasCursor = () =>
+    page.locator('.excalidraw canvas.interactive').evaluate((el) => getComputedStyle(el).cursor);
+
+  // Por defecto, los de aline: un SVG con su punta y el del sistema detrás.
+  expect(await cursorOf('new-menu')).toMatch(/^url\(.+\) \d+ \d+, pointer$/);
+  expect(await page.locator('html').evaluate((el) => getComputedStyle(el).cursor)).toMatch(
+    /^url\(.+\) \d+ \d+, default$/,
+  );
+  // En el lienzo: la mano abierta con la herramienta Mano; la cruz de las formas, la del motor.
+  await page.getByTestId('tool-hand').click();
+  await expect.poll(canvasCursor).toMatch(/^url\(.+\) \d+ \d+, grab$/);
+  await page.getByTestId('tool-shape').click();
+  await expect.poll(canvasCursor).toBe('crosshair');
+
+  // «Del sistema» en Apariencia: vuelven los punteros del sistema, también en el lienzo.
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-appearance').click();
+  await page.getByTestId('cursor-preference').selectOption('system');
+  await page.keyboard.press('Escape');
+  expect(await cursorOf('new-menu')).toBe('pointer');
+  await page.getByTestId('tool-hand').click();
+  await expect.poll(canvasCursor).toBe('grab');
+  // Se recuerda al recargar.
+  await page.reload();
+  await expect(page.getByTestId('new-menu')).toBeVisible();
+  expect(await cursorOf('new-menu')).toBe('pointer');
+});

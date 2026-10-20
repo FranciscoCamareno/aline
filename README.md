@@ -106,6 +106,10 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   agrupadas con menú, panel secundario (marco, láser, imagen, Mermaid), nota adhesiva (N) y
   stickers de la marca (B), que se colocan con clic o arrastrándolos al lienzo y conservan su
   color en el tema oscuro. Los demás atajos de teclado son los del motor.
+- **Punteros propios** de aline, en estilo pegatina (`brand/cursors/`), en la interfaz y en el
+  lienzo; en Configuración → Apariencia se puede volver a los del sistema.
+- **Barra lateral plegable** (Configuración → Apariencia): al plegarla se oculta del todo o queda
+  una columna de iconos con las secciones, Nuevo, Buscar y Perfil.
 - **Calendario** (DESIGN.md §8): sección propia de la barra lateral, vistas de día, semana y mes,
   eventos de todo el día, con hora o de varios días con los colores de las notas adhesivas,
   enlaces en cada evento y varios calendarios que se muestran u ocultan. Cada calendario es un

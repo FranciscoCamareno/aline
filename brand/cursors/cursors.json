@@ -1,0 +1,65 @@
+{
+  "_": "Punteros de aline (plan 9.16), estilo adhesivo: palabra clave CSS que sustituye cada uno y su punta en píxeles de 32×32.",
+  "cursors": {
+    "flecha": {
+      "css": "default",
+      "hotspot": [9, 7]
+    },
+    "mano": {
+      "css": "pointer",
+      "hotspot": [14, 6]
+    },
+    "mano-abierta": {
+      "css": "grab",
+      "hotspot": [16, 16]
+    },
+    "mano-cerrada": {
+      "css": "grabbing",
+      "hotspot": [16, 16]
+    },
+    "texto": {
+      "css": "text",
+      "hotspot": [16, 16]
+    },
+    "cargando": {
+      "css": "wait",
+      "hotspot": [16, 16]
+    },
+    "trabajando": {
+      "css": "progress",
+      "hotspot": [7, 6]
+    },
+    "no-permitido": {
+      "css": "not-allowed",
+      "hotspot": [16, 16]
+    },
+    "mover": {
+      "css": "move",
+      "hotspot": [16, 16]
+    },
+    "redimensionar-h": {
+      "css": "ew-resize",
+      "hotspot": [16, 16]
+    },
+    "redimensionar-v": {
+      "css": "ns-resize",
+      "hotspot": [16, 16]
+    },
+    "redimensionar-d1": {
+      "css": "nwse-resize",
+      "hotspot": [16, 16]
+    },
+    "redimensionar-d2": {
+      "css": "nesw-resize",
+      "hotspot": [16, 16]
+    },
+    "cruz": {
+      "css": "crosshair",
+      "hotspot": [16, 16]
+    },
+    "ayuda": {
+      "css": "help",
+      "hotspot": [7, 6]
+    }
+  }
+}
