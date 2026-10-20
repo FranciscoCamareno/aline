@@ -4,14 +4,22 @@ import { linkFocus, useUiStore } from '../../app/store.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
 import type { VaultService } from '../../application/VaultService.ts';
 import {
+  addDays,
+  daysBetween,
+  editSeries,
   EVENT_COLORS,
   MAX_EVENT_LINKS,
   minutesOf,
+  occurrencesBetween,
   validateEvent,
+  withException,
   type CalendarEvent,
   type EventColor,
   type EventLink,
 } from '../../domain/calendar.ts';
+import { DateField } from './DateField.tsx';
+import { RepeatFields } from './RepeatFields.tsx';
+import { TimeField } from './TimeField.tsx';
 import { newId } from '../../domain/ids.ts';
 import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import { CopiedNotice } from '../knowledge/anchorUi.tsx';
@@ -66,6 +74,10 @@ export function EventDialog({ service }: { service: VaultService }) {
   const titleRef = useRef<HTMLInputElement>(null);
   const allDay = event.start === null;
   const editing = draft?.mode === 'edit';
+  /** Aparición de un evento repetido: los cambios van a ella sola o a toda la serie. */
+  const occurrence = draft?.mode === 'edit' ? (draft.occurrence ?? null) : null;
+  const [scope, setScope] = useState<'one' | 'series'>('one');
+  const onlyThis = occurrence !== null && scope === 'one';
 
   useEffect(() => titleRef.current?.focus(), []);
 
@@ -76,28 +88,65 @@ export function EventDialog({ service }: { service: VaultService }) {
     setProblem(null);
     setEvent((e) => {
       const next = { ...e, ...patch };
-      // El fin acompaña al inicio si quedaba antes.
-      if (patch.date && next.endDate < patch.date) next.endDate = patch.date;
+      // Al mover el inicio, el fin se mueve con él y el evento conserva su duración.
+      if (patch.date && !patch.endDate) {
+        next.endDate = addDays(patch.date, Math.max(0, daysBetween(e.date, e.endDate)));
+      }
       return next;
     });
   };
+
+  /** Días con algún evento (de cualquier calendario visible), para el punto del selector. */
+  const hasEvents = (date: string) =>
+    Object.values(calendars).some((c) =>
+      c.data.events.some((x) => occurrencesBetween(x, date, date).length > 0),
+    );
+
+  /** El evento guardado tal cual (la serie entera si se repite). */
+  const master = (): CalendarEvent | undefined =>
+    editing ? calendars[draft.calendarId]?.data.events.find((x) => x.id === event.id) : undefined;
 
   /** Valida y guarda el evento. False si no es válido o no se pudo guardar. */
   const save = async (): Promise<boolean> => {
     let checked: CalendarEvent;
     try {
-      checked = validateEvent({ ...event, title: event.title.trim() });
+      const plain: CalendarEvent = { ...event, title: event.title.trim() };
+      // «Solo este»: la aparición pasa a ser un evento propio, sin repetición.
+      if (onlyThis) delete plain.recurrence;
+      checked = validateEvent(plain);
     } catch (error) {
+      const message = error instanceof RangeError ? error.message : '';
       setProblem(
-        error instanceof RangeError && /hora/.test(error.message)
+        /hora/.test(message)
           ? t('calendar.badTime')
-          : t('calendar.badRange'),
+          : /repetición/.test(message)
+            ? t('calendar.badRepeat')
+            : t('calendar.badRange'),
       );
       return false;
     }
     if (!calendarId) return false;
+    const series = master();
     setBusy(true);
     try {
+      if (occurrence !== null && series && draft.mode === 'edit') {
+        const at = occurrence;
+        if (onlyThis) {
+          // La serie pierde esta aparición y aparece un evento suelto con lo editado.
+          const single = { ...checked, id: newId() };
+          const cut = (events: CalendarEvent[]) =>
+            events.map((x) => (x.id === series.id ? withException(series, at) : x));
+          // En el mismo calendario, una sola revisión: nunca queda la excepción sin el evento.
+          if (calendarId === draft.calendarId) {
+            await saveEvents(service, calendarId, (events) => [...cut(events), single]);
+          } else {
+            await saveEvents(service, calendarId, (events) => [...events, single]);
+            await saveEvents(service, draft.calendarId, cut);
+          }
+          return true;
+        }
+        checked = validateEvent(editSeries(series, at, checked));
+      }
       if (editing && draft.calendarId !== calendarId) {
         // Cambiar de calendario: se añade al nuevo y después se quita del anterior.
         await saveEvents(service, calendarId, (events) => [...events, checked]);
@@ -146,11 +195,16 @@ export function EventDialog({ service }: { service: VaultService }) {
   };
 
   const remove = async () => {
-    if (!editing || !window.confirm(t('calendar.deleteConfirm', { title: event.title }))) return;
+    if (!editing) return;
+    const question = onlyThis ? 'calendar.deleteOneConfirm' : 'calendar.deleteConfirm';
+    if (!window.confirm(t(question, { title: event.title }))) return;
     setBusy(true);
     try {
+      const series = master();
       await saveEvents(service, draft.calendarId, (events) =>
-        events.filter((x) => x.id !== event.id),
+        onlyThis && series && occurrence !== null
+          ? events.map((x) => (x.id === series.id ? withException(series, occurrence) : x))
+          : events.filter((x) => x.id !== event.id),
       );
       closeDraft();
     } catch {
@@ -174,6 +228,28 @@ export function EventDialog({ service }: { service: VaultService }) {
           {editing ? t('calendar.editEvent') : t('calendar.newEvent')}
         </h2>
         {readOnly && <p className="notice">{t('calendar.readOnly')}</p>}
+        {occurrence !== null && !readOnly && (
+          <div
+            className="segmented event-scope"
+            role="radiogroup"
+            aria-label={t('calendar.scope')}
+            data-testid="event-scope"
+          >
+            {(['one', 'series'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={scope === value}
+                className={`segmented-option${scope === value ? ' is-active' : ''}`}
+                data-testid={`event-scope-${value}`}
+                onClick={() => setScope(value)}
+              >
+                {t(value === 'one' ? 'calendar.scopeOne' : 'calendar.scopeSeries')}
+              </button>
+            ))}
+          </div>
+        )}
         <fieldset disabled={!!readOnly || busy} className="event-fields">
           <label className="field">
             <span>{t('calendar.eventTitle')}</span>
@@ -215,55 +291,56 @@ export function EventDialog({ service }: { service: VaultService }) {
           {/* «Empieza» y «Termina» en la misma línea; con hora, la hora va bajo su fecha. */}
           <div className="field-pair">
             <div className="field-group">
-              <label className="field">
-                <span>{t('calendar.startDate')}</span>
-                <input
-                  type="date"
-                  required
-                  value={event.date}
-                  data-testid="event-date"
-                  onChange={(e) => update({ date: e.target.value })}
-                />
-              </label>
+              <DateField
+                label={t('calendar.startDate')}
+                value={event.date}
+                testId="event-date"
+                range={{ start: event.date, end: event.endDate }}
+                hasEvents={hasEvents}
+                onChange={(date) => update({ date })}
+              />
               {!allDay && (
-                <label className="field">
-                  <span>{t('calendar.startTime')}</span>
-                  <input
-                    type="time"
-                    required
-                    value={event.start ?? ''}
-                    data-testid="event-start"
-                    onChange={(e) => update({ start: e.target.value })}
-                  />
-                </label>
+                <TimeField
+                  label={t('calendar.startTime')}
+                  value={event.start ?? ''}
+                  testId="event-start"
+                  onChange={(start) => update({ start })}
+                />
               )}
             </div>
             <div className="field-group">
-              <label className="field">
-                <span>{t('calendar.endDate')}</span>
-                <input
-                  type="date"
-                  required
-                  min={event.date}
-                  value={event.endDate}
-                  data-testid="event-end-date"
-                  onChange={(e) => update({ endDate: e.target.value })}
-                />
-              </label>
+              <DateField
+                label={t('calendar.endDate')}
+                value={event.endDate}
+                min={event.date}
+                testId="event-end-date"
+                range={{ start: event.date, end: event.endDate }}
+                hasEvents={hasEvents}
+                onChange={(endDate) => update({ endDate })}
+              />
               {!allDay && (
-                <label className="field">
-                  <span>{t('calendar.endTime')}</span>
-                  <input
-                    type="time"
-                    required
-                    value={event.end ?? ''}
-                    data-testid="event-end"
-                    onChange={(e) => update({ end: e.target.value })}
-                  />
-                </label>
+                <TimeField
+                  label={t('calendar.endTime')}
+                  value={event.end ?? ''}
+                  testId="event-end"
+                  onChange={(end) => update({ end })}
+                />
               )}
             </div>
           </div>
+          {!onlyThis && (
+            <RepeatFields
+              event={event}
+              onChange={(recurrence) =>
+                setEvent((e) => {
+                  const next = { ...e };
+                  if (recurrence) next.recurrence = recurrence;
+                  else delete next.recurrence;
+                  return next;
+                })
+              }
+            />
+          )}
           <fieldset className="color-choice">
             <legend>{t('calendar.color')}</legend>
             {EVENT_COLORS.map((color: EventColor) => (

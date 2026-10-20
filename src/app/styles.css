@@ -2729,6 +2729,52 @@ a,
   min-height: 0;
   overflow-y: auto;
 }
+/* Hoja de «hoy» (DESIGN.md §8.5) y buscador de eventos (plan 9.12). */
+.today-sheet {
+  justify-self: center;
+  width: 104px;
+  margin: 4px 0;
+}
+.today-sheet svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.calendar-search {
+  width: 100%;
+}
+.calendar-search-results {
+  margin: 0;
+}
+.calendar-search-hit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  font-weight: 400;
+  text-align: left;
+}
+.calendar-search-hit:hover {
+  background: var(--selection-soft);
+}
+.calendar-search-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--event-bg);
+  border: 1px solid var(--border-ink);
+}
+.calendar-search-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .new-event {
   width: 100%;
   justify-content: flex-start;
@@ -2821,6 +2867,205 @@ a,
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Campo de fecha (plan 9.10): un botón con aspecto de campo que abre el selector propio. */
+.date-field-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-canvas);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+.date-field-button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.date-field-button[aria-expanded='true'] {
+  border-color: var(--focus);
+}
+
+/* Selector de fechas (DESIGN.md §8.4): popover de 296 px. */
+.date-picker {
+  z-index: 60;
+  padding: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: var(--bg-popover);
+  box-shadow: var(--shadow-popover);
+  font-variant-numeric: tabular-nums;
+}
+.date-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.date-picker-title {
+  flex: 1;
+  padding-left: 6px;
+  font-weight: 700;
+}
+.date-picker-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.date-picker-weekday {
+  padding: 4px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.date-picker-day {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0;
+}
+/* Banda del rango entre inicio y fin. */
+.date-picker-day.in-range,
+.date-picker-day.range-start,
+.date-picker-day.range-end {
+  background: var(--selection-soft);
+}
+.date-picker-day.range-start {
+  border-radius: 18px 0 0 18px;
+}
+.date-picker-day.range-end {
+  border-radius: 0 18px 18px 0;
+}
+.date-picker-day button {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  font-weight: 400;
+}
+.date-picker-day.other-month button {
+  color: var(--text-secondary);
+}
+.date-picker-day.today button {
+  border-color: var(--border-ink);
+}
+.date-picker-day.selected button {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--border-ink);
+  font-weight: 700;
+}
+.date-picker-day button:hover:not(:disabled) {
+  background: var(--selection-soft);
+}
+.date-picker-day.selected button:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+.date-picker-dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.date-picker-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Lista de horas del campo de hora (plan 9.10). */
+.time-list {
+  z-index: 60;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--bg-popover);
+  box-shadow: var(--shadow-popover);
+  font-variant-numeric: tabular-nums;
+}
+.time-list li {
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.time-list li:hover,
+.time-list li.active {
+  background: var(--selection-soft);
+}
+.time-list li[aria-selected='true'] {
+  font-weight: 700;
+}
+
+/* «Repetir» y «Solo este / Toda la serie» (plan 9.11). */
+.repeat-fields {
+  display: grid;
+  gap: 10px;
+}
+.repeat-interval-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.repeat-interval-row input {
+  width: 72px;
+}
+.repeat-weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.repeat-weekdays legend {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.repeat-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.repeat-day.is-active {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--border-ink);
+}
+.repeat-day:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.event-scope {
+  justify-self: start;
+  margin-bottom: 4px;
 }
 .color-choice {
   display: flex;

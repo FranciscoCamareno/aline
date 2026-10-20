@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useUiStore } from '../../app/store.ts';
+import todaySheet from '../../../brand/calendar/hoja-hoy.svg?raw';
+import { linkFocus, useUiStore } from '../../app/store.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
+import { normalizeForSearch } from '../../application/searchIndex.ts';
 import { localDate } from '../../domain/calendar.ts';
+import { internalLink, parseInternalLink } from '../../domain/links.ts';
 import { RenameableTitle } from '../library/RenameableTitle.tsx';
 import { useCalendarStore } from './calendarStore.ts';
 
@@ -26,6 +29,21 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash }: Props) 
   const list = documents
     .filter((d) => d.kind === 'calendar' && !d.deleted)
     .sort((a, b) => a.title.localeCompare(b.title));
+  const [query, setQuery] = useState('');
+  /** Buscar eventos por título en todos los calendarios (plan 9.12); el más próximo primero. */
+  const found = useMemo(() => {
+    const q = normalizeForSearch(query.trim());
+    if (!q) return [];
+    return Object.values(calendars)
+      .flatMap((c) =>
+        c.data.events
+          .filter((e) => normalizeForSearch(e.title).includes(q))
+          .map((event) => ({ event, calendarId: c.document.id })),
+      )
+      .sort((a, b) => b.event.date.localeCompare(a.event.date))
+      .slice(0, 30);
+  }, [calendars, query]);
+  const navigate = useUiStore((s) => s.navigate);
 
   return (
     <div className="calendar-sidebar">
@@ -41,6 +59,43 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash }: Props) 
         <Icon name="mas" size={18} />
         {t('calendar.newEvent')}
       </button>
+
+      <TodaySheet />
+
+      <input
+        type="search"
+        className="calendar-search"
+        value={query}
+        placeholder={t('calendar.searchEvents')}
+        aria-label={t('calendar.searchEvents')}
+        data-testid="calendar-search"
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+      />
+      {query.trim() && (
+        <ul className="library-list calendar-search-results" data-testid="calendar-search-results">
+          {found.length === 0 && <li className="muted small">{t('calendar.searchNoResults')}</li>}
+          {found.map(({ event, calendarId }) => (
+            <li key={`${calendarId}-${event.id}`}>
+              <button
+                type="button"
+                className={`calendar-search-hit event-${event.color}`}
+                data-testid="calendar-search-hit"
+                onClick={() => {
+                  const target = parseInternalLink(internalLink(calendarId, { eventId: event.id }));
+                  if (target) navigate(linkFocus(target));
+                }}
+              >
+                <span className="calendar-search-swatch" aria-hidden="true" />
+                <span className="calendar-search-title">
+                  {event.title || t('calendar.untitled')}
+                </span>
+                <span className="muted small">{event.date}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="calendar-list-head">
         <h3 className="section-title">{t('calendar.myCalendars')}</h3>
@@ -135,5 +190,37 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash }: Props) 
         })}
       </ul>
     </div>
+  );
+}
+
+const escapeXml = (text: string) =>
+  text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+/**
+ * Hoja de «hoy» (DESIGN.md §8.5): el taco ilustrado de `brand/calendar/hoja-hoy.svg` con el día
+ * de hoy. Es un objeto ilustrado, como los de la barra: no cambia en oscuro.
+ */
+function TodaySheet() {
+  const { i18n, t } = useTranslation();
+  const locale = i18n.language.startsWith('en') ? 'en' : 'es';
+  const today = new Date();
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(today);
+  const month = new Intl.DateTimeFormat(locale, { month: 'long' }).format(today);
+  const svg = todaySheet
+    .replace('>MARTES<', `>${escapeXml(weekday.toLocaleUpperCase(locale))}<`)
+    .replace('>13<', `>${today.getDate()}<`)
+    .replace('>octubre<', `>${escapeXml(month)}<`);
+  const label = t('calendar.todaySheet', {
+    date: new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(today),
+  });
+  return (
+    <div
+      className="today-sheet"
+      role="img"
+      aria-label={label}
+      data-testid="today-sheet"
+      // SVG propio del repositorio (brand/), sin scripts; solo cambian tres textos escapados.
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
   );
 }

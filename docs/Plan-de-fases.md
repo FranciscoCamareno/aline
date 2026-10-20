@@ -391,9 +391,9 @@ Hoy el autocompletado `[[` solo existe en el editor de las notas (CodeMirror, `f
 
 | # | Tarea | Notas | Tamaño |
 | --- | --- | --- | --- |
-| 9.10 | Selector de fechas y horas propio con los tokens (sin el nativo del navegador) | Accesible con teclado | M |
-| 9.11 | Eventos repetidos: diaria, semanal (días), mensual y anual, con fin por fecha o por número; editar o borrar «este» o «toda la serie» | Cambio de formato del evento (`recurrence` opcional y excepciones): registrarlo en el diseño y en `formato-almacen.md` y regenerar los esquemas; `mergeCalendars` sigue uniendo por id | L |
-| 9.12 | Hoja de «hoy», semana que empiece el domingo (preferencia) y búsqueda de eventos en el buscador del calendario | Los eventos ya se indexan como elementos | S |
+| 9.10 | Selector de fechas y horas propio con los tokens (sin el nativo del navegador) | **Hecha (20/10/2026).** `features/calendar/DateField.tsx` (DESIGN.md §8.4: rango, hoy, puntos de días con eventos, días anteriores al inicio desactivados; flechas, Re Pág/Av Pág, Inicio/Fin, Intro y Escape, que no cierra el evento) y `TimeField.tsx` (texto libre normalizado y lista cada media hora). Mover el inicio mueve el fin y conserva la duración | M |
+| 9.11 | Eventos repetidos: diaria, semanal (días), mensual y anual, con fin por fecha o por número; editar o borrar «este» o «toda la serie» | **Hecha (20/10/2026).** Cambio de formato compatible registrado en el diseño y en `formato-almacen.md` §2.5.1 (clave opcional `recurrence`, sin subir `schemaVersion`); esquema JSON regenerado. Dominio puro y probado en `domain/calendar.ts` (`occurrencesBetween`, `expandEvents`, `withException`, `editSeries`); las vistas despliegan solo el intervalo visible | L |
+| 9.12 | Hoja de «hoy», semana que empiece el domingo (preferencia) y búsqueda de eventos en el buscador del calendario | **Hecha (20/10/2026).** Hoja de «hoy» desde `brand/calendar/hoja-hoy.svg`, buscador de eventos en la barra lateral del calendario y «La semana empieza el» en Configuración → Idioma (preferencia de este navegador) | S |
 
 **Etapa E — Lienzo**
 

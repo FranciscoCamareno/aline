@@ -109,7 +109,10 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
 - **Calendario** (DESIGN.md §8): sección propia de la barra lateral, vistas de día, semana y mes,
   eventos de todo el día, con hora o de varios días con los colores de las notas adhesivas,
   enlaces en cada evento y varios calendarios que se muestran u ocultan. Cada calendario es un
-  documento del almacén; si dos equipos lo cambian a la vez, se combinan por evento.
+  documento del almacén; si dos equipos lo cambian a la vez, se combinan por evento. Eventos
+  repetidos (cada N días, semanas en varios días, meses o años; hasta una fecha, N veces o
+  siempre) con «Solo este / Toda la serie» al editar o borrar; selector de fechas y campo de hora
+  propios; hoja de «hoy», buscador de eventos y semana desde el lunes o el domingo.
 - **Documentos** (beta): sección de la barra lateral con su menú «Nuevo», buscador,
   «Todos/Recientes» y carpetas propias. Dos tipos: **documento con formato** (Tiptap;
   `kind: 'doc'`, JSON) y **documento Markdown** (Milkdown; `kind: 'mddoc'`, mismo formato que una
@@ -441,8 +444,7 @@ El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-
 | Paleta del lienzo (DESIGN.md §3.2)                                       | La barra de herramientas propia ya está; falta un selector de color con la paleta del lienzo (la 0.18.1 no deja cambiar la suya)                                                                                             | `features/canvas/CanvasView.tsx`     |
 | Nota adhesiva: color y texto (DESIGN.md §3.5)                            | Se inserta con la barra o con N, siempre en mantequilla; falta elegir el color y que el texto quede arriba a la izquierda (el motor lo centra)                                                                               | `features/canvas/stickyNote.ts`      |
 | Stickers en oscuro (DESIGN.md «Selector de stickers»)                    | Conservan su color con una capa sin filtro, pero quedan por encima de las formas aunque estén detrás en el orden de capas, no respetan el recorte de un marco y la exportación en oscuro los muestra con el filtro del motor | `features/canvas/stickerLayer.ts`    |
-| Calendario: lo que falta (DESIGN.md §8.6)                                | Selector de fechas propio, hoja de «hoy», eventos repetidos, semana desde el domingo y búsqueda de eventos                                                                                                                   | `features/calendar/`                 |
-| Calendario y plantillas con versiones antiguas de la app                 | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento: actualizar todos los dispositivos antes de usarlos                                                                                                   | `domain/revision.ts`                 |
+| Calendario y plantillas con versiones antiguas de la app                 | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento, y una anterior al 20/10/2026 muestra solo la primera aparición de un evento repetido: actualizar todos los dispositivos antes de usarlos             | `domain/revision.ts`                 |
 | Documentos: lo que falta (beta)                                          | Pruebas en el iPad de los dos tipos de documento                                                                                                                                                                             | `features/docs/`                     |
 | Documentos con versiones antiguas de la app                              | Una versión anterior al 15/10/2026 no reconoce `doc`, ni una anterior al 16/10/2026 `mddoc` y `docfolder`: actualizar todos los dispositivos antes de usarlos                                                                | `domain/revision.ts`                 |
 | Biblioteca externa de Excalidraw                                         | Las plantillas propias la sustituyen y su botón está oculto; falta comprobar que ningún atajo del motor abra «Explorar bibliotecas»                                                                                          | `features/canvas/`                   |

@@ -8,12 +8,16 @@ import {
   addDays,
   addMonths,
   compareEvents,
+  editSeries,
+  expandEvents,
   mergeCalendars,
   monthGrid,
+  occurrencesBetween,
   parseCalendar,
   startOfWeek,
   validateEvent,
   weekdayIndex,
+  withException,
   type CalendarEvent,
 } from '../../src/domain/calendar.ts';
 import { isContentKind } from '../../src/domain/revision.ts';
@@ -492,5 +496,120 @@ describe('enlaces de los eventos (fase 7.D)', () => {
     ]);
     expect(merged.events.find((e) => e.id === base.id)?.links).toEqual(newer.links);
     expect(merged.events.map((e) => e.title).sort()).toEqual(['Otro', 'Rodaje nocturno']);
+  });
+});
+
+describe('eventos repetidos (plan 9.11)', () => {
+  const dates = (e: CalendarEvent, from: string, to: string) =>
+    occurrencesBetween(e, from, to).map((o) => o.date);
+
+  it('diaria, cada N días, con fin por fecha o por número', () => {
+    const daily = event({ recurrence: { freq: 'daily', interval: 2, until: '2026-10-21' } });
+    expect(dates(daily, '2026-10-01', '2026-10-31')).toEqual([
+      '2026-10-13',
+      '2026-10-15',
+      '2026-10-17',
+      '2026-10-19',
+      '2026-10-21',
+    ]);
+    const counted = event({ recurrence: { freq: 'daily', interval: 1, count: 3 } });
+    expect(dates(counted, '2026-10-14', '2026-12-31')).toEqual(['2026-10-14', '2026-10-15']);
+  });
+
+  it('semanal en varios días, cada dos semanas, y una aparición quitada', () => {
+    // Martes 13: lunes, miércoles y viernes, cada dos semanas (la semana del martes 13 cuenta).
+    const weekly = event({
+      recurrence: {
+        freq: 'weekly',
+        interval: 2,
+        weekdays: [0, 2, 4],
+        exceptions: ['2026-10-28'],
+      },
+    });
+    expect(dates(weekly, '2026-10-01', '2026-11-08')).toEqual([
+      '2026-10-14',
+      '2026-10-16',
+      '2026-10-26',
+      '2026-10-30',
+    ]);
+  });
+
+  it('mensual y anual repiten el día del mes y saltan los meses que no lo tienen', () => {
+    const monthly = event({ date: '2026-01-31', endDate: '2026-01-31' });
+    monthly.recurrence = { freq: 'monthly', interval: 1 };
+    expect(dates(monthly, '2026-01-01', '2026-06-30')).toEqual([
+      '2026-01-31',
+      '2026-03-31',
+      '2026-05-31',
+    ]);
+    const leap = event({ date: '2028-02-29', endDate: '2028-02-29' });
+    leap.recurrence = { freq: 'yearly', interval: 1 };
+    expect(dates(leap, '2028-01-01', '2036-12-31')).toEqual([
+      '2028-02-29',
+      '2032-02-29',
+      '2036-02-29',
+    ]);
+  });
+
+  it('una aparición de varios días que empezó antes del intervalo también aparece', () => {
+    const trip = event({ date: '2026-10-30', endDate: '2026-11-02' });
+    trip.recurrence = { freq: 'monthly', interval: 1 };
+    expect(occurrencesBetween(trip, '2026-11-01', '2026-11-30')).toMatchObject([
+      { date: '2026-10-30', endDate: '2026-11-02', occurrence: '2026-10-30' },
+      { date: '2026-11-30', endDate: '2026-12-03', occurrence: '2026-11-30' },
+    ]);
+  });
+
+  it('expandEvents junta y ordena; un evento sin repetición no cambia', () => {
+    const once = event({ title: 'Una vez', date: '2026-10-15', endDate: '2026-10-15' });
+    const daily = event({ title: 'Diario', recurrence: { freq: 'daily', interval: 1 } });
+    const shown = expandEvents([once, daily], '2026-10-15', '2026-10-15');
+    expect(shown.map((e) => [e.title, e.occurrence])).toEqual([
+      ['Diario', '2026-10-15'],
+      ['Una vez', null],
+    ]);
+  });
+
+  it('«solo este» deja una excepción; «toda la serie» desplaza la serie como la aparición', () => {
+    const master = event({
+      recurrence: { freq: 'weekly', interval: 1, exceptions: ['2026-10-27'] },
+    });
+    expect(withException(master, '2026-10-20').recurrence?.exceptions).toEqual([
+      '2026-10-20',
+      '2026-10-27',
+    ]);
+    // La aparición del 20 se mueve al 21 con otro título: toda la serie pasa al miércoles.
+    const edited = { ...master, title: 'Otra', date: '2026-10-21', endDate: '2026-10-21' };
+    const series = editSeries(master, '2026-10-20', edited);
+    expect(series).toMatchObject({
+      id: master.id,
+      title: 'Otra',
+      date: '2026-10-14',
+      endDate: '2026-10-14',
+      recurrence: { exceptions: ['2026-10-28'] },
+    });
+    // Quitar la repetición desde una aparición deja un evento suelto.
+    expect(
+      'recurrence' in editSeries(master, '2026-10-20', { ...edited, recurrence: undefined }),
+    ).toBe(false);
+  });
+
+  it('valida la repetición y la conserva al leer; fin y número no van juntos', () => {
+    expect(() =>
+      validateEvent(event({ recurrence: { freq: 'daily', interval: 1, until: '2026-10-01' } })),
+    ).toThrow(RangeError);
+    expect(() =>
+      validateEvent(
+        event({ recurrence: { freq: 'daily', interval: 1, until: '2026-11-01', count: 3 } }),
+      ),
+    ).toThrow();
+    const data = {
+      schemaVersion: 1,
+      color: 'agua',
+      events: [event({ recurrence: { freq: 'yearly', interval: 1, futuro: 'x' } as never })],
+    };
+    const parsed = parseCalendar(JSON.parse(JSON.stringify(data)));
+    expect(parsed.readOnly).toBeNull();
+    expect(parsed.calendar.events[0]!.recurrence).toMatchObject({ freq: 'yearly', futuro: 'x' });
   });
 });

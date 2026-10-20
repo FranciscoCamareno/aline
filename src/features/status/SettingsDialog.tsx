@@ -12,6 +12,7 @@ import type { AppServices } from '../../app/services.ts';
 import { useUiStore } from '../../app/store.ts';
 import type { SyncRuntime } from '../../app/syncRuntime.ts';
 import { setScheme, setThemePreference, useTheme } from '../../app/theme.ts';
+import { setWeekStart, useWeekStart } from '../calendar/calendarPrefs.ts';
 import { Icon, KindIcon, type IconName } from '../../app/ui/Icon.tsx';
 import { isFolderKind } from '../../domain/revision.ts';
 import { StorageSection } from './StorageSection.tsx';
@@ -122,7 +123,12 @@ export function SettingsDialog({
               </>
             )}
             {section === 'appearance' && <AppearanceSettings />}
-            {section === 'language' && <LanguageSettings />}
+            {section === 'language' && (
+              <>
+                <LanguageSettings />
+                <WeekStartSettings />
+              </>
+            )}
             {section === 'archive' && (
               <ArchiveSettings onUnarchive={onUnarchive} onOpen={onClose} />
             )}
@@ -213,6 +219,27 @@ export function LanguageSettings() {
             {t(`settings.languages.${lang}`)}
           </option>
         ))}
+      </select>
+    </label>
+  );
+}
+
+/** Día en que empieza la semana en el calendario (DESIGN.md §8.1; plan 9.12). */
+function WeekStartSettings() {
+  const { t } = useTranslation();
+  const weekStart = useWeekStart();
+  return (
+    <label className="preference-row">
+      <Icon name="calendario" size={18} />
+      <span>{t('calendar.weekStart')}</span>
+      <select
+        aria-label={t('calendar.weekStart')}
+        value={weekStart}
+        data-testid="week-start"
+        onChange={(e) => setWeekStart(e.target.value === '0' ? 0 : 1)}
+      >
+        <option value={1}>{t('calendar.weekStartMonday')}</option>
+        <option value={0}>{t('calendar.weekStartSunday')}</option>
       </select>
     </label>
   );

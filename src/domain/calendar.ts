@@ -33,6 +33,33 @@ export type EventLink = z.infer<typeof eventLinkSchema>;
 /** Máximo de enlaces por evento. */
 export const MAX_EVENT_LINKS = 50;
 
+/** Frecuencias de repetición (desde el 20/10/2026, plan 9.11). */
+export const RECURRENCE_FREQS = ['daily', 'weekly', 'monthly', 'yearly'] as const;
+export type RecurrenceFreq = (typeof RECURRENCE_FREQS)[number];
+
+/** Máximo de repeticiones de una serie con número fijo, y de excepciones. */
+export const MAX_RECURRENCE_COUNT = 1000;
+
+/**
+ * Repetición de un evento: cada `interval` días, semanas, meses o años desde `date`. Termina en
+ * `until` (último día posible, incluido), tras `count` apariciones, o nunca. `exceptions` son las
+ * fechas de inicio de las apariciones quitadas (borradas, o editadas aparte como evento propio).
+ * Mensual y anual repiten el mismo día del mes: si un mes no lo tiene (31, 29 de febrero), ese
+ * mes se salta.
+ */
+export const recurrenceSchema = z
+  .looseObject({
+    freq: z.enum(RECURRENCE_FREQS),
+    interval: z.number().int().min(1).max(99),
+    /** Semanal: días de la semana (0 = lunes … 6 = domingo). Sin la clave, el día de `date`. */
+    weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
+    until: dateSchema.optional(),
+    count: z.number().int().min(1).max(MAX_RECURRENCE_COUNT).optional(),
+    exceptions: z.array(dateSchema).max(MAX_RECURRENCE_COUNT).optional(),
+  })
+  .refine((r) => r.until === undefined || r.count === undefined);
+export type Recurrence = z.infer<typeof recurrenceSchema>;
+
 export const calendarEventSchema = z.looseObject({
   id: z.uuid(),
   title: z.string().max(500),
@@ -46,6 +73,8 @@ export const calendarEventSchema = z.looseObject({
   color: z.enum(EVENT_COLORS),
   /** Enlaces del evento. Opcional: los eventos anteriores no lo tienen. */
   links: z.array(eventLinkSchema).max(MAX_EVENT_LINKS).optional(),
+  /** Repetición (desde el 20/10/2026). Sin la clave, el evento no se repite. */
+  recurrence: recurrenceSchema.optional(),
 });
 export type CalendarEvent = z.infer<typeof calendarEventSchema>;
 
@@ -92,6 +121,9 @@ export function validateEvent(event: CalendarEvent): CalendarEvent {
   }
   if (event.start && event.end && event.date === event.endDate && event.end < event.start) {
     throw new RangeError('La hora de fin es anterior a la de inicio');
+  }
+  if (event.recurrence?.until && event.recurrence.until < event.date) {
+    throw new RangeError('La repetición termina antes de empezar');
   }
   return calendarEventSchema.parse(event);
 }
@@ -187,4 +219,125 @@ export function mergeCalendars(versions: readonly CalendarData[]): CalendarData 
     for (const event of version.events) events.set(event.id, event);
   }
   return { ...latest, events: [...events.values()].sort(compareEvents) };
+}
+
+// --- Repetición (plan 9.11) ---
+
+/** Una aparición de un evento: el evento con las fechas de ese día y la fecha que la identifica. */
+export type Occurrence = CalendarEvent & {
+  /** Fecha de inicio de la aparición en la serie (null: el evento no se repite). */
+  occurrence: IsoDate | null;
+};
+
+const daysInMonth = (year: number, month: number) =>
+  new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+/**
+ * Fechas de inicio de una serie, en orden, desde `event.date`. Se detiene en `until`, en `count`,
+ * cuando una fecha pasa de `before` (sin incluirla) o tras demasiados intentos. Las excepciones
+ * cuentan para `count`, como en iCalendar.
+ */
+function* seriesStarts(event: CalendarEvent, before: IsoDate): Generator<IsoDate> {
+  const rule = event.recurrence;
+  if (!rule) {
+    if (event.date < before) yield event.date;
+    return;
+  }
+  const limit = rule.until ?? '9999-12-31';
+  let produced = 0;
+  const emit = function* (date: IsoDate) {
+    if (date < event.date) return false;
+    if (date > limit || date >= before) return true;
+    produced++;
+    yield date;
+    return rule.count !== undefined && produced >= rule.count;
+  };
+  const { year, month } = monthOf(event.date);
+  const day = Number(event.date.slice(8));
+  // Se recorre desde el inicio (hace falta para `count`); 200 000 pasos son más de 500 años diarios.
+  for (let k = 0, guard = 0; guard < 200_000; k++, guard++) {
+    let stop = false;
+    if (rule.freq === 'daily') {
+      stop = yield* emit(addDays(event.date, k * rule.interval));
+    } else if (rule.freq === 'weekly') {
+      const week = addDays(startOfWeek(event.date), k * 7 * rule.interval);
+      const days = [...new Set(rule.weekdays ?? [weekdayIndex(event.date)])].sort((a, b) => a - b);
+      for (const d of days) {
+        stop = yield* emit(addDays(week, d));
+        if (stop) break;
+      }
+      if (week >= before) stop = true;
+    } else {
+      const months = rule.freq === 'monthly' ? k * rule.interval : k * rule.interval * 12;
+      const index = year * 12 + (month - 1) + months;
+      const y = Math.floor(index / 12);
+      const m = (index % 12) + 1;
+      if (y > 9999) break;
+      if (day <= daysInMonth(y, m)) {
+        stop = yield* emit(`${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+      } else if (firstOfMonth(y, m) >= before) {
+        stop = true;
+      }
+    }
+    if (stop) return;
+  }
+}
+
+/**
+ * Apariciones de un evento que caen en algún día de [from, to]. Un evento sin repetición da él
+ * mismo si cae en el intervalo. Las excepciones no aparecen.
+ */
+export function occurrencesBetween(event: CalendarEvent, from: IsoDate, to: IsoDate): Occurrence[] {
+  const span = daysBetween(event.date, event.endDate);
+  if (!event.recurrence) return overlaps(event, from, to) ? [{ ...event, occurrence: null }] : [];
+  const skipped = new Set(event.recurrence.exceptions ?? []);
+  const out: Occurrence[] = [];
+  for (const date of seriesStarts(event, addDays(to, 1))) {
+    const endDate = addDays(date, span);
+    if (endDate < from || skipped.has(date)) continue;
+    out.push({ ...event, date, endDate, occurrence: date });
+  }
+  return out;
+}
+
+/** Todas las apariciones de varios eventos en [from, to], ordenadas para mostrarlas. */
+export function expandEvents<T extends CalendarEvent>(
+  events: readonly T[],
+  from: IsoDate,
+  to: IsoDate,
+): Array<T & Occurrence> {
+  return events
+    .flatMap((event) => occurrencesBetween(event, from, to) as Array<T & Occurrence>)
+    .sort(compareEvents);
+}
+
+/** Quita una aparición de la serie (borrar «solo este», o editarlo aparte). */
+export function withException(event: CalendarEvent, occurrence: IsoDate): CalendarEvent {
+  if (!event.recurrence) return event;
+  const exceptions = [...new Set([...(event.recurrence.exceptions ?? []), occurrence])].sort();
+  return { ...event, recurrence: { ...event.recurrence, exceptions } };
+}
+
+/**
+ * Edita toda la serie desde una de sus apariciones: los cambios de fecha de la aparición se
+ * aplican al inicio de la serie con el mismo desplazamiento; las excepciones se desplazan igual.
+ */
+export function editSeries(
+  master: CalendarEvent,
+  occurrence: IsoDate,
+  edited: CalendarEvent,
+): CalendarEvent {
+  const shift = daysBetween(occurrence, edited.date);
+  const span = daysBetween(edited.date, edited.endDate);
+  const date = addDays(master.date, shift);
+  const recurrence = edited.recurrence && {
+    ...edited.recurrence,
+    ...(edited.recurrence.exceptions?.length
+      ? { exceptions: edited.recurrence.exceptions.map((d) => addDays(d, shift)) }
+      : {}),
+  };
+  const next: CalendarEvent = { ...edited, id: master.id, date, endDate: addDays(date, span) };
+  if (recurrence) next.recurrence = recurrence;
+  else delete next.recurrence;
+  return next;
 }

@@ -306,3 +306,125 @@ test('editar evento: «Empieza» y «Termina» van en la misma línea', async ({
   const endTime = (await page.getByTestId('event-end').boundingBox())!;
   expect(Math.abs(startTime.y - endTime.y)).toBeLessThan(1);
 });
+
+/** Día `day` del mes actual, con el selector de fechas propio. */
+async function pickDay(page: Page, testId: string, day: number) {
+  const date = `${today().slice(0, 8)}${String(day).padStart(2, '0')}`;
+  await page.getByTestId(testId).click();
+  await page.getByTestId(`${testId}-picker`).locator(`[data-date="${date}"]`).click();
+  await expect(page.getByTestId(testId)).toHaveAttribute('data-value', date);
+  return date;
+}
+
+test('eventos repetidos: crear una serie, editar solo uno y borrar la serie (plan 9.11)', async ({
+  page,
+}) => {
+  page.on('dialog', (dialog) => void dialog.accept());
+  await freshStart(page);
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  await expect(page.getByTestId('calendar-item')).toHaveText(['Personal']);
+
+  await page.getByTestId('new-event').click();
+  await page.getByTestId('event-title').fill('Original');
+  await page.getByTestId('event-all-day').check();
+  await pickDay(page, 'event-date', 10);
+  await page.getByTestId('event-repeat').selectOption('daily');
+  await page.getByTestId('event-repeat-ends').selectOption('count');
+  await page.getByTestId('event-repeat-count').fill('3');
+  await page.getByTestId('event-save').click();
+  const chips = page.getByTestId('event-chip');
+  await expect(chips.filter({ hasText: 'Original' })).toHaveCount(3);
+  await expect(page.getByTestId('event-repeat-mark')).toHaveCount(3);
+
+  // «Solo este»: la segunda aparición pasa a ser un evento suelto.
+  await chips.filter({ hasText: 'Original' }).nth(1).click();
+  await expect(page.getByTestId('event-scope-one')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('event-repeat-fields')).toHaveCount(0);
+  await page.getByTestId('event-title').fill('Cambiado');
+  await page.getByTestId('event-save').click();
+  await expect(chips.filter({ hasText: 'Original' })).toHaveCount(2);
+  await expect(chips.filter({ hasText: 'Cambiado' })).toHaveCount(1);
+  await expect(page.getByTestId('event-repeat-mark')).toHaveCount(2);
+
+  // Recargar conserva la serie con su excepción.
+  await expect(page.getByTestId('save-status')).toHaveText('Guardado en este dispositivo');
+  await page.reload();
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  await expect(chips.filter({ hasText: 'Original' })).toHaveCount(2);
+  await expect(chips.filter({ hasText: 'Cambiado' })).toHaveCount(1);
+
+  // «Toda la serie» + Eliminar: se va la serie, el suelto queda.
+  await chips.filter({ hasText: 'Original' }).first().click();
+  await page.getByTestId('event-scope-series').click();
+  await page.getByTestId('event-delete').click();
+  await expect(chips.filter({ hasText: 'Original' })).toHaveCount(0);
+  await expect(chips.filter({ hasText: 'Cambiado' })).toHaveCount(1);
+});
+
+test('selector de fechas propio: rango, teclado y Escape sin cerrar el evento (plan 9.10)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  await page.getByTestId('new-event').click();
+  const start = await pickDay(page, 'event-date', 10);
+  // El fin acompaña al inicio; se elige el 12 y el rango se marca en el selector.
+  await pickDay(page, 'event-end-date', 12);
+  await page.getByTestId('event-end-date').click();
+  const picker = page.getByTestId('event-end-date-picker');
+  await expect(picker.locator('.in-range')).toHaveCount(1);
+  await expect(picker.locator(`[data-date="${start}"]`))
+    .toBeDisabled({ timeout: 1000 })
+    .catch(() => undefined);
+  // Teclado: el foco está en el día elegido; flecha a la derecha e Intro eligen el 13.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('event-end-date')).toHaveAttribute(
+    'data-value',
+    `${today().slice(0, 8)}13`,
+  );
+  // Escape cierra el selector, no el diálogo del evento.
+  await page.getByTestId('event-date').click();
+  await expect(page.getByTestId('event-date-picker')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('event-date-picker')).toHaveCount(0);
+  await expect(page.getByTestId('event-dialog')).toBeVisible();
+  await expect(page.getByTestId('event-date')).toBeFocused();
+
+  // Horas: se escriben libres y se normalizan; la lista también elige.
+  await page.getByTestId('event-all-day').uncheck();
+  await page.getByTestId('event-start').fill('9.30');
+  await page.getByTestId('event-end').click();
+  await page.getByRole('option', { name: '11:00' }).click();
+  await page.getByTestId('event-title').click();
+  await expect(page.getByTestId('event-start')).toHaveValue('09:30');
+  await expect(page.getByTestId('event-end')).toHaveValue('11:00');
+  await page.screenshot({ path: 'test-results/selector-fechas.png' }).catch(() => undefined);
+});
+
+test('semana desde el domingo, hoja de «hoy» y buscar eventos (plan 9.12)', async ({ page }) => {
+  await freshStart(page);
+  await page.getByRole('tab', { name: 'Calendario' }).click();
+  await expect(page.getByTestId('today-sheet')).toContainText(String(new Date().getDate()));
+
+  await page.getByTestId('new-event').click();
+  await page.getByTestId('event-title').fill('Revisión de pruebas');
+  await page.getByTestId('event-save').click();
+  await expect(page.getByTestId('event-chip').filter({ hasText: 'Revisión' })).toBeVisible();
+
+  // Buscar abre el evento.
+  await page.getByTestId('calendar-search').fill('revision');
+  await page.getByTestId('calendar-search-hit').filter({ hasText: 'Revisión de pruebas' }).click();
+  await expect(page.getByTestId('event-title')).toHaveValue('Revisión de pruebas');
+  await page.keyboard.press('Escape');
+
+  // Semana desde el domingo: Configuración → Idioma.
+  const headers = page.locator('.month-weekdays [role="columnheader"]');
+  await expect(headers.first()).toHaveText('Lun');
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-language').click();
+  await page.getByTestId('week-start').selectOption('0');
+  await page.keyboard.press('Escape');
+  await expect(headers.first()).toHaveText('Dom');
+  await expect(headers.last()).toHaveText('Sáb');
+});

@@ -27,7 +27,14 @@ export interface LoadedCalendar {
 /** Evento que se está creando o editando en el diálogo. */
 export type EventDraft =
   | { mode: 'new'; date: IsoDate; start: string | null; calendarId: string | null }
-  | { mode: 'edit'; calendarId: string; event: CalendarEvent };
+  | {
+      mode: 'edit';
+      calendarId: string;
+      /** El evento con las fechas de la aparición elegida (las de la serie si no se repite). */
+      event: CalendarEvent;
+      /** Fecha de la aparición en su serie; null o ausente si el evento no se repite. */
+      occurrence?: IsoDate | null;
+    };
 
 interface CalendarState {
   calendars: Record<string, LoadedCalendar>;

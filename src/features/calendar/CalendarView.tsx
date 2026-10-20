@@ -6,6 +6,7 @@ import type { VaultService } from '../../application/VaultService.ts';
 import {
   addDays,
   addMonths,
+  expandEvents,
   firstOfMonth,
   localDate,
   monthGrid,
@@ -14,17 +15,33 @@ import {
   weekdayIndex,
   type CalendarEvent,
   type IsoDate,
+  type Occurrence,
 } from '../../domain/calendar.ts';
 import { hasConflict } from '../../domain/revision.ts';
 import { describeError } from '../../ports/Diagnostics.ts';
 import { ConflictPanel } from '../history/ConflictPanel.tsx';
 import { useCalendarStore } from './calendarStore.ts';
 import { EventDialog } from './EventDialog.tsx';
+import { useWeekStart } from './calendarPrefs.ts';
 import { layoutDay, layoutWeek } from './layout.ts';
 
-/** Evento con el calendario al que pertenece. */
-export interface ShownEvent extends CalendarEvent {
-  calendarId: string;
+/** Aparición de un evento (plan 9.11) con el calendario al que pertenece. */
+export type ShownEvent = Occurrence & { calendarId: string };
+
+/** Clave de React de una aparición: el mismo evento repetido aparece varias veces. */
+const occurrenceKey = (event: CalendarEvent) =>
+  `${event.id}@${(event as Partial<Occurrence>).occurrence ?? ''}`;
+
+/** Marca de «se repite» en un evento de la vista. */
+function RepeatMark({ event }: { event: CalendarEvent }) {
+  const { t } = useTranslation();
+  if (!event.recurrence) return null;
+  return (
+    <span className="event-link-mark" title={t('calendar.repeats')} data-testid="event-repeat-mark">
+      <Icon name="repetir" size={12} />
+      <span className="visually-hidden">{t('calendar.repeats')}</span>
+    </span>
+  );
 }
 
 type View = 'day' | 'week' | 'month';
@@ -67,6 +84,9 @@ export function CalendarView({ service }: { service: VaultService }) {
   const upsertDocument = useUiStore((s) => s.upsertDocument);
   const weekRef = useRef<HTMLDivElement>(null);
   const locale = i18n.language.startsWith('en') ? 'en' : 'es';
+  const weekStart = useWeekStart();
+  /** Sábado o domingo, empiece la semana el día que empiece. */
+  const isWeekend = (date: IsoDate) => weekdayIndex(date) >= 5;
 
   // Hora actual para «hoy» y la línea de «ahora» (cada minuto).
   useEffect(() => {
@@ -105,18 +125,34 @@ export function CalendarView({ service }: { service: VaultService }) {
     if (view !== 'month' && weekRef.current) weekRef.current.scrollTop = 8 * HOUR - 8;
   }, [view]);
 
+  const { year, month } = monthOf(selected);
+  // Días que se ven: las 6 semanas del mes, la semana o el día. Los eventos repetidos se
+  // despliegan solo en ese intervalo.
+  const range = useMemo((): [IsoDate, IsoDate] => {
+    if (view === 'month') {
+      const grid = monthGrid(year, month, weekStart);
+      return [grid[0]!, grid[grid.length - 1]!];
+    }
+    if (view === 'day') return [selected, selected];
+    const start = startOfWeek(selected, weekStart);
+    return [start, addDays(start, 6)];
+  }, [view, year, month, selected, weekStart]);
   const events: ShownEvent[] = useMemo(
     () =>
-      Object.entries(calendars)
-        .filter(([id]) => !hidden.includes(id))
-        .flatMap(([calendarId, c]) => c.data.events.map((e) => ({ ...e, calendarId }))),
-    [calendars, hidden],
+      expandEvents(
+        Object.entries(calendars)
+          .filter(([id]) => !hidden.includes(id))
+          .flatMap(([calendarId, c]) => c.data.events.map((e) => ({ ...e, calendarId }))),
+        range[0],
+        range[1],
+      ),
+    [calendars, hidden, range],
   );
 
-  const { year, month } = monthOf(selected);
   const monthName = new Intl.DateTimeFormat(locale, { month: 'long' }).format(
     asDate(firstOfMonth(year, month)),
   );
+  /** Nombres cortos de los días, empezando por lunes (índice de `weekdayIndex`). */
   const weekdays = useMemo(() => {
     const format = new Intl.DateTimeFormat(locale, { weekday: 'short' });
     const monday = startOfWeek(today);
@@ -124,6 +160,8 @@ export function CalendarView({ service }: { service: VaultService }) {
       capitalize(format.format(asDate(addDays(monday, i))).replace('.', '')),
     );
   }, [locale, today]);
+  /** Los mismos en el orden de la vista. */
+  const headerDays = Array.from({ length: 7 }, (_, i) => (i + (weekStart === 1 ? 0 : 6)) % 7);
   const shortMonth = (date: IsoDate) =>
     new Intl.DateTimeFormat(locale, { month: 'short' }).format(asDate(date)).replace('.', '');
   const longDate = (date: IsoDate) =>
@@ -140,8 +178,8 @@ export function CalendarView({ service }: { service: VaultService }) {
   const newEvent = (date: IsoDate, start: string | null = null) =>
     openDraft({ mode: 'new', date, start, calendarId: null });
   const edit = (event: ShownEvent) => {
-    const { calendarId, ...plain } = event;
-    openDraft({ mode: 'edit', calendarId, event: plain });
+    const { calendarId, occurrence, ...plain } = event;
+    openDraft({ mode: 'edit', calendarId, event: plain, occurrence });
   };
 
   const chipLabel = (event: ShownEvent) =>
@@ -222,14 +260,14 @@ export function CalendarView({ service }: { service: VaultService }) {
   );
 
   const monthView = () => {
-    const days = monthGrid(year, month);
+    const days = monthGrid(year, month, weekStart);
     const weeks = Array.from({ length: 6 }, (_, w) => days.slice(w * 7, w * 7 + 7));
     return (
       <div className="month-grid" role="grid" aria-label={`${capitalize(monthName)} ${year}`}>
         <div className="month-weekdays" role="row">
-          {weekdays.map((name, i) => (
-            <span key={name} role="columnheader" className={i >= 5 ? 'weekend' : ''}>
-              {name}
+          {headerDays.map((day) => (
+            <span key={day} role="columnheader" className={day >= 5 ? 'weekend' : ''}>
+              {weekdays[day]}
             </span>
           ))}
         </div>
@@ -247,7 +285,7 @@ export function CalendarView({ service }: { service: VaultService }) {
                     key={date}
                     role="gridcell"
                     aria-selected={date === selected}
-                    className={`month-day${col >= 5 ? ' weekend' : ''}${inMonth ? '' : ' other-month'}${
+                    className={`month-day${isWeekend(date) ? ' weekend' : ''}${inMonth ? '' : ' other-month'}${
                       date === selected ? ' selected' : ''
                     }`}
                     style={{ gridColumn: col + 1 }}
@@ -270,7 +308,7 @@ export function CalendarView({ service }: { service: VaultService }) {
               })}
               {layout.segments.map((s) => (
                 <button
-                  key={`${s.event.id}-${s.startCol}`}
+                  key={`${occurrenceKey(s.event)}-${s.startCol}`}
                   type="button"
                   className={`event-chip event-${s.event.color}${s.event.start ? '' : ' all-day'}${
                     s.startsHere ? ' starts' : ''
@@ -282,6 +320,7 @@ export function CalendarView({ service }: { service: VaultService }) {
                 >
                   {s.event.start && <span className="event-time">{s.event.start}</span>}{' '}
                   <span className="event-name">{s.event.title || t('calendar.untitled')}</span>
+                  <RepeatMark event={s.event} />
                   <LinkMark count={s.event.links?.length ?? 0} />
                 </button>
               ))}
@@ -311,7 +350,7 @@ export function CalendarView({ service }: { service: VaultService }) {
 
   /** Semana (7 columnas) o día (1 columna): la misma retícula de horas. */
   const timeView = (single: boolean) => {
-    const start = startOfWeek(selected);
+    const start = startOfWeek(selected, weekStart);
     const days = single ? [selected] : Array.from({ length: 7 }, (_, i) => addDays(start, i));
     const cols = days.length;
     const allDay = layoutWeek(
@@ -348,7 +387,7 @@ export function CalendarView({ service }: { service: VaultService }) {
             <span className="week-all-day-label">{t('calendar.allDay')}</span>
             {allDay.segments.map((s) => (
               <button
-                key={`${s.event.id}-${s.startCol}`}
+                key={`${occurrenceKey(s.event)}-${s.startCol}`}
                 type="button"
                 className={`event-chip all-day event-${s.event.color}${s.startsHere ? ' starts' : ''}${
                   s.endsHere ? ' ends' : ''
@@ -358,6 +397,7 @@ export function CalendarView({ service }: { service: VaultService }) {
                 onClick={() => edit(s.event as ShownEvent)}
               >
                 <span className="event-name">{s.event.title || t('calendar.untitled')}</span>
+                <RepeatMark event={s.event} />
                 <LinkMark count={s.event.links?.length ?? 0} />
               </button>
             ))}
@@ -385,7 +425,7 @@ export function CalendarView({ service }: { service: VaultService }) {
               >
                 {layoutDay(date, events).map((b) => (
                   <button
-                    key={b.event.id}
+                    key={occurrenceKey(b.event)}
                     type="button"
                     className={`event-block event-${b.event.color}`}
                     style={{
@@ -399,6 +439,7 @@ export function CalendarView({ service }: { service: VaultService }) {
                   >
                     <span className="event-name">
                       {b.event.title || t('calendar.untitled')}
+                      <RepeatMark event={b.event} />
                       <LinkMark count={b.event.links?.length ?? 0} />
                     </span>
                     <span className="event-range">

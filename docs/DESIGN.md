@@ -538,7 +538,7 @@ Taco de calendario ilustrado (cabecera mantequilla, anillas, día de la semana, 
 - **Vista de día:** la misma retícula de horas con una sola columna (fila de «todo el día», bloques, línea de «ahora»); anterior/siguiente avanzan un día.
 - **Marco del día seleccionado:** un contorno de 2 px dentro de su celda (pseudoelemento por encima de las vecinas). Cada semana del mes tiene un alto mínimo (118 px) para que las celdas nunca se salgan de su fila; si la ventana es baja, el mes se desplaza.
 - **Conflictos:** si un calendario tiene varias cabezas, la vista muestra un aviso y el panel de resolución: conservar una versión, conservar ambas (la otra pasa a un calendario nuevo) o **combinar eventos** (unión por `id`; si un evento está en varias, vale el de la versión más reciente; uno borrado en una versión reaparece si otra lo conserva).
-- **Pendiente:** selector de fechas propio (§8.4; hoy se usan los controles del navegador), hoja de «hoy» (§8.5), eventos repetidos (icono `repetir`), semana que empiece en domingo (el dominio ya lo admite) y buscar eventos.
+- **Desde el 20/10/2026 (plan 9.10–9.12):** selector de fechas propio según §8.4 (popover de 296 px con rango, hoy y puntos de días con eventos; teclado completo) y campo de hora propio (se escribe libre: «9», «930», «9.30»; lista cada media hora); eventos repetidos con el icono `repetir` en la vista y «Solo este / Toda la serie» al editar o borrar; hoja de «hoy» (§8.5) en la barra lateral, pintada desde `brand/calendar/hoja-hoy.svg` con la fecha del día; semana desde el lunes o el domingo (Configuración → Idioma) y buscador de eventos en la barra lateral.
 
 ## 9. Plantillas del lienzo
 
