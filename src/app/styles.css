@@ -600,15 +600,51 @@ a {
   margin: 0 4px 2px;
 }
 .welcome-dialog {
-  width: min(760px, 100%);
-  max-height: 88vh;
-  gap: 14px;
-  padding: 24px;
+  width: min(1200px, 100%);
+  max-height: 96vh;
+  gap: 10px;
+  padding: 20px 24px;
+  overflow: auto;
 }
 .welcome-dialog h2 {
   margin: 0;
 }
+.welcome-dialog > p {
+  margin: 0;
+}
+/* Sin scroll: idioma | seguir al sistema, y debajo esquema claro | oscuro (4 celdas). */
+.welcome-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+  align-items: start;
+}
+.welcome-body .scheme-group .section-title {
+  margin: 4px 0 6px;
+}
+.welcome-body .scheme-grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.welcome-body .scheme-card {
+  padding: 4px;
+  gap: 2px;
+}
+.welcome-body .scheme-note {
+  display: none;
+}
+.welcome-body .scheme-card img {
+  border-radius: 6px;
+}
+@media (max-width: 720px) {
+  .welcome-body {
+    grid-template-columns: 1fr;
+  }
+}
 
+.welcome-body .preference-row small {
+  display: block;
+}
 .preference-row {
   display: flex;
   align-items: center;
@@ -871,6 +907,18 @@ a {
 
 .renameable.editing input {
   flex: 1;
+}
+
+/* Título de la cabecera: se ajusta a su texto y el lápiz queda pegado a él. */
+.renameable.doc-title {
+  flex: 0 1 auto;
+  gap: 0;
+}
+.renameable.doc-title .renameable-text {
+  flex: 0 1 auto;
+}
+.renameable.doc-title .icon-button {
+  margin-left: 2px;
 }
 
 .badge {
@@ -2107,6 +2155,22 @@ button.section-title {
     width: 32px;
     height: 28px;
     bottom: 1px;
+  }
+}
+
+/* «Volver al contenido» del motor: por encima de la bandeja, no sobre sus herramientas. */
+.shell:has(.tool-trays) .excalidraw .scroll-back-to-content {
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px + 44px);
+  z-index: 3;
+}
+@container (max-width: 1260px) {
+  .shell:has(.tool-trays) .excalidraw .scroll-back-to-content {
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px + 44px + 64px + 44px);
+  }
+}
+@container (max-width: 980px) {
+  .shell:has(.tool-trays) .excalidraw .scroll-back-to-content {
+    bottom: calc(max(68px, 52px + env(safe-area-inset-bottom)) + 64px + 44px + 64px + 44px);
   }
 }
 

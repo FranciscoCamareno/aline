@@ -51,8 +51,10 @@ export function WelcomeDialog({ onDone }: { onDone: () => void }) {
       >
         <h2 id="welcome-title">{t('welcome.title')}</h2>
         <p className="muted">{t('welcome.lead')}</p>
-        <LanguageSettings />
-        <AppearanceSettings />
+        <div className="welcome-body">
+          <LanguageSettings />
+          <AppearanceSettings />
+        </div>
         <p className="muted">{t('welcome.hint')}</p>
         <div className="dialog-actions">
           <button type="button" className="primary" data-testid="welcome-continue" onClick={finish}>
