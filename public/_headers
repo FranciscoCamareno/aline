@@ -1,21 +1,20 @@
-# Cabeceras para Cloudflare (diseño §13, §14.2; plan 4.8). CSP aún en modo informe
-# (Report-Only): pasarla a obligatoria tras comprobar en el despliegue que la conexión con Drive
-# no genera violaciones en la consola.
+# Cabeceras para Cloudflare (diseño §13, §14.2; plan 4.8 y 9.1). CSP OBLIGATORIA desde el
+# 20/10/2026 (plan 9.1), tras revisar la consola con Google real y corregir lo que la incumplía
+# (la prueba de zod con `Function` y el CDN de respaldo de las fuentes del motor).
+# tests/e2e/csp.spec.ts sirve la aplicación con esta misma política y falla ante cualquier
+# violación, así que cualquier cambio aquí o en la aplicación queda comprobado.
 # Únicos orígenes externos, todos de Google y solo usados tras aceptar el aviso RN-12:
 # - accounts.google.com/gsi/: librería de inicio de sesión (script, estilo, iframe y consultas).
 # - www.googleapis.com: Drive API v3 y subidas.
 # - oauth2.googleapis.com: revocación del permiso al desconectar.
 # 'unsafe-inline' en style-src lo requieren el motor de lienzo y CodeMirror (estilos en línea).
+# Nadie puede incrustar la aplicación en un marco (frame-ancestors, más X-Frame-Options para
+# navegadores antiguos), ni cargar plugins ni cambiar la URL base (auditoría 13/10/2026, H04).
 # Referrer-Policy strict-origin-when-cross-origin: a otros orígenes solo se envía el origen
 # (nunca rutas). Google Identity Services comprueba el origen y no funciona con no-referrer.
-# Además, una CSP OBLIGATORIA mínima (auditoría 13/10/2026, H04) con directivas que no afectan
-# a GIS, Drive, el lienzo ni los workers: nadie puede incrustar la aplicación en un marco
-# (frame-ancestors, más X-Frame-Options para navegadores antiguos), ni cargar plugins ni cambiar
-# la URL base. El resto de la política sigue en modo informe hasta la prueba con Google real.
 /*
-  Content-Security-Policy: frame-ancestors 'none'; object-src 'none'; base-uri 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; worker-src 'self' blob:; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   X-Frame-Options: DENY
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; worker-src 'self' blob:; frame-src https://accounts.google.com/gsi/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()

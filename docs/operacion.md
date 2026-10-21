@@ -23,12 +23,12 @@ La aplicación es estática: no hay servidor de aplicación ni base de datos rem
 
 **Cabeceras.** `public/_headers` lleva:
 
-- la CSP, todavía en modo informe;
+- la CSP, obligatoria desde el 20/10/2026 (plan 9.1);
 - `nosniff`;
 - `Referrer-Policy: strict-origin-when-cross-origin`;
 - `Permissions-Policy`.
 
-Si la consola del navegador no muestra avisos «[Report Only]» al usar Drive, cambia `Content-Security-Policy-Report-Only` por `Content-Security-Policy`.
+`tests/e2e/csp.spec.ts` sirve la aplicación con esa CSP y falla ante cualquier violación. La parte de Google solo se comprueba con Google real: tras publicar, conecta Drive, sincroniza, recarga y desconecta con la consola abierta. Si Google cambiara y algo se bloqueara (avisos «Refused to…»), vuelve temporalmente a `Content-Security-Policy-Report-Only`, añade el origen que falte y repite.
 
 **Antes de publicar,** ejecuta `pnpm verify` y `pnpm test:e2e`.
 

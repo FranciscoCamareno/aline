@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 import type { ReadOnlyReason } from './compat.ts';
 import { parseInternalLink } from './links.ts';
 

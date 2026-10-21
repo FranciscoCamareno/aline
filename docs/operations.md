@@ -23,12 +23,12 @@ The app is static: there is no application server and no remote database (spec Â
 
 **Headers.** `public/_headers` holds:
 
-- the CSP, still in report-only mode;
+- the CSP, enforced since 2026-10-20 (plan 9.1);
 - `nosniff`;
 - `Referrer-Policy: strict-origin-when-cross-origin`;
 - `Permissions-Policy`.
 
-If the browser console shows no "[Report Only]" warnings while using Drive, change `Content-Security-Policy-Report-Only` to `Content-Security-Policy`.
+`tests/e2e/csp.spec.ts` serves the app with that CSP and fails on any violation. The Google part can only be checked against real Google: after publishing, connect Drive, sync, reload and disconnect with the console open. If Google changed and something got blocked ("Refused toâ€¦" messages), temporarily switch back to `Content-Security-Policy-Report-Only`, add the missing origin and try again.
 
 **Before publishing,** run `pnpm verify` and `pnpm test:e2e`.
 

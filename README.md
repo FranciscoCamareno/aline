@@ -281,9 +281,10 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   - traducciones es/en completas, con una prueba que lo exige.
 - **Integración continua** en `.github/workflows/ci.yml` (formato, licencias, verify y E2E).
 - Cabeceras de seguridad en `public/_headers` (las sirve Cloudflare con los recursos
-  estáticos). La CSP completa va en modo informe (`Report-Only`) y **no es la definitiva**; solo
-  es obligatoria una CSP mínima contra la incrustación en marcos (`frame-ancestors 'none'`,
-  `X-Frame-Options: DENY`).
+  estáticos). La CSP es obligatoria desde el 20/10/2026 (plan 9.1), con los
+  únicos orígenes de Google que usa Drive; `tests/e2e/csp.spec.ts` la aplica a la aplicación y
+  falla ante cualquier violación. Nadie puede incrustar la aplicación en un marco
+  (`frame-ancestors 'none'`, `X-Frame-Options: DENY`).
 
 ## Estructura
 

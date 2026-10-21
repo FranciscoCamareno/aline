@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 import type { Uuid } from './ids.ts';
 
 /** Formato del almacén (diseño §6). Se versiona separado de la app y del esquema Excalidraw. */

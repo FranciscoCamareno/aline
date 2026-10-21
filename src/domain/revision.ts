@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 import type { Uuid } from './ids.ts';
 
 /** Contrato de revisión (diseño §5). Instantánea inmutable; createdAt es informativo. */

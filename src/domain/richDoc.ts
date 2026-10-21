@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 import { ProjectionBuilder, type TextProjection } from './anchors.ts';
 import type { ReadOnlyReason } from './compat.ts';
 

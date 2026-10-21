@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 
 /**
  * Cifrado opcional del almacén en Google Drive (cambio de arquitectura del 13/10/2026 que

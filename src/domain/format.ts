@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 import { revisionKindSchema, revisionSchema } from './revision.ts';
 import { calendarSchema } from './calendar.ts';
 import { richDocSchema } from './richDoc.ts';

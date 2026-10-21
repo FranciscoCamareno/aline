@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.ts';
 
 /**
  * Sidecar de extensiones propias del lienzo (diseño §5 y §9). Es la autoridad para enlaces,
