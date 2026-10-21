@@ -578,4 +578,15 @@ test('búsqueda con el volumen de referencia en el navegador: 2 000 notas y 500 
   expect(Math.max(...timings)).toBeLessThan(1000);
   await page.getByTestId('search-input').fill('único1999');
   await expect(page.getByTestId('search-hit').first()).toContainText('Nota 1999');
+
+  // La barra lateral pinta las listas largas por partes (plan 9.21): 150 filas y más al pedirlas.
+  await page.keyboard.press('Escape');
+  const rows = page.getByTestId('library-list').getByTestId('library-item');
+  await expect(rows).toHaveCount(150);
+  // El botón (también con el teclado) añade 150; desplazarse hasta el final de la lista, otras
+  // 150 (se pulsa sin desplazar hasta él: el desplazamiento ya carga más por sí solo).
+  await page.getByTestId('library-load-more').getByRole('button').dispatchEvent('click');
+  await expect(rows).toHaveCount(300);
+  await page.locator('.library-scroll').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await expect(rows).toHaveCount(450);
 });

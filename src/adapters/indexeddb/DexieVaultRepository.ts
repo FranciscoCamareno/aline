@@ -20,6 +20,7 @@ import type {
   VaultReader,
   VaultRepository,
   VaultSnapshot,
+  VersionSpace,
 } from '../../ports/VaultRepository.ts';
 import type { VaultDatabase } from './db.ts';
 
@@ -388,6 +389,106 @@ export class DexieVaultRepository implements VaultRepository, VaultReader {
           await db.documents.delete(documentId);
           const device = await this.getDeviceState();
           // Orden explícita para que otro equipo no resucite estas versiones al sincronizar.
+          await db.controls.add({
+            schemaVersion: 1,
+            id: newId(),
+            revisionIds: ids,
+            deviceId: device.deviceId,
+            createdAt: this.now().toISOString(),
+          });
+          return { revisions: ids.length, freedBytes };
+        },
+      );
+    } catch (error) {
+      return mapStorageError(error);
+    }
+  }
+
+  async versionSpace(documentId: Uuid): Promise<VersionSpace> {
+    const { db } = this;
+    return db.transaction('r', [db.revisions, db.blobs], async () => {
+      const own = await db.revisions.where({ documentId }).toArray();
+      const refs = (r: Revision) =>
+        [r.contentRefs.body, r.contentRefs.extensions, ...r.contentRefs.assets].filter(
+          (h): h is string => h !== null,
+        );
+      // Cuántas versiones de este documento usan cada objeto, y cuáles usan otros documentos.
+      const uses = new Map<string, number>();
+      for (const r of own) for (const h of new Set(refs(r))) uses.set(h, (uses.get(h) ?? 0) + 1);
+      const elsewhere = new Set<string>();
+      await db.revisions
+        .where('documentId')
+        .notEqual(documentId)
+        .each((r) => {
+          for (const h of refs(r)) if (uses.has(h)) elsewhere.add(h);
+        });
+      const sizes = new Map<string, number>();
+      for (const blob of await db.blobs.bulkGet([...uses.keys()])) {
+        if (blob) sizes.set(blob.hash, blob.byteLength);
+      }
+      const freeableBytes: Record<Uuid, number> = {};
+      for (const r of own) {
+        freeableBytes[r.id] = [...new Set(refs(r))]
+          .filter((h) => uses.get(h) === 1 && !elsewhere.has(h))
+          .reduce((sum, h) => sum + (sizes.get(h) ?? 0), 0);
+      }
+      const totalBytes = [...sizes.values()].reduce((a, b) => a + b, 0);
+      return { totalBytes, freeableBytes };
+    });
+  }
+
+  async pruneRevisions(documentId: Uuid, revisionIds: Uuid[]): Promise<PurgeResult> {
+    const { db } = this;
+    try {
+      return await db.transaction(
+        'rw',
+        [
+          db.documents,
+          db.revisions,
+          db.blobs,
+          db.historyIndex,
+          db.controls,
+          db.outbox,
+          db.deviceSettings,
+        ],
+        async () => {
+          const doc = await db.documents.get(documentId);
+          if (!doc) throw new DomainError('not-found', 'Documento no encontrado');
+          const heads = new Set(doc.headRevisionIds);
+          // Nunca una cabeza: la versión vigente (o las de un conflicto) no se poda.
+          const targets = (await db.revisions.bulkGet(revisionIds)).filter(
+            (r): r is Revision =>
+              r !== undefined && r.documentId === documentId && !heads.has(r.id),
+          );
+          if (!targets.length) return { revisions: 0, freedBytes: 0 };
+          const ids = targets.map((r) => r.id);
+          await db.revisions.bulkDelete(ids);
+          await db.historyIndex.bulkDelete(ids);
+          const pruned = new Set(ids);
+          await db.outbox.filter((o) => pruned.has(o.revisionId)).delete();
+          // Objetos que ya no usa ninguna versión retenida del almacén.
+          const candidates = new Set(
+            targets.flatMap((r) =>
+              [r.contentRefs.body, r.contentRefs.extensions, ...r.contentRefs.assets].filter(
+                (h): h is string => h !== null,
+              ),
+            ),
+          );
+          await db.revisions.each((r) => {
+            for (const h of [
+              r.contentRefs.body,
+              r.contentRefs.extensions,
+              ...r.contentRefs.assets,
+            ]) {
+              if (h) candidates.delete(h);
+            }
+          });
+          let freedBytes = 0;
+          for (const blob of await db.blobs.bulkGet([...candidates])) {
+            if (blob) freedBytes += blob.byteLength;
+          }
+          await db.blobs.bulkDelete([...candidates]);
+          const device = await this.getDeviceState();
           await db.controls.add({
             schemaVersion: 1,
             id: newId(),

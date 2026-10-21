@@ -16,7 +16,7 @@ export function quotaRatio(report: StorageReport): number | null {
   return report.usage !== null && report.quota ? report.usage / report.quota : null;
 }
 
-function formatBytes(bytes: number | null, unknown: string): string {
+export function formatBytes(bytes: number | null, unknown: string): string {
   if (bytes === null) return unknown;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;

@@ -32,12 +32,18 @@ export function ExportDialog({
   api,
   title,
   storedBackground,
+  hidden,
   onClose,
 }: {
   api: ExcalidrawImperativeAPI;
   title: string;
   /** Fondo guardado del lienzo; el que se ve puede ser el del esquema activo (DESIGN.md §2.5). */
   storedBackground: () => string | null;
+  /**
+   * Elementos ocultos por ramas plegadas (plan 9.23): la exportación visual usa la proyección
+   * visible (diseño §9.3); el .excalidraw los conserva.
+   */
+  hidden?: () => ReadonlySet<string>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -61,17 +67,25 @@ export function ExportDialog({
     // Una instantánea al abrir el diálogo (el fondo guardado se lee entonces).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api]);
+  const visual: ExportScene = useMemo(() => {
+    const skip = hidden?.() ?? new Set<string>();
+    return skip.size
+      ? { ...scene, elements: scene.elements.filter((e) => !skip.has(e.id)) }
+      : scene;
+    // Con la misma instantánea que la escena.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene]);
   const hasSelection = Object.values(scene.appState.selectedElementIds ?? {}).some(Boolean);
-  const visibleCount = scene.elements.filter((e) => !e.isDeleted).length;
+  const visibleCount = visual.elements.filter((e) => !e.isDeleted).length;
   const options = { background, scale, onlySelected: onlySelected && hasSelection };
-  const raster = exportRasterSize(scene, options);
+  const raster = exportRasterSize(visual, options);
   const rasterized = format === 'png' || format === 'pdf';
   const tooBig = rasterized && raster.width * raster.height > EXPORT_PIXEL_BUDGET;
   const bounds: ExportSize = {
     width: raster.width / scale,
     height: raster.height / scale,
   };
-  const losses = excalidrawExportLosses(scene.elements);
+  const losses = excalidrawExportLosses(visual.elements);
 
   const run = async () => {
     setBusy(true);
@@ -79,10 +93,10 @@ export function ExportDialog({
     try {
       let blob: Blob;
       let ext: string = format;
-      if (format === 'png') blob = await exportPng(scene, options);
-      else if (format === 'svg') blob = await exportSvg(scene, options);
+      if (format === 'png') blob = await exportPng(visual, options);
+      else if (format === 'svg') blob = await exportSvg(visual, options);
       else if (format === 'pdf')
-        blob = await exportPdf(scene, { ...options, mode: pdfMode, title });
+        blob = await exportPdf(visual, { ...options, mode: pdfMode, title });
       else {
         blob = exportExcalidraw(scene);
         ext = 'excalidraw';

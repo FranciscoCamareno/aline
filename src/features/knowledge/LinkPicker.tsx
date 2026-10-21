@@ -27,6 +27,11 @@ interface Props {
   onWeb: (url: string) => void;
   onRemove?: () => void;
   onClose: () => void;
+  /**
+   * Solo estos tipos de documento (p. ej. las notas para una tarjeta del lienzo, plan 9.24): sin
+   * dirección web ni «Enlazar con lo copiado».
+   */
+  kinds?: readonly DocumentRecord['kind'][];
 }
 
 /** Valida una dirección web: solo http(s), sin esquemas peligrosos (diseño §13). */
@@ -53,6 +58,7 @@ export function LinkPicker({
   onWeb,
   onRemove,
   onClose,
+  kinds,
 }: Props) {
   const { t } = useTranslation();
   const documents = useUiStore((s) => s.documents);
@@ -68,10 +74,11 @@ export function LinkPicker({
       documents
         // Lo archivado no se ofrece (se sigue pudiendo enlazar con «Enlazar con lo copiado»).
         .filter((d) => !d.deleted && !d.archived && isLinkableKind(d.kind) && d.id !== sourceId)
+        .filter((d) => !kinds || kinds.includes(d.kind))
         .filter((d) => !q || normalizeForSearch(d.title).includes(q))
         .slice(0, 30)
     );
-  }, [documents, query, sourceId]);
+  }, [documents, query, sourceId, kinds]);
   const webUrl = validWebUrl(web);
 
   const pickDocument = (doc: DocumentRecord) => {
@@ -123,7 +130,7 @@ export function LinkPicker({
               onChange={(e) => setQuery(e.target.value)}
             />
             <ul className="picker-list">
-              {copied && !query.trim() && (
+              {copied && !kinds && !query.trim() && (
                 <li>
                   <button
                     type="button"
@@ -160,23 +167,25 @@ export function LinkPicker({
                 </li>
               )}
             </ul>
-            <form
-              className="inline-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (webUrl) onWeb(webUrl);
-              }}
-            >
-              <input
-                value={web}
-                placeholder="https://…"
-                aria-label={t('links.web')}
-                onChange={(e) => setWeb(e.target.value)}
-              />
-              <button type="submit" disabled={!webUrl}>
-                {t('links.webAction')}
-              </button>
-            </form>
+            {!kinds && (
+              <form
+                className="inline-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (webUrl) onWeb(webUrl);
+                }}
+              >
+                <input
+                  value={web}
+                  placeholder="https://…"
+                  aria-label={t('links.web')}
+                  onChange={(e) => setWeb(e.target.value)}
+                />
+                <button type="submit" disabled={!webUrl}>
+                  {t('links.webAction')}
+                </button>
+              </form>
+            )}
           </>
         )}
         <button type="button" onClick={onClose}>

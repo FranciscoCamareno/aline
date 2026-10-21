@@ -60,6 +60,39 @@
           "items": {
             "type": "string"
           }
+        },
+        "hidden": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "locked": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "opacity",
+              "locked"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "badges": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [

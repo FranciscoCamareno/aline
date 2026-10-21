@@ -12,6 +12,7 @@ import { tagKey } from '../../domain/tags.ts';
 import type { EventColor } from '../../domain/calendar.ts';
 import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
 import type { SettingsSection } from '../status/SettingsDialog.tsx';
+import { LIBRARY_PAGE, LoadMore } from './LoadMore.tsx';
 import { ProfileMenu } from './ProfileMenu.tsx';
 import { RenameableTitle } from './RenameableTitle.tsx';
 import { schemeLogo } from '../../app/schemes.ts';
@@ -479,7 +480,7 @@ export function LibrarySidebar({
         {open && (
           <ul className="library-list nested">
             {subFolders.map((f) => folderItem(f, depth + 1))}
-            {docs.map((d) => docItem(d, depth + 1))}
+            {windowed(`folder:${folder.id}`, docs, depth + 1)}
             {!subFolders.length && !docs.length && (
               <li className="muted" style={{ paddingLeft: 20 + depth * 14 }}>
                 {t('library.folderEmpty')}
@@ -488,6 +489,24 @@ export function LibrarySidebar({
           </ul>
         )}
       </li>
+    );
+  };
+
+  // Listas largas: solo las primeras filas, y más al acercarse al final (plan 9.21).
+  const [limits, setLimits] = useState<Record<string, number>>({});
+  const showMore = (key: string) =>
+    setLimits((prev) => ({ ...prev, [key]: (prev[key] ?? LIBRARY_PAGE) + LIBRARY_PAGE }));
+  /** Filas de una lista que se pintan; el documento abierto siempre está entre ellas. */
+  const windowed = (key: string, items: readonly DocumentRecord[], depth: number) => {
+    let limit = limits[key] ?? LIBRARY_PAGE;
+    const at = items.findIndex((d) => d.id === activeId);
+    if (at >= limit) limit = at + 1;
+    const rest = items.length - limit;
+    return (
+      <>
+        {items.slice(0, limit).map((d) => docItem(d, depth))}
+        {rest > 0 && <LoadMore key={`more-${key}`} rest={rest} onMore={() => showMore(key)} />}
+      </>
     );
   };
 
@@ -524,7 +543,7 @@ export function LibrarySidebar({
             {t('library.filteredBy', { tag: tags.find(([k]) => k === tagFilter)?.[1] })}
           </h3>
           <ul className="library-list" data-testid="tag-results">
-            {filtered.map((d) => docItem(d, 0))}
+            {windowed(`tag:${tagFilter}`, filtered, 0)}
           </ul>
         </section>
       ) : (
@@ -534,7 +553,7 @@ export function LibrarySidebar({
           ) : (
             <ul className="library-list" data-testid="library-list">
               {root.folders.map((f) => folderItem(f, 0))}
-              {root.docs.map((d) => docItem(d, 0))}
+              {windowed('root', root.docs, 0)}
             </ul>
           )}
           {recovery.length > 0 && (
@@ -543,7 +562,7 @@ export function LibrarySidebar({
                 {t('library.recovery')}
               </h3>
               <ul className="library-list" data-testid="recovery-list">
-                {recovery.map((d) => docItem(d, 0))}
+                {windowed('recovery', recovery, 0)}
               </ul>
             </section>
           )}
@@ -773,7 +792,7 @@ export function LibrarySidebar({
           {results ? (
             <div className="library-scroll">
               <ul className="library-list" data-testid="library-results">
-                {results.map((d) => docItem(d, 0))}
+                {windowed(`search:${needle}`, results, 0)}
               </ul>
               {results.length === 0 && <p className="muted">{t('library.noResults')}</p>}
             </div>

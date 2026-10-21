@@ -61,7 +61,8 @@
     "importFiles": "Import files…",
     "importFolder": "Import folder…",
     "sections": "Sections",
-    "sectionNotes": "Notes"
+    "sectionNotes": "Notes",
+    "showMore": "Show {{count}} more"
   },
   "title": {
     "edit": "Edit title",
@@ -171,7 +172,13 @@
         "peach": "Peach",
         "lavender": "Lavender"
       }
-    }
+    },
+    "collapseBranch_one": "Collapse branch ({{count}})",
+    "collapseBranch_other": "Collapse branch ({{count}})",
+    "expandBranch_one": "Expand branch ({{count}} hidden)",
+    "expandBranch_other": "Expand branch ({{count}} hidden)",
+    "noteCard": "Note card",
+    "noteCardTitle": "Insert a note card"
   },
   "toolbar": {
     "label": "Tools",
@@ -199,7 +206,7 @@
   },
   "history": {
     "title": "Version history",
-    "hint": "Every saved version is kept until you delete the document from the trash.",
+    "hint": "Every saved version is kept until you delete it here or delete the document from the trash.",
     "empty": "There are no earlier versions.",
     "current": "current",
     "restore": "Restore this version",
@@ -209,7 +216,16 @@
       "restore": "Restored",
       "resolve": "Conflict resolved",
       "external": "External change"
-    }
+    },
+    "space_one": "{{size}} in {{count}} version",
+    "space_other": "{{size}} in {{count}} versions",
+    "freed": "Versions deleted: {{size}} freed.",
+    "prune": "Delete this version",
+    "pruneConfirm": "Delete this version from the history? This cannot be undone; the current version does not change.",
+    "pruneOlder_one": "Delete the earlier version",
+    "pruneOlder_other": "Delete the {{count}} earlier ones",
+    "pruneOlderConfirm_one": "Delete the version before this one? This cannot be undone.",
+    "pruneOlderConfirm_other": "Delete the {{count}} versions before this one? This cannot be undone."
   },
   "conflict": {
     "title": "Resolve conflict",

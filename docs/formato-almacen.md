@@ -127,7 +127,9 @@ La aplicación lo vuelve a derivar en cada guardado del lienzo:
 
 - `elementLinks` recoge los enlaces internos (§2.3.1) de los elementos vivos: documento y, si lo hay, elemento de destino. Desde el 16/10/2026, `fragment` (opcional) guarda el ancla que no es un elemento (bloque, evento o cita) como el fragmento del enlace sin `#`. Un sidecar escrito por una versión anterior no lo tiene; el índice toma entonces el ancla del `link` del elemento.
 - `danglingConnectorIds` recoge las flechas que perdieron un extremo porque su nodo se borró.
-- `mindMap` y `noteEmbeds` se conservan tal cual.
+- `mindMap` (desde el 20/10/2026, plan 9.22–9.23): `parentByNode` (hijo → padre, un padre como mucho y sin ciclos), `collapsedNodeIds` (nodos con su rama plegada) y dos claves opcionales: `hidden` (por cada elemento oculto por una rama plegada, su `opacity` y `locked` originales; en la escena queda con opacidad 0 y bloqueado, nunca fuera de ella) y `badges` (nodo plegado → id del texto «+N» generado junto a él). Se olvidan las entradas de elementos que ya no están en la escena.
+- `noteEmbeds` (desde el 20/10/2026, plan 9.24): tarjetas de nota, cada una `{ "documentId", "elementId", "textId" }`: la nota que muestra, el rectángulo (que lleva el enlace interno a la nota) y su texto ligado (título y extracto, reconstruidos desde la nota). Se olvidan las tarjetas cuyo rectángulo ya no está; lo que no tenga esa forma se conserva tal cual.
+- Una versión anterior de la aplicación conserva `parentByNode`, `collapsedNodeIds` y `noteEmbeds`, pero no `hidden` ni `badges`: muestra los nodos de una rama plegada como invisibles y bloqueados. Hay que actualizar todos los dispositivos antes de plegar ramas.
 
 Las carpetas son revisiones con `metadata.kind: "folder"` y sin contenido (`contentRefs.body: null`). Un documento las referencia con `metadata.folderId`.
 

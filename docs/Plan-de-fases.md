@@ -416,12 +416,12 @@ Hoy el autocompletado `[[` solo existe en el editor de las notas (CodeMirror, `f
 
 | # | Tarea | Notas | Tamaño |
 | --- | --- | --- | --- |
-| 9.20 | Espacio de las versiones y poda explícita (= 6.6) | RF-46, RN-13, CA-32; controles `VersionPrune`, que la sincronización ya publica y respeta | M |
-| 9.21 | Barra lateral virtualizada para miles de documentos | Hoy 2 500 documentos retrasan el lienzo unos 2,8 s; volver a medir con `pnpm test:rendimiento` | M |
-| 9.22 | Crear un hijo conectado con atajo (= 6.1) | RF-14, CA-04 | M |
-| 9.23 | Ramas colapsables con proyección visible (= 6.2) | Estrategia B de la fase 0 (opacidad 0 y bloqueados, nunca fuera de la escena); antes, las pruebas pendientes de la fase 0 | L |
-| 9.24 | Tarjetas de nota incrustadas en el lienzo (= 6.3) | RF-18, §9.3 | L |
-| 9.25 | Deshacer coordinado para los comandos propios (= 6.8) | Necesario en cuanto existan 9.22 y 9.23 | M |
+| 9.20 | Espacio de las versiones y poda explícita (= 6.6) | **Hecha (20/10/2026).** `pruneRevisions` en el repositorio (nunca una cabeza; objetos huérfanos borrados; control `VersionPrune`) y `versionSpace` (espacio total y lo que liberaría cada versión, sin contar lo compartido). En el historial: espacio, tamaño liberable de cada versión, «Eliminar esta versión» y «Eliminar las anteriores», con confirmación. Pruebas en `podaVersiones.test.ts` y `fase2.spec.ts` | M |
+| 9.21 | Barra lateral virtualizada para miles de documentos | **Hecha (20/10/2026).** En lugar de virtualizar (rompería el árbol anidado y el arrastre), cada lista pinta 150 filas y más al desplazarse cerca del final o con «Mostrar más» (`LoadMore.tsx`); el documento abierto siempre se pinta. Con 2 500 documentos el lienzo aparece en unos 0,64 s (antes 2,8 s), un solo proceso de prueba | M |
+| 9.22 | Crear un hijo conectado con atajo (= 6.1) | **Hecha (20/10/2026).** Tab con un nodo seleccionado: hijo a la derecha (los siguientes, debajo), flecha anclada y texto listo para escribir; un solo paso de deshacer. `domain/mindMap.ts` y `features/canvas/mindMapCanvas.ts` | M |
+| 9.23 | Ramas colapsables con proyección visible (= 6.2) | **Hecha (20/10/2026).** Estrategia B (opacidad 0 y bloqueados, originales en `mindMap.hidden`), proyección idempotente que reaplica lo oculto (también tras «Desbloquear todo»), contador «+N» generado, despliegue al llegar a un elemento oculto, exportación visual sin lo oculto (el .excalidraw lo conserva). Probados: guardar y reabrir plegado, 12 deshacer y rehacer con la rama plegada, posiciones al desplegar | L |
+| 9.24 | Tarjetas de nota incrustadas en el lienzo (= 6.3) | **Hecha (20/10/2026).** «Tarjeta de nota»: rectángulo con enlace a la nota y texto ligado con título y extracto (texto mostrado, sin el encabezado si repite el título), registrado en `noteEmbeds`; se actualiza al abrir el lienzo y cuando la nota cambia | L |
+| 9.25 | Deshacer coordinado para los comandos propios (= 6.8) | **Hecha (20/10/2026).** Decisión registrada en el diseño §9.2: una sola pila (la del motor), comandos propios como un paso, proyecciones fuera del historial y sidecar derivado de la escena. Prueba de deshacer y rehacer un hijo con su relación | M |
 
 El modo «Solo lápiz» y los bloques manuscritos (6.7) siguen esperando la prueba 0.4 en el iPad y no entran en la 0.2.0.
 

@@ -61,7 +61,8 @@
     "importFiles": "Importar archivos…",
     "importFolder": "Importar carpeta…",
     "sections": "Secciones",
-    "sectionNotes": "Notas"
+    "sectionNotes": "Notas",
+    "showMore": "Mostrar {{count}} más"
   },
   "title": {
     "edit": "Editar título",
@@ -171,7 +172,13 @@
         "peach": "Durazno",
         "lavender": "Lavanda"
       }
-    }
+    },
+    "collapseBranch_one": "Plegar rama ({{count}})",
+    "collapseBranch_other": "Plegar rama ({{count}})",
+    "expandBranch_one": "Desplegar rama ({{count}} oculto)",
+    "expandBranch_other": "Desplegar rama ({{count}} ocultos)",
+    "noteCard": "Tarjeta de nota",
+    "noteCardTitle": "Insertar la tarjeta de una nota"
   },
   "toolbar": {
     "label": "Herramientas",
@@ -199,7 +206,7 @@
   },
   "history": {
     "title": "Historial de versiones",
-    "hint": "Cada versión guardada se conserva hasta que elimines el documento desde la papelera.",
+    "hint": "Cada versión guardada se conserva hasta que la elimines aquí o elimines el documento desde la papelera.",
     "empty": "No hay versiones anteriores.",
     "current": "actual",
     "restore": "Restaurar esta versión",
@@ -209,7 +216,16 @@
       "restore": "Restaurado",
       "resolve": "Conflicto resuelto",
       "external": "Cambio externo"
-    }
+    },
+    "space_one": "{{size}} en {{count}} versión",
+    "space_other": "{{size}} en {{count}} versiones",
+    "freed": "Versiones eliminadas: se liberaron {{size}}.",
+    "prune": "Eliminar esta versión",
+    "pruneConfirm": "¿Eliminar esta versión del historial? No se puede deshacer; la versión actual no cambia.",
+    "pruneOlder_one": "Eliminar la versión anterior",
+    "pruneOlder_other": "Eliminar las {{count}} anteriores",
+    "pruneOlderConfirm_one": "¿Eliminar la versión anterior a esta? No se puede deshacer.",
+    "pruneOlderConfirm_other": "¿Eliminar las {{count}} versiones anteriores a esta? No se puede deshacer."
   },
   "conflict": {
     "title": "Resolver conflicto",

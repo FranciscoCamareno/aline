@@ -405,7 +405,9 @@ test('selector de fechas propio: rango, teclado y Escape sin cerrar el evento (p
 test('semana desde el domingo, hoja de «hoy» y buscar eventos (plan 9.12)', async ({ page }) => {
   await freshStart(page);
   await page.getByRole('tab', { name: 'Calendario' }).click();
-  await expect(page.getByTestId('today-sheet')).toContainText(String(new Date().getDate()));
+  // El día de «hoy» según el navegador (su zona horaria puede no ser la del proceso de pruebas).
+  const day = await page.evaluate(() => new Date().getDate());
+  await expect(page.getByTestId('today-sheet')).toContainText(String(day));
 
   await page.getByTestId('new-event').click();
   await page.getByTestId('event-title').fill('Revisión de pruebas');

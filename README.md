@@ -108,6 +108,12 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   color en el tema oscuro. Los demás atajos de teclado son los del motor.
 - **Punteros propios** de aline, en estilo pegatina (`brand/cursors/`), en la interfaz y en el
   lienzo; en Configuración → Apariencia se puede volver a los del sistema.
+- **Mapa mental en el lienzo:** con un nodo seleccionado, Tab crea un hijo conectado listo para
+  escribir; «Plegar rama» oculta los descendientes (con un contador «+N» junto al nodo) y
+  «Desplegar» los devuelve a su sitio; lo plegado no sale en PNG, SVG ni PDF. «Tarjeta de nota»
+  pone en el lienzo una tarjeta con el título y un extracto de una nota, que sigue a la nota.
+- **Versiones:** el historial muestra cuánto ocupan y deja eliminar una versión o las anteriores
+  a ella (nunca la actual).
 - **Barra lateral plegable** (Configuración → Apariencia): al plegarla se oculta del todo o queda
   una columna de iconos con las secciones, Nuevo, Buscar y Perfil.
 - **Calendario** (DESIGN.md §8): sección propia de la barra lateral, vistas de día, semana y mes,
@@ -437,12 +443,8 @@ El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | Google Drive: cerrar la comprobación real                                | Funciona con Google real y la aplicación OAuth está publicada (19/10/2026). Falta revisar la CSP en la consola y pasarla a obligatoria (4.8), y probar con Google real el modo cifrado y dos equipos                 | `adapters/drive/`, `public/_headers` |
 | Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                          | —                                    |
-| Poda selectiva de versiones y espacio que ocupan (RF-46)                 | Historial, papelera y borrado definitivo de documentos hechos; falta eliminar versiones concretas o antiguas y mostrar su espacio                                                                                    | `features/history/`                  |
-| Barra lateral con miles de documentos                                    | Funciona (probado con 2 500), pero la lista no está virtualizada: el lienzo tarda unos 2,8 s en aparecer con ese volumen                                                                                             | `features/library/`                  |
 | Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                         | `app/importExport.ts`                |
 | Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                        | —                                    |
-| Sidecar: ramas colapsables y notas incrustadas                           | Los enlaces de elementos y los conectores sueltos ya se derivan y guardan; las ramas (6.2) y las tarjetas (6.3) siguen pendientes                                                                                    | `domain/sidecar.ts`                  |
-| Pila de deshacer coordinada para comandos propios                        | El deshacer del motor pasa la prueba de 100 acciones (fase 0); falta coordinarlo con comandos propios                                                                                                                | —                                    |
 | Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6 | `features/canvas/CanvasView.tsx`     |
 | Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                 | `application/KnowledgeService.ts`    |
 | Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                  | `domain/frontmatter.ts`              |

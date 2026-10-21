@@ -100,6 +100,43 @@ test('historial: ver una versión anterior y restaurarla (RF-31, CA-23)', async 
   await expect(page.locator('.cm-content')).toContainText('versión uno');
 });
 
+test('historial: espacio de las versiones y eliminar una o las anteriores (plan 9.20, CA-32)', async ({
+  page,
+}) => {
+  page.on('dialog', (dialog) => void dialog.accept());
+  await freshStart(page);
+  await newNote(page, 'versión uno');
+  await replaceNoteText(page, 'versión dos');
+  await replaceNoteText(page, 'versión tres');
+  await replaceNoteText(page, 'versión cuatro');
+
+  await page.getByTestId('open-history').click();
+  const items = page.getByTestId('history-item');
+  await expect(items).toHaveCount(5); // creación + cuatro guardados
+  await expect(page.getByTestId('history-space')).toHaveText(/ en 5 versiones$/);
+  // La actual no se puede eliminar.
+  await items.first().click();
+  await expect(page.getByTestId('history-prune')).toHaveCount(0);
+
+  // Eliminar la versión «dos»: sale del historial y se informa de lo liberado.
+  await items.nth(2).click();
+  await expect(page.getByTestId('revision-preview')).toContainText('versión dos');
+  await page.getByTestId('history-prune').click();
+  await expect(items).toHaveCount(4);
+  await expect(page.getByTestId('history-freed')).toContainText('KB');
+  await expect(items.filter({ hasText: 'versión dos' })).toHaveCount(0);
+
+  // «Eliminar las anteriores» a «tres» deja solo «tres» y la actual.
+  await items.nth(1).click();
+  await expect(page.getByTestId('revision-preview')).toContainText('versión tres');
+  await page.getByTestId('history-prune-older').click();
+  await expect(items).toHaveCount(2);
+  await expect(page.locator('.cm-content')).toContainText('versión cuatro');
+  await page.reload();
+  await page.getByTestId('open-history').click();
+  await expect(page.getByTestId('history-item')).toHaveCount(2);
+});
+
 test('conflicto entre dos pestañas: se conservan ambas y se resuelve (RF-37, CA-14)', async ({
   page,
   context,

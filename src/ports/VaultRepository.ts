@@ -63,6 +63,17 @@ export interface PurgeResult {
   freedBytes: number;
 }
 
+/** Espacio que ocupan las versiones de un documento (RF-46). */
+export interface VersionSpace {
+  /** Bytes de todos los objetos que usan sus versiones, contando una vez los compartidos. */
+  totalBytes: number;
+  /**
+   * Por versión: bytes que se liberarían al eliminar solo esa versión (sus objetos que no usa
+   * ninguna otra versión retenida, de este documento ni de otro).
+   */
+  freeableBytes: Record<Uuid, number>;
+}
+
 export interface VaultSnapshot {
   vault: Vault;
   documents: DocumentRecord[];
@@ -85,6 +96,12 @@ export interface VaultRepository {
    * borra los blobs que ya nadie referencia y registra un control VersionPrune.
    */
   purgeDocument(documentId: Uuid): Promise<PurgeResult>;
+  /**
+   * Poda explícita de versiones de un documento vivo (RF-46, RN-13): retira esas revisiones (nunca
+   * una cabeza), borra los blobs que ya nadie referencia y registra un control VersionPrune para
+   * que la sincronización no las resucite.
+   */
+  pruneRevisions(documentId: Uuid, revisionIds: Uuid[]): Promise<PurgeResult>;
 }
 
 /** Consultas locales que usa la interfaz. No forman parte del protocolo de sincronización. */
@@ -96,6 +113,7 @@ export interface VaultReader {
   getRevision(revisionId: Uuid): Promise<Revision | undefined>;
   getBlob(hash: string): Promise<StoredBlob | undefined>;
   listHistory(documentId: Uuid): Promise<HistoryEntry[]>;
+  versionSpace(documentId: Uuid): Promise<VersionSpace>;
   /** Preferencias privadas de esta instalación (no viajan en copias ni sincronización). */
   getDevicePreference(key: string): Promise<unknown>;
   setDevicePreference(key: string, value: unknown): Promise<void>;

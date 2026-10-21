@@ -43,6 +43,7 @@ import type {
   CommitInput,
   CommitResult,
   HistoryEntry,
+  VersionSpace,
   PurgeResult,
   StoredBlob,
   VaultContent,
@@ -937,6 +938,20 @@ export class VaultService {
     this.sessions.delete(documentId);
     this.writeQueues.delete(documentId);
     return result;
+  }
+
+  /** Espacio de las versiones de un documento y lo que liberaría eliminar cada una (RF-46). */
+  versionSpace(documentId: Uuid): Promise<VersionSpace> {
+    return this.repo.versionSpace(documentId);
+  }
+
+  /**
+   * Elimina versiones concretas de un documento (RF-46, CA-32), por acción explícita (RN-13).
+   * Las cabezas nunca se eliminan; espera a lo pendiente del documento antes de retirar nada.
+   */
+  async pruneVersions(documentId: Uuid, revisionIds: Uuid[]): Promise<PurgeResult> {
+    await this.pendingWrites(documentId);
+    return this.repo.pruneRevisions(documentId, revisionIds);
   }
 
   listHistory(documentId: Uuid): Promise<HistoryEntry[]> {

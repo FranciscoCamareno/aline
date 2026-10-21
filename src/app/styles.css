@@ -4662,3 +4662,10 @@ body.excalidraw-cursor-resize a:hover,
 body.excalidraw-cursor-resize * {
   cursor: var(--cursor-ew-resize, ew-resize);
 }
+
+/* Final de una lista larga de la barra lateral (plan 9.21): carga más filas al acercarse. */
+.library-list .load-more {
+  justify-content: center;
+  min-height: 28px;
+  font-size: 13px;
+}

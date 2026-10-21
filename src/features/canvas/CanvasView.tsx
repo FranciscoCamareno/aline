@@ -9,7 +9,7 @@ import {
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import '@excalidraw/excalidraw/index.css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { excalidrawCanvasAdapter, type EngineScene } from '../../adapters/excalidraw/sceneCodec.ts';
 import {
@@ -40,6 +40,17 @@ import {
 } from './canvasWikiLink.ts';
 import { attachStickerLayer } from './stickerLayer.ts';
 import { watchStickyText } from './stickyText.ts';
+import { cardText, insertNoteCard, noteEmbedsOf, refreshNoteCards } from './noteCards.ts';
+import {
+  applyProjection,
+  createChild,
+  hiddenIds,
+  isMindNode,
+  liveDescendants,
+  revealElement,
+  startEditingSelected,
+  toggleCollapse,
+} from './mindMapCanvas.ts';
 import { attachCanvasCursors } from './canvasCursors.ts';
 import { TemplatesPanel } from './TemplatesPanel.tsx';
 import { insertTemplate, TEMPLATE_DRAG_TYPE } from './templates.ts';
@@ -94,6 +105,18 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const selectionKey = useRef('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  /** Selector de la nota para una tarjeta nueva (plan 9.24). */
+  const [cardPickerOpen, setCardPickerOpen] = useState(false);
+  const documents = useUiStore((s) => s.documents);
+  /** Árbol del mapa mental vigente (copia en estado del sidecar, para pintar sus botones). */
+  const [mindMap, setMindMapState] = useState<CanvasExtensions['mindMap'] | null>(null);
+  /** Cambia el árbol en el sidecar (lo que se guardará) y en la interfaz. */
+  const setMindMap = useCallback((next: CanvasExtensions['mindMap']) => {
+    const extensions = extensionsRef.current;
+    if (!extensions) return;
+    extensionsRef.current = { ...extensions, mindMap: next };
+    setMindMapState(next);
+  }, []);
   /** Texto en el que se escribió `[[`, con su selector abierto (plan 9.5). */
   const [wikiTarget, setWikiTarget] = useState<CanvasWikiTarget | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -178,6 +201,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       backgroundRef.current = { stored, shown };
       scene.appState = { ...scene.appState, viewBackgroundColor: shown };
       extensionsRef.current = opened.extensions;
+      setMindMapState(opened.extensions.mindMap);
       bindingsRef.current = currentBindings(scene.elements);
       setDangling(opened.extensions.danglingConnectorIds);
       setLoaded({ session: opened.session, scene, extensions: opened.extensions, recoveredDraft });
@@ -210,6 +234,12 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
     const element = api.getSceneElements().find((e) => e.id === elementId);
     if (!element) return;
     pendingFocus.current = null;
+    // Si lo oculta una rama plegada, se despliega (plan 9.23).
+    const extensions = extensionsRef.current;
+    if (extensions) {
+      const revealed = revealElement(api, extensions.mindMap, elementId);
+      if (revealed) setMindMap(revealed);
+    }
     // Fuera del ciclo de onChange del motor.
     setTimeout(() => {
       api.scrollToContent(element, { animate: false });
@@ -218,7 +248,20 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         captureUpdate: CaptureUpdateAction.NEVER,
       });
     }, 0);
-  }, [api]);
+  }, [api, setMindMap]);
+
+  const projectionQueued = useRef(false);
+  const scheduleProjection = useCallback(() => {
+    if (!api || projectionQueued.current) return;
+    projectionQueued.current = true;
+    requestAnimationFrame(() => {
+      projectionQueued.current = false;
+      const extensions = extensionsRef.current;
+      if (!extensions || api.getAppState().newElement) return;
+      const projected = applyProjection(api, extensions.mindMap);
+      if (projected) setMindMap(projected);
+    });
+  }, [api, setMindMap]);
 
   const lastDraftAt = useRef(0);
   const onChange = useCallback<NonNullable<Parameters<typeof Excalidraw>[0]['onChange']>>(
@@ -239,6 +282,9 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         setAnySelected(ids.length > 0);
       }
       if (session?.readOnly) return;
+      // Ramas plegadas: lo nuevo bajo ellas y lo que el menú del motor desbloquee se vuelve a
+      // ocultar, y los contadores siguen a su nodo (un pase por fotograma como mucho).
+      if (extensionsRef.current?.mindMap.collapsedNodeIds.length) scheduleProjection();
       // Trazo en curso: borrador periódico en lugar de revisiones (diseño §7.1).
       if (appState.newElement) {
         const now = Date.now();
@@ -269,7 +315,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       signatureRef.current = signature;
       autosave.push(scene);
     },
-    [autosave, session, service, documentId, applyPendingFocus],
+    [autosave, session, service, documentId, applyPendingFocus, scheduleProjection],
   );
 
   // Guardar también al terminar un trazo o una manipulación. El motor emite el último onChange
@@ -326,6 +372,91 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
 
   useEffect(() => (api ? watchCanvasWikiLinks(api, setWikiTarget) : undefined), [api]);
   useEffect(() => (api ? watchStickyText(api) : undefined), [api]);
+  // Tab con un nodo seleccionado: hijo conectado, listo para escribir (RF-14, CA-04).
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!api || !host || loaded?.session.readOnly) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const appState = api.getAppState();
+      if (appState.editingTextElement || appState.newElement) return;
+      const ids = Object.keys(appState.selectedElementIds).filter(
+        (id) => appState.selectedElementIds[id],
+      );
+      const node = ids.length === 1 ? api.getSceneElements().find((e) => e.id === ids[0]) : null;
+      const extensions = extensionsRef.current;
+      if (!node || !isMindNode(node) || !extensions) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const created = createChild(api, extensions.mindMap, node.id);
+      if (!created) return;
+      setMindMap(created.mindMap);
+      // El motor ya tiene el hijo seleccionado: Intro empieza a escribir en él.
+      setTimeout(() => startEditingSelected(host), 0);
+    };
+    host.addEventListener('keydown', onKeyDown, true);
+    return () => host.removeEventListener('keydown', onKeyDown, true);
+  }, [api, loaded, setMindMap]);
+  /** Inserta la tarjeta de una nota (RF-18): su texto se lee de la versión vigente de la nota. */
+  const insertCard = async (noteId: string, title: string) => {
+    setCardPickerOpen(false);
+    const extensions = extensionsRef.current;
+    if (!api || !extensions) return;
+    const text = cardText(title, await service.exportNoteMarkdown(noteId));
+    const embed = insertNoteCard(api, { id: noteId, title }, text);
+    if (!embed) return;
+    const current = extensionsRef.current ?? extensions;
+    extensionsRef.current = { ...current, noteEmbeds: [...current.noteEmbeds, embed] };
+  };
+  // Las tarjetas siguen a su nota: al abrir el lienzo y cuando cambian su título o su texto.
+  const embeddedKey = useMemo(() => {
+    const ids = new Set(noteEmbedsOf(loaded?.extensions.noteEmbeds ?? []).map((e) => e.documentId));
+    return documents
+      .filter((d) => ids.has(d.id) || d.kind === 'note' || d.kind === 'mddoc')
+      .map((d) => `${d.id}:${d.headRevisionIds.join('.')}:${d.title}`)
+      .join('|');
+  }, [documents, loaded]);
+  useEffect(() => {
+    if (!api || !loaded || loaded.session.readOnly) return;
+    let cancelled = false;
+    void (async () => {
+      const embeds = noteEmbedsOf(extensionsRef.current?.noteEmbeds ?? []);
+      if (!embeds.length) return;
+      const texts = new Map<string, string>();
+      for (const id of new Set(embeds.map((e) => e.documentId))) {
+        const doc = useUiStore.getState().documents.find((d) => d.id === id && !d.deleted);
+        if (!doc) continue;
+        try {
+          texts.set(id, cardText(doc.title, await service.exportNoteMarkdown(id)));
+        } catch {
+          // Una nota ilegible deja su tarjeta como estaba.
+        }
+      }
+      if (!cancelled) refreshNoteCards(api, embeds, texts);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, loaded, embeddedKey, service]);
+
+  /** Plegar o desplegar la rama del nodo seleccionado (RF-15). */
+  const toggleBranch = (nodeId: string) => {
+    const extensions = extensionsRef.current;
+    if (!api || !extensions) return;
+    setMindMap(toggleCollapse(api, extensions.mindMap, nodeId));
+  };
+  // Nodo seleccionado con hijos: el botón de plegar muestra cuántos descendientes tiene.
+  const branch =
+    api && selection && isMindNode(selection) && mindMap
+      ? {
+          count: liveDescendants(api, mindMap, selection.id).length,
+          collapsed: mindMap.collapsedNodeIds.includes(selection.id),
+        }
+      : null;
   useEffect(
     () => (api && hostRef.current ? attachCanvasCursors(hostRef.current) : undefined),
     [api],
@@ -431,6 +562,29 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
             onClose={() => setTemplatesOpen(false)}
           />
         )}
+        {branch && branch.count > 0 && selection && !loaded.session.readOnly && (
+          <button
+            type="button"
+            data-testid="toggle-branch"
+            aria-pressed={branch.collapsed}
+            onClick={() => toggleBranch(selection.id)}
+          >
+            <Icon name={branch.collapsed ? 'chevron-der' : 'chevron-abajo'} size={18} />
+            {t(branch.collapsed ? 'canvas.expandBranch' : 'canvas.collapseBranch', {
+              count: branch.count,
+            })}
+          </button>
+        )}
+        {api && !loaded.session.readOnly && (
+          <button
+            type="button"
+            data-testid="insert-note-card"
+            onClick={() => setCardPickerOpen(true)}
+          >
+            <Icon name="nota" size={18} />
+            {t('canvas.noteCard')}
+          </button>
+        )}
         {selection && !loaded.session.readOnly && (
           <button type="button" data-testid="link-element" onClick={() => setPickerOpen(true)}>
             <Icon name="enlace" size={18} />
@@ -453,6 +607,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           api={api}
           title={title}
           storedBackground={() => backgroundRef.current?.stored ?? null}
+          hidden={() => hiddenIds(extensionsRef.current?.mindMap)}
           onClose={() => setExportOpen(false)}
         />
       )}
@@ -469,6 +624,23 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           onWeb={(url) => setElementLink(url)}
           onRemove={() => setElementLink(null)}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+      {cardPickerOpen && (
+        <LinkPicker
+          title={t('canvas.noteCardTitle')}
+          sourceId={documentId}
+          service={service}
+          kinds={['note', 'mddoc']}
+          onPick={(pick) => {
+            const target = parseInternalLink(pick.url);
+            if (target) void insertCard(target.documentId, pick.title);
+          }}
+          onCreateNote={(title) => {
+            void onCreateNote(title).then((doc) => insertCard(doc.id, doc.title));
+          }}
+          onWeb={() => undefined}
+          onClose={() => setCardPickerOpen(false)}
         />
       )}
       {wikiTarget && (

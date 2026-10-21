@@ -3,7 +3,6 @@ import { z } from 'zod';
 /**
  * Sidecar de extensiones propias del lienzo (diseño §5 y §9). Es la autoridad para enlaces,
  * ramas e incrustaciones; customData del motor nunca es el único ejemplar.
- * En esta entrega se crea vacío y se conserva; las funciones que lo usan están pendientes.
  */
 export const canvasExtensionsSchema = z.object({
   schemaVersion: z.literal(1),
@@ -23,6 +22,16 @@ export const canvasExtensionsSchema = z.object({
   mindMap: z.object({
     parentByNode: z.record(z.string(), z.string()),
     collapsedNodeIds: z.array(z.string()),
+    /**
+     * Desde el 20/10/2026 (plan 9.23): opacidad y bloqueo originales de cada elemento oculto por
+     * una rama plegada (en la escena quedan con opacidad 0 y bloqueados), para restaurarlos al
+     * desplegar. Opcional: sin ramas plegadas no está.
+     */
+    hidden: z
+      .record(z.string(), z.object({ opacity: z.number().min(0).max(100), locked: z.boolean() }))
+      .optional(),
+    /** Contador «+N» de cada nodo plegado: id del texto generado que lo muestra. Opcional. */
+    badges: z.record(z.string(), z.string()).optional(),
   }),
   noteEmbeds: z.array(z.unknown()),
   danglingConnectorIds: z.array(z.string()),
