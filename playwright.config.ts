@@ -20,7 +20,9 @@ export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 60_000,
   fullyParallel: false,
-  retries: 0,
+  // En CI (máquinas más lentas y compartidas) un reintento: un fallo intermitente sale como
+  // «flaky» en el informe en vez de tumbar la ejecución. En local, ninguno.
+  retries: process.env['CI'] ? 1 : 0,
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:4173',

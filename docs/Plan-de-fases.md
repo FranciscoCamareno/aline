@@ -429,7 +429,7 @@ El modo «Solo lápiz» y los bloques manuscritos (6.7) siguen esperando la prue
 
 | # | Tarea | Notas | Tamaño |
 | --- | --- | --- | --- |
-| 9.26 | `version` 0.2.0 en `package.json`, README (versión, verificación y tabla de pendientes) y etiqueta `v0.2.0`; `pnpm verify` y e2e en Chromium y Edge; publicar en Cloudflare | El cambio de formato de 9.11 obliga a actualizar todos los dispositivos antes de usar eventos repetidos: avisarlo en el README, como con el calendario y los documentos | S |
+| 9.26 | `version` 0.2.0 en `package.json`, README (versión, verificación y tabla de pendientes) y etiqueta `v0.2.0`; `pnpm verify` y e2e en Chromium y Edge; publicar en Cloudflare | **Hecha (21/10/2026).** `version` 0.2.0, aviso en el README de actualizar todos los dispositivos antes de usar eventos repetidos y ramas plegadas, `pnpm verify` (273 pruebas) y e2e en Chromium y Edge con Node 24.22.1; etiqueta `v0.2.0` publicada en Cloudflare. La CI reintenta una vez los recorridos intermitentes | S |
 
 **Del propietario para esta fase:** revisar la consola para 9.1; probar el modo cifrado y dos equipos con Google real; aprobar la hoja de punteros (9.16) antes de aplicarlos; decidir si la etapa G entra entera o pasa a la 0.3.0.
 
