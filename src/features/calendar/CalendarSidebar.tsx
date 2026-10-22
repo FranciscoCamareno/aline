@@ -63,6 +63,7 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash, onSetColo
       </button>
 
       <input
+        name="calendar-search"
         type="search"
         className="calendar-search"
         value={query}
@@ -122,6 +123,7 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash, onSetColo
           }}
         >
           <input
+            name="new-calendar-input"
             autoFocus
             value={newName}
             placeholder={t('calendar.calendarName')}
@@ -144,6 +146,7 @@ export function CalendarSidebar({ onCreateCalendar, onRename, onTrash, onSetColo
             <li key={doc.id} data-testid="calendar-item" data-document-id={doc.id}>
               <label className={`calendar-check event-${color}`}>
                 <input
+                  name="calendar-shown"
                   type="checkbox"
                   checked={shown}
                   aria-label={t('calendar.show', { name: doc.title })}

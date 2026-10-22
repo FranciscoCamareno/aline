@@ -90,6 +90,7 @@ export function RenameableTitle({
   return (
     <form className={`renameable editing ${className ?? ''}`} onSubmit={(e) => void submit(e)}>
       <input
+        name="title"
         autoFocus
         value={draft}
         disabled={busy}

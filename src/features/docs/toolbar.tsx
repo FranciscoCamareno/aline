@@ -79,7 +79,7 @@ export function BlockStyleSelect({
 }) {
   const { t } = useTranslation();
   return (
-    <select
+    <select name="doc-block-style"
       className="doc-block-style"
       aria-label={t('docs.blockStyle')}
       data-testid="doc-block-style"

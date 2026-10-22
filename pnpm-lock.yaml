@@ -171,7 +171,7 @@ overrides:
   lodash-es: 4.18.1
 
 patchedDependencies:
-  '@excalidraw/excalidraw@0.18.1': 9ce12cf1a5d54b78904de93faa9aefcef36125db2673105baa0e818dfef42416
+  '@excalidraw/excalidraw@0.18.1': f796eef950f3e0ce172a7c3efd979e1673709d4b48cf380399834667489b26de
 
 importers:
 
@@ -194,7 +194,7 @@ importers:
         version: 6.43.14
       '@excalidraw/excalidraw':
         specifier: 0.18.1
-        version: 0.18.1(patch_hash=9ce12cf1a5d54b78904de93faa9aefcef36125db2673105baa0e818dfef42416)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 0.18.1(patch_hash=f796eef950f3e0ce172a7c3efd979e1673709d4b48cf380399834667489b26de)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@fontsource/architects-daughter':
         specifier: 5.3.0
         version: 5.3.0
@@ -5649,7 +5649,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@excalidraw/excalidraw@0.18.1(patch_hash=9ce12cf1a5d54b78904de93faa9aefcef36125db2673105baa0e818dfef42416)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@excalidraw/excalidraw@0.18.1(patch_hash=f796eef950f3e0ce172a7c3efd979e1673709d4b48cf380399834667489b26de)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@braintree/sanitize-url': 6.0.2
       '@excalidraw/laser-pointer': 1.3.1

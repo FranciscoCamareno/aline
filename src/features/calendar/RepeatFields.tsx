@@ -34,6 +34,7 @@ export function RepeatFields({
       <label className="field">
         <span>{t('calendar.repeat')}</span>
         <select
+          name="event-repeat"
           value={rule?.freq ?? 'none'}
           data-testid="event-repeat"
           onChange={(e) => {
@@ -56,6 +57,7 @@ export function RepeatFields({
             <span>{t('calendar.repeatEvery')}</span>
             <span className="repeat-interval-row">
               <input
+                name="event-repeat-interval"
                 type="number"
                 min={1}
                 max={99}
@@ -78,6 +80,7 @@ export function RepeatFields({
                   title={t(`calendar.weekdayNames.${day}`)}
                 >
                   <input
+                    name="event-repeat-day"
                     type="checkbox"
                     className="visually-hidden"
                     checked={weekdays.includes(day)}
@@ -100,6 +103,7 @@ export function RepeatFields({
             <label className="field">
               <span>{t('calendar.repeatEnds')}</span>
               <select
+                name="event-repeat-ends"
                 value={ends}
                 data-testid="event-repeat-ends"
                 onChange={(e) => {
@@ -127,6 +131,7 @@ export function RepeatFields({
               <label className="field">
                 <span>{t('calendar.repeatTimes')}</span>
                 <input
+                  name="event-repeat-count"
                   type="number"
                   min={1}
                   max={MAX_RECURRENCE_COUNT}

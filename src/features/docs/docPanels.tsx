@@ -69,7 +69,7 @@ export function useOutlineOpen(): [boolean, (open: boolean) => void] {
 export function ZoomSelect({ zoom, onChange }: { zoom: number; onChange: (zoom: number) => void }) {
   const { t } = useTranslation();
   return (
-    <select
+    <select name="doc-zoom"
       className="doc-zoom-select"
       aria-label={t('docs.zoom')}
       title={t('docs.zoom')}

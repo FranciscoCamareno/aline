@@ -122,6 +122,7 @@ export function LinkPicker({
         ) : (
           <>
             <input
+              name="link-search"
               autoFocus
               value={query}
               placeholder={t('links.searchPlaceholder')}
@@ -176,6 +177,7 @@ export function LinkPicker({
                 }}
               >
                 <input
+                  name="link-web"
                   value={web}
                   placeholder="https://…"
                   aria-label={t('links.web')}
@@ -244,6 +246,7 @@ function EventStep({
         <strong>{calendar.title}</strong>
       </p>
       <input
+        name="link-event-search"
         autoFocus
         value={query}
         placeholder={t('links.searchEvents')}

@@ -146,11 +146,12 @@ describe('sincronización por carpeta (plan 4.2, 4.6, 4.7)', () => {
     const a = await device(folder, undefined, (store) => ({
       ...bind(store),
       publishRevision: async (rev, op) => {
-        await store.publishRevision(rev, op);
+        const copy = await store.publishRevision(rev, op);
         if (failNext) {
           failNext = false;
           throw new RemoteError('permission', 'drive-forbidden', 'respuesta perdida');
         }
+        return copy;
       },
     }));
     await a.service.createDocument('note', 'N');
@@ -299,3 +300,58 @@ function bind(store: RemoteStore): RemoteStore {
     listReadableCopies: () => store.listReadableCopies(),
   };
 }
+
+describe('sincronización en paralelo', () => {
+  it('publica documentos distintos a la vez y cada versión después de sus padres', async () => {
+    const folder = new MemoryDirectory();
+    const published: string[] = [];
+    const parentsMissing: string[] = [];
+    let running = 0;
+    let peak = 0;
+    const a = await device(folder, undefined, (store) => ({
+      ...bind(store),
+      publishRevision: async (rev, op) => {
+        running++;
+        peak = Math.max(peak, running);
+        if (rev.parentIds.some((p) => !published.includes(p))) parentsMissing.push(rev.id);
+        await new Promise((r) => setTimeout(r, 5));
+        const copy = await store.publishRevision(rev, op);
+        published.push(rev.id);
+        running--;
+        return copy;
+      },
+    }));
+    const docs: string[] = [];
+    for (let n = 0; n < 6; n++) {
+      const note = await a.service.createDocument('note', `Nota ${n}`);
+      docs.push(note.id);
+      for (let v = 0; v < 3; v++) await edit(a, note.id, `versión ${v}`);
+    }
+    const result = await a.engine.runCycle();
+    expect(result.pushedRevisions).toBe(24);
+    expect(published).toHaveLength(24);
+    expect(parentsMissing).toEqual([]);
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(4);
+    const b = await device(folder, a);
+    await b.engine.runCycle();
+    for (const doc of docs) expect(await body(b, doc)).toBe('versión 2');
+  });
+});
+
+describe('carpeta: lecturas simultáneas', () => {
+  it('varios getObject a la vez encuentran todos los objetos (índice compartido)', async () => {
+    const folder = new MemoryDirectory();
+    const a = await device(folder);
+    const hashes: string[] = [];
+    for (let n = 0; n < 5; n++) {
+      const note = await a.service.createDocument('note', `Nota ${n}`);
+      const saved = await edit(a, note.id, `cuerpo ${n}`);
+      hashes.push(saved.revision.contentRefs.body!);
+    }
+    await a.engine.runCycle();
+    const fresh = new FolderRemoteStore(folder);
+    const found = await Promise.all(hashes.map((h) => fresh.getObject(h)));
+    expect(found.every((o) => o !== null)).toBe(true);
+  });
+});

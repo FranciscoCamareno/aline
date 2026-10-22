@@ -147,6 +147,7 @@ export function ConflictPanel({ document, service, onResolve, onClose }: Props) 
                 </pre>
               )}
               <textarea
+                name="conflict-merge-text"
                 className="merge-editor"
                 aria-label={t('conflict.mergeEditor')}
                 data-testid="conflict-merge-text"

@@ -152,7 +152,7 @@ export function CommentsPanel({
           }}
         >
           <p className="doc-comment-quote">«{editor.state.doc.textBetween(draft.from, draft.to, ' ').slice(0, QUOTE_MAX)}»</p>
-          <textarea
+          <textarea name="doc-comment-input"
             autoFocus
             value={text}
             rows={3}
@@ -221,7 +221,7 @@ function ThreadActions({
             send();
           }}
         >
-          <input
+          <input name="doc-comment-reply-input"
             value={reply}
             maxLength={10_000}
             placeholder={t('docs.commentReply')}

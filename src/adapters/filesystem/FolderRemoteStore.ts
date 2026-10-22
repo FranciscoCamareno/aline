@@ -14,6 +14,7 @@ import {
   type RemoteChangePage,
   type RemoteObject,
   type RemoteStore,
+  type WrittenCopy,
 } from '../../ports/RemoteStore.ts';
 import { utf8Decode, utf8Encode } from '../../shared/hash.ts';
 
@@ -70,8 +71,12 @@ function classify(error: unknown): never {
  */
 export class FolderRemoteStore implements RemoteStore {
   private readonly root: DirHandleLike;
-  /** hash → nombre de archivo (objetos y assets), para leer sin conocer la extensión. */
-  private objectNames: Map<string, string> | null = null;
+  /**
+   * hash → nombre de archivo (objetos y assets), para leer sin conocer la extensión. Se guarda
+   * la promesa: el motor lee varios objetos a la vez y todos deben esperar al mismo listado
+   * completo (con un mapa a medio llenar, un objeto existente parecería ausente).
+   */
+  private objectNames: Promise<Map<string, string>> | null = null;
 
   constructor(root: DirHandleLike) {
     this.root = root;
@@ -146,15 +151,15 @@ export class FolderRemoteStore implements RemoteStore {
 
   async getObject(hash: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
     try {
-      if (!this.objectNames) {
-        this.objectNames = new Map();
-        for (const folder of ['objects', 'assets']) {
-          for (const name of await this.names(folder)) {
-            this.objectNames.set(name.split('.')[0]!, `${folder}/${name}`);
-          }
-        }
+      this.objectNames ??= this.listObjectNames();
+      let names: Map<string, string>;
+      try {
+        names = await this.objectNames;
+      } catch (error) {
+        this.objectNames = null;
+        throw error;
       }
-      const path = this.objectNames.get(hash);
+      const path = names.get(hash);
       if (!path) return null;
       const [folder, name] = path.split('/') as [string, string];
       const dir = await this.dir(folder, false);
@@ -173,13 +178,13 @@ export class FolderRemoteStore implements RemoteStore {
           : objectPath(object.hash, object.role);
       const [folder, name] = path.split('/') as [string, string];
       await this.write((await this.dir(folder, true))!, name, object.bytes, false);
-      this.objectNames?.set(object.hash, path);
+      (await this.objectNames?.catch(() => null))?.set(object.hash, path);
     } catch (error) {
       return classify(error);
     }
   }
 
-  async publishRevision(revision: Revision, _operationId: string): Promise<void> {
+  async publishRevision(revision: Revision, _operationId: string): Promise<WrittenCopy | null> {
     try {
       // Copia legible por versión (nunca se reescribe una existente, §8.3).
       if (isMarkdownKind(revision.metadata.kind) && revision.contentRefs.body) {
@@ -197,6 +202,8 @@ export class FolderRemoteStore implements RemoteStore {
         jsonBytes(revision),
         false,
       );
+      // La carpeta es local: leer una copia para observarla cuesta poco.
+      return null;
     } catch (error) {
       return classify(error);
     }
@@ -257,6 +264,15 @@ export class FolderRemoteStore implements RemoteStore {
     } catch (error) {
       return classify(error);
     }
+  }
+
+  private async listObjectNames(): Promise<Map<string, string>> {
+    const names = new Map<string, string>();
+    for (const folder of ['objects', 'assets']) {
+      for (const name of await this.names(folder))
+        names.set(name.split('.')[0]!, `${folder}/${name}`);
+    }
+    return names;
   }
 
   private async dir(name: string, create: boolean): Promise<DirHandleLike | null> {

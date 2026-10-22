@@ -149,7 +149,7 @@ export function FontFamilyPicker({
             }
           }}
         >
-          <input
+          <input name="doc-font-search"
             ref={search}
             value={query}
             placeholder={t('docs.fontSearch')}
@@ -247,7 +247,7 @@ export function FontSizeControl({
   return (
     <span className="doc-size">
       {step(-1, t('docs.fontSmaller'), 'menos', 'doc-font-smaller')}
-      <input
+      <input name="doc-font-size"
         className="doc-size-input"
         inputMode="numeric"
         aria-label={t('docs.fontSize')}

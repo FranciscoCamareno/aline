@@ -114,6 +114,7 @@ export function DetailsPanel({ document, knowledge, onMove, onSetTags, onClose }
       <section>
         <h3>{t('details.folder')}</h3>
         <select
+          name="move-folder"
           value={document.folderId && folders.has(document.folderId) ? document.folderId : ''}
           aria-label={t('details.folder')}
           data-testid="move-folder"
@@ -154,6 +155,7 @@ export function DetailsPanel({ document, knowledge, onMove, onSetTags, onClose }
             }}
           >
             <input
+              name="tag-input"
               value={newTag}
               placeholder={t('details.addTag')}
               aria-label={t('details.addTag')}

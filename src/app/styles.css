@@ -3888,6 +3888,8 @@ a,
 .scheme-card img {
   width: 100%;
   height: auto;
+  /* Las vistas previas se cargan al verse: la proporción reserva su sitio antes. */
+  aspect-ratio: 300 / 188;
   border-radius: 8px;
   border: 1px solid var(--border-soft);
 }

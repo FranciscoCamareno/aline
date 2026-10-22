@@ -307,3 +307,45 @@ test('Drive cifrado: contraseña, código de recuperación, otro equipo y cambio
   await expect(page.getByTestId('drive-encryption-mode')).toContainText('Sin cifrar');
   await expect(page.getByTestId('storage-phase')).toHaveText('sincronizado');
 });
+
+test('mientras sincroniza, «Sincronizar ahora» sigue desactivado aunque se cierre y reabra el panel', async ({
+  page,
+}) => {
+  const drive = new FakeDrive();
+  await fakeGis(page, drive.token);
+  await routeDrive(page, drive);
+  await freshStart(page);
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
+  await page.getByTestId('connect-drive').click();
+  await page.getByTestId('drive-mode-plain').check();
+  await page.getByTestId('drive-accept').click();
+  await page.getByTestId('drive-authorize').click();
+  await expect(page.getByTestId('storage-phase')).toHaveText('sincronizado');
+  await page.getByTestId('settings-close').click();
+
+  // Las subidas se quedan esperando hasta que la prueba las suelte: la sincronización dura.
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route('https://www.googleapis.com/upload/**', async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  await newNote(page, 'algo que subir');
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
+  await expect(page.getByTestId('storage-phase')).toHaveText('sincronizando…');
+  await expect(page.getByTestId('folder-sync')).toBeDisabled();
+  await expect(page.getByTestId('folder-sync')).toHaveText('Sincronizando…');
+
+  // Cerrar y volver a abrir no lo habilita.
+  await page.getByTestId('settings-close').click();
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-storage').click();
+  await expect(page.getByTestId('folder-sync')).toBeDisabled();
+
+  release();
+  await expect(page.getByTestId('storage-phase')).toHaveText('sincronizado');
+  await expect(page.getByTestId('folder-sync')).toBeEnabled();
+  await expect(page.getByTestId('folder-sync')).toHaveText('Sincronizar ahora');
+});

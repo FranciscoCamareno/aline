@@ -558,3 +558,23 @@ describe('cifrado opcional en Drive (diseño §13.1)', () => {
     expect(await body(a, note.id)).toBe('editado en B tras el cambio');
   });
 });
+
+describe('Drive: menos peticiones al publicar', () => {
+  it('la copia legible se escribe con el cuerpo recién subido, sin descargarlo de Drive', async () => {
+    const drive = new FakeDrive();
+    const a = await device(drive);
+    const note = await a.service.createDocument('note', 'Rápida');
+    await a.engine.runCycle();
+    await edit(a, note.id, 'texto nuevo');
+    drive.requests = [];
+    expect((await a.engine.runCycle()).pushedRevisions).toBe(1);
+    const downloaded = drive.requests
+      .filter((r) => r.method === 'GET' && /^\/drive\/v3\/files\/[^/]+$/.test(r.path))
+      .map((r) => drive.files.get(r.path.split('/').pop()!)?.mimeType);
+    expect(downloaded).not.toContain('text/markdown');
+    // La copia legible está y tiene el texto.
+    const b = await device(drive, a);
+    await b.engine.runCycle();
+    expect(await body(b, note.id)).toBe('texto nuevo');
+  });
+});

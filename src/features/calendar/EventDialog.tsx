@@ -254,6 +254,7 @@ export function EventDialog({ service }: { service: VaultService }) {
           <label className="field">
             <span>{t('calendar.eventTitle')}</span>
             <input
+              name="event-title"
               ref={titleRef}
               value={event.title}
               maxLength={500}
@@ -264,6 +265,7 @@ export function EventDialog({ service }: { service: VaultService }) {
           <label className="field">
             <span>{t('calendar.calendarField')}</span>
             <select
+              name="event-calendar"
               value={calendarId}
               data-testid="event-calendar"
               onChange={(e) => setCalendarId(e.target.value)}
@@ -277,6 +279,7 @@ export function EventDialog({ service }: { service: VaultService }) {
           </label>
           <label className="field-check">
             <input
+              name="event-all-day"
               type="checkbox"
               checked={allDay}
               data-testid="event-all-day"

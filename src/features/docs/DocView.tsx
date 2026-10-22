@@ -770,7 +770,7 @@ function DocEditor({
               colocando bien el cursor y la selección. */}
           <div className="doc-sheet" style={{ zoom: zoom / 100 }} onClick={onClick}>
             <EditorContent editor={editor} />
-            <input
+            <input name="doc-image-input"
               ref={imageInput}
               type="file"
               accept={IMAGE_ACCEPT}

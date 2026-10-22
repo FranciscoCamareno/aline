@@ -735,6 +735,7 @@ export function LibrarySidebar({
                 }}
               >
                 <input
+                  name="new-folder-input"
                   autoFocus
                   value={newFolder}
                   placeholder={t('library.folderName')}
@@ -749,6 +750,7 @@ export function LibrarySidebar({
               </form>
             )}
             <input
+              name="import-files-input"
               ref={fileInput}
               type="file"
               hidden
@@ -762,6 +764,7 @@ export function LibrarySidebar({
               }}
             />
             <input
+              name="import-folder-input"
               ref={folderInput}
               type="file"
               hidden
@@ -779,6 +782,7 @@ export function LibrarySidebar({
           <label className="library-search">
             <Icon name="buscar" size={18} />
             <input
+              name="library-search"
               type="search"
               value={query}
               placeholder={t('library.searchPlaceholder')}

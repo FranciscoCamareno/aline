@@ -102,6 +102,7 @@ export function TemplatesPanel({ api, service, selectionActive, onClose }: Props
           }}
         >
           <input
+            name="template-name"
             autoFocus
             value={name}
             aria-label={t('templates.name')}

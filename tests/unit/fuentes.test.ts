@@ -45,14 +45,20 @@ describe('catálogo de fuentes (fase 8.2)', () => {
       'utf8',
     );
     const files = [...patch.matchAll(/^\+\+\+ b\/(\S+)$/gm)].map((m) => m[1]!);
-    expect(files).toHaveLength(2);
-    for (const file of files) {
-      const code = readFileSync(
-        join(process.cwd(), 'node_modules', '@excalidraw', 'excalidraw', file),
-        'utf8',
-      );
-      expect(code).toContain('__alineExtraFonts');
+    const code = (file: string) =>
+      readFileSync(join(process.cwd(), 'node_modules', '@excalidraw', 'excalidraw', file), 'utf8');
+    // Fuentes extra y sin CDN de respaldo (plan 8.2, 9.1): el fragmento con las fuentes.
+    const fonts = files.filter((f) => code(f).includes('__alineExtraFonts'));
+    expect(fonts.map((f) => f.split('/')[1])).toEqual(['dev', 'prod']);
+    for (const file of fonts) expect(code(file)).toMatch(/!urls\.length|r\.length\|\|r\.push/);
+    // pagehide en lugar de unload (Chrome lo retira): el índice de cada compilación.
+    const pages = files.filter((f) => f.endsWith('/index.js'));
+    expect(pages.map((f) => f.split('/')[1])).toEqual(['dev', 'prod']);
+    for (const file of pages) {
+      expect(code(file)).not.toMatch(/\(window, ?"unload"/);
+      expect(code(file)).toMatch(/\(window, ?"pagehide", ?this\.onUnload/);
     }
+    expect(files).toHaveLength(4);
   });
 });
 

@@ -28,7 +28,7 @@ La aplicación es estática: no hay servidor de aplicación ni base de datos rem
 - `Referrer-Policy: strict-origin-when-cross-origin`;
 - `Permissions-Policy`.
 
-`tests/e2e/csp.spec.ts` sirve la aplicación con esa CSP y falla ante cualquier violación. La parte de Google solo se comprueba con Google real: tras publicar, conecta Drive, sincroniza, recarga y desconecta con la consola abierta. Si Google cambiara y algo se bloqueara (avisos «Refused to…»), vuelve temporalmente a `Content-Security-Policy-Report-Only`, añade el origen que falte y repite.
+Al conectar Drive, la consola muestra avisos «Cross-Origin-Opener-Policy policy would block the window.closed call»: los produce la librería de Google al vigilar su ventana de inicio de sesión, no la CSP, y son esperables (no impiden autorizar). `tests/e2e/csp.spec.ts` sirve la aplicación con esa CSP y falla ante cualquier violación. La parte de Google solo se comprueba con Google real: tras publicar, conecta Drive, sincroniza, recarga y desconecta con la consola abierta. Si Google cambiara y algo se bloqueara (avisos «Refused to…»), vuelve temporalmente a `Content-Security-Policy-Report-Only`, añade el origen que falte y repite.
 
 **Antes de publicar,** ejecuta `pnpm verify` y `pnpm test:e2e`.
 

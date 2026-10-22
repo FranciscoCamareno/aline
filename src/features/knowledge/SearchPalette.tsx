@@ -83,6 +83,7 @@ export function SearchPalette({ search, onClose }: Props) {
         }}
       >
         <input
+          name="search-input"
           autoFocus
           type="search"
           value={query}

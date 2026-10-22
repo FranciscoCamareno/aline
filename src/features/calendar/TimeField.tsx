@@ -100,6 +100,7 @@ export function TimeField({
     <label className="field time-field">
       <span>{label}</span>
       <input
+        name="time"
         ref={input}
         type="text"
         inputMode="numeric"

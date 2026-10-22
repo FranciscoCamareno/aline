@@ -19,6 +19,7 @@ import {
   type RemoteChangePage,
   type RemoteObject,
   type RemoteStore,
+  type WrittenCopy,
 } from '../../ports/RemoteStore.ts';
 import type { VaultCipher } from '../../shared/crypto.ts';
 import { utf8Decode, utf8Encode } from '../../shared/hash.ts';
@@ -44,6 +45,8 @@ type Kind =
 /** Además del feed de cambios, cada cierto tiempo se relista todo (reintenta lo rechazado). */
 const FULL_LISTING_MS = 10 * 60_000;
 const OCTET = 'application/octet-stream';
+/** Cuerpos recientes que se recuerdan para escribir las copias legibles. */
+const RECENT_BODIES = 32;
 
 export const ENCRYPTED_README = `# Almacén cifrado de MindNote
 
@@ -218,6 +221,11 @@ export class DriveRemoteStore implements RemoteStore {
   /** revisionId → fileId de la última lista completa (evita una búsqueda por revisión). */
   private revisionFiles = new Map<string, string>();
   private readonly controlCache = new Map<string, VersionPrune | null>();
+  /**
+   * Cuerpos Markdown recién subidos (hash → bytes, los últimos): la copia legible de su versión
+   * se escribe sin volver a buscarlos y descargarlos de Drive.
+   */
+  private readonly recentBodies = new Map<string, Uint8Array>();
   private lastFullListing = 0;
   private readonly now: () => number;
 
@@ -399,6 +407,7 @@ export class DriveRemoteStore implements RemoteStore {
   }
 
   async putObject(object: RemoteObject, operationId: string): Promise<void> {
+    if (!this.cipher && object.role === 'note') this.rememberBody(object.hash, object.bytes);
     const key = await this.objectKey(object.hash);
     // Idempotente: una respuesta perdida no duplica el objeto en el siguiente intento.
     if ((await this.client.list(this.where('object', { hash: key }))).length) return;
@@ -431,17 +440,20 @@ export class DriveRemoteStore implements RemoteStore {
     );
   }
 
-  async publishRevision(revision: Revision, operationId: string): Promise<void> {
+  async publishRevision(revision: Revision, operationId: string): Promise<WrittenCopy | null> {
     const { vaultId } = await this.ids();
     if ((await this.client.list(this.where('revision', { revisionId: revision.id }))).length) {
-      return;
+      return null;
     }
+    let written: WrittenCopy | null = null;
     // Copia legible por versión (§8.3), antes de la revisión; no existe si se cifra.
     if (!this.cipher && isMarkdownKind(revision.metadata.kind) && revision.contentRefs.body) {
       const existing = await this.client.list(this.where('readable', { revisionId: revision.id }));
-      const body = existing.length ? null : await this.getObject(revision.contentRefs.body);
+      const hash = revision.contentRefs.body;
+      const recent = this.recentBodies.get(hash);
+      const body = existing.length ? null : recent ? { bytes: recent } : await this.getObject(hash);
       if (body) {
-        await this.client.createFile(
+        const copy = await this.client.createFile(
           {
             name: `${revision.id}.md`,
             parents: [await this.dir(`readable/${revision.documentId}`)],
@@ -453,6 +465,10 @@ export class DriveRemoteStore implements RemoteStore {
           },
           body.bytes,
         );
+        written = {
+          path: `readable/${revision.documentId}/${revision.id}.md`,
+          lastModified: copy.modifiedTime ? Date.parse(copy.modifiedTime) : 0,
+        };
       }
     }
     const file = await this.client.createFile(
@@ -470,6 +486,7 @@ export class DriveRemoteStore implements RemoteStore {
       await this.seal('revision', revision.id, jsonBytes(revision)),
     );
     this.revisionFiles.set(revision.id, file.id);
+    return written;
   }
 
   async publishControl(control: VersionPrune): Promise<void> {
@@ -563,6 +580,15 @@ export class DriveRemoteStore implements RemoteStore {
 
   private open(scope: 'revision' | 'control', id: string, bytes: Uint8Array) {
     return this.cipher ? this.cipher.decrypt(scope, id, bytes) : Promise.resolve(bytes);
+  }
+
+  private rememberBody(hash: string, bytes: Uint8Array) {
+    this.recentBodies.delete(hash);
+    this.recentBodies.set(hash, bytes);
+    // Unos pocos bastan: el motor publica cada versión justo después de subir sus objetos.
+    while (this.recentBodies.size > RECENT_BODIES) {
+      this.recentBodies.delete(this.recentBodies.keys().next().value!);
+    }
   }
 
   /** Busca o crea una subcarpeta (`revisions`, `readable/<doc>`…); se memoriza por sesión. */

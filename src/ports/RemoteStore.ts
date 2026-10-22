@@ -20,6 +20,12 @@ export interface RemoteChangePage {
 /** `data`: cuerpo JSON de un calendario o un documento (objects/<sha256>.json, como las extensiones). */
 export type ObjectRole = 'note' | 'canvas' | 'extensions' | 'data' | 'asset';
 
+/** Copia legible recién escrita al publicar una revisión. */
+export interface WrittenCopy {
+  path: string;
+  lastModified: number;
+}
+
 export interface RemoteObject {
   hash: string;
   role: ObjectRole;
@@ -49,8 +55,12 @@ export interface RemoteStore {
   getObject(hash: string): Promise<{ bytes: Uint8Array; mimeType: string } | null>;
   /** Idempotente: un objeto con el mismo hash ya presente no se vuelve a escribir. */
   putObject(object: RemoteObject, operationId: string): Promise<void>;
-  /** Idempotente por id de revisión; las notas publican además su copia legible. */
-  publishRevision(revision: Revision, operationId: string): Promise<void>;
+  /**
+   * Idempotente por id de revisión; las notas publican además su copia legible. Si la escribió
+   * ahora, devuelve su ruta y fecha para que el motor no tenga que descargarla en el siguiente
+   * ciclo solo para saber que nadie la editó fuera (§8.3).
+   */
+  publishRevision(revision: Revision, operationId: string): Promise<WrittenCopy | null>;
   publishControl(control: VersionPrune): Promise<void>;
   /** Índices aceleradores (heads/<dispositivo>.json y catalog.json); nunca son autoridad. */
   publishIndexes(deviceId: string, documents: DocumentRecord[], vault: Vault): Promise<void>;

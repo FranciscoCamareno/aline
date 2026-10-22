@@ -28,7 +28,7 @@ The app is static: there is no application server and no remote database (spec �
 - `Referrer-Policy: strict-origin-when-cross-origin`;
 - `Permissions-Policy`.
 
-`tests/e2e/csp.spec.ts` serves the app with that CSP and fails on any violation. The Google part can only be checked against real Google: after publishing, connect Drive, sync, reload and disconnect with the console open. If Google changed and something got blocked ("Refused to…" messages), temporarily switch back to `Content-Security-Policy-Report-Only`, add the missing origin and try again.
+When connecting Drive, the console shows "Cross-Origin-Opener-Policy policy would block the window.closed call" warnings: Google's library produces them while watching its sign-in window, not the CSP, and they are expected (they don't prevent authorizing). `tests/e2e/csp.spec.ts` serves the app with that CSP and fails on any violation. The Google part can only be checked against real Google: after publishing, connect Drive, sync, reload and disconnect with the console open. If Google changed and something got blocked ("Refused to…" messages), temporarily switch back to `Content-Security-Policy-Report-Only`, add the missing origin and try again.
 
 **Before publishing,** run `pnpm verify` and `pnpm test:e2e`.
 

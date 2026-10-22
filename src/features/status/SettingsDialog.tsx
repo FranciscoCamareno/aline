@@ -162,6 +162,7 @@ function CursorSettings() {
         <small className="muted">{t('preferences.cursorsHint')}</small>
       </span>
       <select
+        name="cursor-preference"
         aria-label={t('preferences.cursors')}
         value={preference}
         data-testid="cursor-preference"
@@ -270,6 +271,7 @@ export function AppearanceSettings() {
           <small className="muted">{t('preferences.followSystemHint')}</small>
         </span>
         <input
+          name="theme-system"
           type="checkbox"
           checked={preference === 'system'}
           data-testid="theme-system"
@@ -292,6 +294,7 @@ export function LanguageSettings() {
         <small className="muted">{t('settings.languageHint')}</small>
       </span>
       <select
+        name="language"
         aria-label={t('app.language')}
         value={i18n.language.startsWith('en') ? 'en' : 'es'}
         onChange={(e) => setLanguage(e.target.value as AppLanguage)}
@@ -315,6 +318,7 @@ function WeekStartSettings() {
       <Icon name="calendario" size={18} />
       <span>{t('calendar.weekStart')}</span>
       <select
+        name="week-start"
         aria-label={t('calendar.weekStart')}
         value={weekStart}
         data-testid="week-start"

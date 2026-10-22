@@ -2,10 +2,12 @@ import { checkRevision } from '../domain/compat.ts';
 import type { Revision } from '../domain/revision.ts';
 import { versionPruneSchema, type Vault, type VersionPrune } from '../domain/vault.ts';
 import { sha256Hex } from '../shared/hash.ts';
+import { forEachLimited, onceByKey } from '../shared/pool.ts';
 import { bodyRole } from './vaultFormat.ts';
 import {
   RemoteError,
   type ObjectRole,
+  type ReadableCopy,
   type RemoteStore,
   type SyncCycleResult,
   type SyncEngine as SyncEnginePort,
@@ -48,6 +50,14 @@ export interface SyncEngineDeps {
 /** Tamaño de lote al activar revisiones descargadas (limita la memoria del staging). */
 const BATCH = 100;
 const MAX_ATTEMPTS = 4;
+/**
+ * Peticiones simultáneas al destino. Cada versión son varias peticiones pequeñas; en serie, un
+ * centenar de versiones pendientes tardaba minutos con Drive. Cuatro a la vez quedan muy por
+ * debajo de los límites de la API (los 429 se reintentan con Retry-After).
+ */
+const CONCURRENCY = 4;
+/** Versiones que se descargan a la vez antes de activarlas (limita la memoria). */
+const PULL_CHUNK = 24;
 
 function refsWithRole(rev: Revision): Array<[string, ObjectRole]> {
   const out: Array<[string, ObjectRole]> = [];
@@ -148,45 +158,58 @@ export class SyncEngine implements SyncEnginePort {
         blobs = new Map();
       };
 
+      const wanted: string[] = [];
       for (const id of page.revisionIds) {
         if (retired.has(id)) continue;
-        if (await local.hasRevision(id)) {
-          known.push(id);
-          continue;
-        }
-        const raw = await this.retry(() => remote.getRevision(id));
-        const reason = raw === null ? 'invalid-content' : checkRevision(raw);
-        // Una versión posterior se acepta: se abrirá en solo lectura (§5).
-        if (reason === 'invalid-content' || (raw as Revision).id !== id) {
-          rejected.push({ revisionId: id, reason: 'invalid-schema' });
-          continue;
-        }
-        const rev = raw as Revision;
-        let complete = true;
-        for (const [hash] of refsWithRole(rev)) {
-          if (blobs.has(hash) || (await local.hasBlob(hash))) continue;
-          const object = await this.retry(() => remote.getObject(hash));
-          if (!object) {
-            // Subida parcial de otro equipo: se reintentará en el próximo ciclo.
-            rejected.push({ revisionId: id, reason: 'missing-object' });
-            complete = false;
-            break;
+        if (await local.hasRevision(id)) known.push(id);
+        else wanted.push(id);
+      }
+      // Se descargan varias a la vez (con sus objetos) y se activan en el orden de la página.
+      for (let start = 0; start < wanted.length; start += PULL_CHUNK) {
+        const chunk = wanted.slice(start, start + PULL_CHUNK);
+        const fetched = new Map<string, Revision>();
+        const object = onceByKey<StoredBlob | 'missing' | 'hash-mismatch'>();
+        await forEachLimited(chunk, CONCURRENCY, async (id) => {
+          const raw = await this.retry(() => remote.getRevision(id));
+          const reason = raw === null ? 'invalid-content' : checkRevision(raw);
+          // Una versión posterior se acepta: se abrirá en solo lectura (§5).
+          if (reason === 'invalid-content' || (raw as Revision).id !== id) {
+            rejected.push({ revisionId: id, reason: 'invalid-schema' });
+            return;
           }
-          if ((await sha256Hex(object.bytes)) !== hash) {
-            rejected.push({ revisionId: id, reason: 'hash-mismatch' });
-            complete = false;
-            break;
+          const rev = raw as Revision;
+          for (const [hash] of refsWithRole(rev)) {
+            if (blobs.has(hash) || (await local.hasBlob(hash))) continue;
+            const result = await object(hash, async () => {
+              const got = await this.retry(() => remote.getObject(hash));
+              if (!got) return 'missing';
+              if ((await sha256Hex(got.bytes)) !== hash) return 'hash-mismatch';
+              return {
+                hash,
+                mimeType: got.mimeType,
+                byteLength: got.bytes.byteLength,
+                bytes: got.bytes,
+              };
+            });
+            if (result === 'missing') {
+              // Subida parcial de otro equipo: se reintentará en el próximo ciclo.
+              rejected.push({ revisionId: id, reason: 'missing-object' });
+              return;
+            }
+            if (result === 'hash-mismatch') {
+              rejected.push({ revisionId: id, reason: 'hash-mismatch' });
+              return;
+            }
+            blobs.set(hash, result);
           }
-          blobs.set(hash, {
-            hash,
-            mimeType: object.mimeType,
-            byteLength: object.bytes.byteLength,
-            bytes: object.bytes,
-          });
+          fetched.set(id, rev);
+        });
+        for (const id of chunk) {
+          const rev = fetched.get(id);
+          if (!rev) continue;
+          batch.push(rev);
+          if (batch.length >= BATCH) await flush();
         }
-        if (!complete) continue;
-        batch.push(rev);
-        if (batch.length >= BATCH) await flush();
       }
       await flush();
       if (known.length) await local.markPublished(target, 'rev', known);
@@ -200,27 +223,50 @@ export class SyncEngine implements SyncEnginePort {
     const externalEdits = await this.importExternalEdits(changed);
 
     // 4. Saliente: objetos primero, revisión al final; operationId = id de la revisión.
+    // Documentos distintos van en paralelo; las versiones de un mismo documento, en orden, para
+    // que una versión nunca se publique antes que su padre.
     const pending = await local.unpublishedRevisions(target);
-    const pushed: string[] = [];
+    const byDocument = new Map<string, Revision[]>();
     for (const rev of pending) {
-      let ready = true;
-      for (const [hash, role] of refsWithRole(rev)) {
-        if (await local.isPublished(target, 'obj', hash)) continue;
-        const blob = await reader.getBlob(hash);
-        if (!blob) {
-          ready = false;
-          break;
-        }
-        await this.retry(() =>
-          remote.putObject({ hash, role, mimeType: blob.mimeType, bytes: blob.bytes }, rev.id),
-        );
-        await local.markPublished(target, 'obj', [hash]);
-      }
-      if (!ready) continue;
-      await this.retry(() => remote.publishRevision(rev, rev.id));
-      await local.markPublished(target, 'rev', [rev.id]);
-      pushed.push(rev.id);
+      const list = byDocument.get(rev.documentId);
+      if (list) list.push(rev);
+      else byDocument.set(rev.documentId, [rev]);
     }
+    const pushed: string[] = [];
+    // Un objeto compartido por dos documentos se sube una sola vez.
+    const upload = onceByKey<void>();
+    await forEachLimited([...byDocument.values()], CONCURRENCY, async (revisions) => {
+      for (const rev of revisions) {
+        let ready = true;
+        for (const [hash, role] of refsWithRole(rev)) {
+          if (await local.isPublished(target, 'obj', hash)) continue;
+          const blob = await reader.getBlob(hash);
+          if (!blob) {
+            ready = false;
+            break;
+          }
+          await upload(hash, async () => {
+            await this.retry(() =>
+              remote.putObject({ hash, role, mimeType: blob.mimeType, bytes: blob.bytes }, rev.id),
+            );
+            await local.markPublished(target, 'obj', [hash]);
+          });
+        }
+        // Sin sus objetos, ni esta versión ni las siguientes del documento (que descienden de
+        // ella) se publican en este ciclo.
+        if (!ready) return;
+        const copy = await this.retry(() => remote.publishRevision(rev, rev.id));
+        await local.markPublished(target, 'rev', [rev.id]);
+        // La copia que acabamos de escribir ya está «vista»: no se descarga para comprobarla.
+        if (copy && rev.contentRefs.body) {
+          await local.setObservation(target, copy.path, {
+            hash: rev.contentRefs.body,
+            lastModified: copy.lastModified,
+          });
+        }
+        pushed.push(rev.id);
+      }
+    });
     await local.clearOutbox(pushed);
     await this.publishControls();
 
@@ -262,12 +308,23 @@ export class SyncEngine implements SyncEnginePort {
     const { remote, local, reader, target, importExternal } = this.deps;
     if (!importExternal) return 0;
     let imported = 0;
+    // Primero se decide qué copias hay que leer y se descargan varias a la vez; después se
+    // procesan en orden, como siempre.
+    const toRead: Array<{ copy: ReadableCopy; rev: Revision }> = [];
     for (const copy of await this.retry(() => remote.listReadableCopies())) {
       const seen = await local.getObservation(target, copy.path);
       if (seen && seen.lastModified === copy.lastModified) continue;
       const rev = await reader.getRevision(copy.revisionId);
       if (rev?.documentId !== copy.documentId) continue; // aún no conocida: próximo ciclo
-      const bytes = await this.retry(() => copy.read());
+      toRead.push({ copy, rev });
+    }
+    const contents = new Map<string, Uint8Array>();
+    await forEachLimited(toRead, CONCURRENCY, async ({ copy }) => {
+      contents.set(copy.path, await this.retry(() => copy.read()));
+    });
+    for (const { copy, rev } of toRead) {
+      const seen = await local.getObservation(target, copy.path);
+      const bytes = contents.get(copy.path)!;
       const hash = await sha256Hex(bytes);
       if (hash === seen?.hash || hash === rev.contentRefs.body) {
         await local.setObservation(target, copy.path, {

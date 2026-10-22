@@ -100,6 +100,7 @@ export function DriveModeChooser({
           <label>
             {t('storage.enc.password', { min: MIN_PASSWORD_LENGTH })}
             <input
+              name="drive-password"
               type="password"
               autoComplete="new-password"
               data-testid="drive-password"
@@ -110,6 +111,7 @@ export function DriveModeChooser({
           <label>
             {t('storage.enc.confirm')}
             <input
+              name="drive-password-confirm"
               type="password"
               autoComplete="new-password"
               data-testid="drive-password-confirm"
@@ -183,6 +185,7 @@ function RecoveryCodeStep({
       </div>
       <label className="small">
         <input
+          name="drive-recovery-saved"
           type="checkbox"
           data-testid="drive-recovery-saved"
           checked={saved}
@@ -230,6 +233,7 @@ export function DriveUnlock({ onUnlock }: { onUnlock: (secret: string) => Promis
     <form className="notice" data-testid="drive-unlock" onSubmit={(e) => void submit(e)}>
       <p className="small">{t('storage.enc.unlockText')}</p>
       <input
+        name="drive-unlock-secret"
         type="password"
         autoComplete="current-password"
         data-testid="drive-unlock-secret"
@@ -327,6 +331,7 @@ export function DriveSecrets({
           <label>
             {t('storage.enc.current')}
             <input
+              name="current-password"
               type="password"
               autoComplete="current-password"
               value={current}
@@ -338,6 +343,7 @@ export function DriveSecrets({
               <label>
                 {t('storage.enc.password', { min: MIN_PASSWORD_LENGTH })}
                 <input
+                  name="new-password"
                   type="password"
                   autoComplete="new-password"
                   value={next}
@@ -347,6 +353,7 @@ export function DriveSecrets({
               <label>
                 {t('storage.enc.confirm')}
                 <input
+                  name="confirm-password"
                   type="password"
                   autoComplete="new-password"
                   value={confirm}

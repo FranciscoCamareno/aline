@@ -146,6 +146,7 @@ export function ExportDialog({
           <>
             <label className="inline-option">
               <input
+                name="export-background"
                 type="checkbox"
                 checked={background}
                 onChange={(e) => setBackground(e.target.checked)}
@@ -155,6 +156,7 @@ export function ExportDialog({
             <label className="inline-option">
               {t('export.scale')}
               <select
+                name="export-scale"
                 value={scale}
                 data-testid="export-scale"
                 onChange={(e) => setScale(Number(e.target.value))}
@@ -169,6 +171,7 @@ export function ExportDialog({
             </label>
             <label className="inline-option">
               <input
+                name="export-only-selected"
                 type="checkbox"
                 disabled={!hasSelection}
                 checked={onlySelected && hasSelection}

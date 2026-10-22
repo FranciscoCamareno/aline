@@ -94,6 +94,7 @@ export function VaultsSection({ services, onError }: Props) {
         }}
       >
         <input
+          name="vault-name"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t('vaults.newPlaceholder')}
@@ -120,6 +121,7 @@ export function VaultsSection({ services, onError }: Props) {
       <label className="file-button">
         {busy === 'restore' ? t('vaults.working') : t('vaults.restore')}
         <input
+          name="restore-file"
           type="file"
           accept=".zip,.json,application/zip,application/json"
           disabled={busy !== null}

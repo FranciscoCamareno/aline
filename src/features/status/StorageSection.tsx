@@ -186,11 +186,13 @@ export function StorageSection({ services, sync, onError }: Props) {
             ) : remote.phase !== 'needs-key' ? (
               <button
                 type="button"
-                disabled={busy}
+                // También mientras sincroniza el propio proceso (al cambiar algo, al volver a la
+                // pestaña…) o cuando se pidió antes de cerrar y reabrir este panel.
+                disabled={busy || remote.phase === 'syncing'}
                 data-testid="folder-sync"
                 onClick={() => void run(() => sync.sync())}
               >
-                {t('storage.syncNow')}
+                {remote.phase === 'syncing' ? t('storage.driveChip.syncing') : t('storage.syncNow')}
               </button>
             ) : null}
             <button

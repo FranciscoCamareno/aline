@@ -874,7 +874,7 @@ function MarkdownDocEditor({
       <div className="doc-scroll">
         <div className="doc-sheet" onClick={onClick}>
           <div ref={host} className="md-doc-host" />
-          <input
+          <input name="doc-image-input"
             ref={imageInput}
             type="file"
             accept={IMAGE_ACCEPT}
