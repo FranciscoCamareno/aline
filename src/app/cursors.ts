@@ -33,6 +33,31 @@ export const CURSOR_VALUES: ReadonlyMap<string, string> = new Map(
   }),
 );
 
+const systemUrls = import.meta.glob<string>('../../brand/cursors/sistema/*.svg', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
+
+/**
+ * Vista previa estática de Configuración (plan 10.4): los punteros básicos de «aline» junto a unos
+ * dibujos genéricos de los del sistema. Una página no puede leer los del sistema operativo, así que
+ * esos son orientativos (`brand/cursors/sistema/`).
+ */
+export const CURSOR_PREVIEW: readonly { name: string; aline: string; system: string }[] = [
+  'flecha',
+  'mano',
+  'texto',
+  'mover',
+  'cargando',
+].flatMap((name) => {
+  const find = (all: Record<string, string>) =>
+    Object.entries(all).find(([path]) => path.endsWith(`/${name}.svg`))?.[1];
+  const aline = find(urls);
+  const system = find(systemUrls);
+  return aline && system ? [{ name, aline, system }] : [];
+});
+
 /** Palabras clave con puntero propio (las que `var(--cursor-…)` puede sustituir). */
 export const CURSOR_KEYWORDS: ReadonlySet<string> = new Set(CURSOR_VALUES.keys());
 

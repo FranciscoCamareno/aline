@@ -49,12 +49,12 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
   - **Formatted document:** headings, bold, italic, underline, strikethrough, lists, quotes and alignment. It is edited only inside the app.
   - **Markdown document:** shown formatted but saved as Markdown, like a note: it has a readable copy in the folder or in unencrypted Drive, can be edited outside and is searchable. Saving normalises the Markdown (list style, for example). Images are shown as text, without downloading them.
   - **Folder:** for documents only.
-- **Continuous / Page** only changes the presentation (running text or an A4 sheet); there are no page breaks while editing.
+- **Continuous / Page** only changes the presentation (running text or an A4 sheet); there are no page breaks while editing. Rich documents show as a page and Markdown documents as continuous text; change it in **Profile → Preferences and language → Documents**, not from the document.
 - Before using documents, update the app on all your devices: an older version does not recognise them.
 
 ## 3 quater. Appearance and Zen mode
 
-- **Colour schemes:** in **Profile → Themes** you choose a light scheme (Paper, White, Mist or Sage) and a dark one (Night, Black, Tide or Forest). The switch at the top right toggles between them and remembers your choice; "Follow system" uses the light one by day and the dark one by night. The language is in **Profile → Language**.
+- **Colour schemes:** in **Profile → Preferences and language** you choose a light scheme (Paper, White, Mist or Sage) and a dark one (Night, Black, Tide or Forest). The switch at the top right toggles between them and remembers your choice; "Follow system" uses the light one by day and the dark one by night. The same section holds the pointer (with a preview of aline's and the system's), the language and the first day of the week.
 - The canvas is painted with the scheme's background, but what is saved and exported keeps its own background.
 - **Zen mode** (right-click the canvas → "Zen mode", or Alt+Z): it also hides the sidebar and the header. The canvas tools stay visible; leaving it brings everything back.
 

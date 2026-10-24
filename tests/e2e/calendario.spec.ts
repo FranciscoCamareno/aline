@@ -420,11 +420,11 @@ test('semana desde el domingo, hoja de «hoy» y buscar eventos (plan 9.12)', as
   await expect(page.getByTestId('event-title')).toHaveValue('Revisión de pruebas');
   await page.keyboard.press('Escape');
 
-  // Semana desde el domingo: Configuración → Idioma.
+  // Semana desde el domingo: Configuración → Preferencias e idioma.
   const headers = page.locator('.month-weekdays [role="columnheader"]');
   await expect(headers.first()).toHaveText('Lun');
   await page.getByTestId('open-profile').click();
-  await page.getByTestId('settings-language').click();
+  await page.getByTestId('settings-preferences').click();
   await page.getByTestId('week-start').selectOption('0');
   await page.keyboard.press('Escape');
   await expect(headers.first()).toHaveText('Dom');

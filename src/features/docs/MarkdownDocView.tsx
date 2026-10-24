@@ -59,7 +59,7 @@ import { wikiTriggerAt } from './wikiTrigger.ts';
 import { DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
 import { downloadMarkdown } from '../../app/importExport.ts';
 import { domSelectionRange } from './domSelection.ts';
-import { LayoutToggle, useDocLayout } from './layout.tsx';
+import { useDocLayout } from './layout.tsx';
 import { SelectionBubble } from './SelectionBubble.tsx';
 import {
   BlockStyleSelect,
@@ -286,7 +286,7 @@ function MarkdownDocEditor({
   placeholder: string;
 }) {
   const { t } = useTranslation();
-  const [layout, setLayout] = useDocLayout();
+  const layout = useDocLayout('mddoc');
   const host = useRef<HTMLDivElement>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [format, setFormat] = useState<FormatState>(EMPTY_FORMAT);
@@ -869,7 +869,6 @@ function MarkdownDocEditor({
         <span className="doc-format-badge" title={t('docs.markdownHint')}>
           Markdown
         </span>
-        <LayoutToggle layout={layout} onChange={setLayout} />
       </div>
       <div className="doc-scroll">
         <div className="doc-sheet" onClick={onClick}>

@@ -69,7 +69,7 @@ test('biblioteca: Nuevo, buscador, pestañas, menú de fila y pie', async ({ pag
   await expect(page.getByTestId('recent-item')).toHaveCount(2);
   await page.getByRole('tab', { name: 'Todos' }).click();
 
-  // Pie: solo Perfil, con su menú (almacenamiento, temas, idioma, archivo y papelera con su
+  // Pie: solo Perfil, con su menú (almacenamiento, preferencias e idioma, archivo y papelera con su
   // recuento). Cada opción abre Configuración en su sección; «Estado y diagnóstico» está en «⋯».
   // La ayuda ya no está aquí.
   await expect(page.getByTestId('open-help')).toHaveCount(0);
@@ -78,13 +78,19 @@ test('biblioteca: Nuevo, buscador, pestañas, menú de fila y pie', async ({ pag
   await page.getByTestId('open-profile').click();
   await expect(page.getByRole('menuitem')).toHaveText([
     'Almacenamiento',
-    'Temas',
-    /^Idioma/,
+    /^Preferencias e idioma/,
     /^Archivo\s*0$/,
     /^Papelera\s*0$/,
   ]);
-  await page.getByTestId('settings-language').click();
-  await expect(page.getByTestId('settings-section-language').getByLabel('Idioma')).toBeVisible();
+  await page.getByTestId('settings-preferences').click();
+  const preferences = page.getByTestId('settings-section-preferences');
+  await expect(preferences.getByLabel('Idioma', { exact: true })).toBeVisible();
+  // Apariencia, idioma y región y documentos en la misma sección (plan 10.2).
+  await expect(preferences.getByTestId('preferences-appearance')).toBeVisible();
+  await expect(preferences.getByTestId('preferences-region')).toContainText('La semana empieza el');
+  await expect(preferences.getByTestId('preferences-documents')).toBeVisible();
+  await expect(page.getByTestId('settings-tab-appearance')).toHaveCount(0);
+  await expect(page.getByTestId('settings-tab-language')).toHaveCount(0);
   // La navegación lateral cambia de sección sin cerrar el modal.
   await page.getByTestId('settings-tab-trash').click();
   await expect(page.getByTestId('trash-list')).toContainText('La papelera está vacía');
@@ -340,7 +346,7 @@ test('barra lateral en «solo iconos»: se elige en Apariencia y deja una column
 
   // Por defecto, plegar la oculta del todo.
   await page.getByTestId('open-profile').click();
-  await page.getByTestId('settings-appearance').click();
+  await page.getByTestId('settings-preferences').click();
   await expect(page.getByTestId('sidebar-collapse-hide')).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('sidebar-collapse-rail').click();
   await expect(page.getByTestId('sidebar-collapse-rail')).toHaveAttribute('aria-checked', 'true');
@@ -396,10 +402,24 @@ test('punteros de aline en la interfaz y en el lienzo, o los del sistema (plan 9
   await page.getByTestId('tool-shape').click();
   await expect.poll(canvasCursor).toBe('crosshair');
 
-  // «Del sistema» en Apariencia: vuelven los punteros del sistema, también en el lienzo.
+  // «Del sistema» en Preferencias: vuelven los punteros del sistema, también en el lienzo. Cada
+  // opción enseña sus cinco punteros básicos en una vista previa estática (plan 10.4).
   await page.getByTestId('open-profile').click();
-  await page.getByTestId('settings-appearance').click();
-  await page.getByTestId('cursor-preference').selectOption('system');
+  await page.getByTestId('settings-preferences').click();
+  const aline = page.getByTestId('cursor-preference-aline');
+  const system = page.getByTestId('cursor-preference-system');
+  await expect(aline).toHaveAttribute('aria-checked', 'true');
+  await expect(aline.locator('.cursor-preview img')).toHaveCount(5);
+  await expect(system.locator('.cursor-preview img')).toHaveCount(5);
+  await expect
+    .poll(() =>
+      system
+        .locator('.cursor-preview img')
+        .evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).naturalWidth > 0)),
+    )
+    .toBe(true);
+  await system.click();
+  await expect(system).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
   expect(await cursorOf('new-menu')).toBe('pointer');
   await page.getByTestId('tool-hand').click();

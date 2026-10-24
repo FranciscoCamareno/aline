@@ -559,7 +559,12 @@
     "cursors": "Puntero",
     "cursorsHint": "Los de aline o los del sistema (por ejemplo, si usas un puntero grande).",
     "cursorsAline": "aline",
-    "cursorsSystem": "Del sistema"
+    "cursorsSystem": "Del sistema",
+    "cursorsAlineNote": "Flecha, enlace, texto, mover y cargando.",
+    "cursorsSystemNote": "Orientativos: cada sistema dibuja los suyos.",
+    "docLayoutRich": "Documentos con formato",
+    "docLayoutMarkdown": "Documentos Markdown",
+    "docLayoutHint": "Cómo se presentan en este navegador."
   },
   "nav": {
     "links": "Enlaces",
@@ -786,7 +791,6 @@
     "placeholder": "Empieza a escribir…",
     "editor": "Contenido del documento",
     "toolbar": "Formato del documento",
-    "layout": "Presentación",
     "layout_continuous": "Continuo",
     "layout_page": "Hoja",
     "undo": "Deshacer",
@@ -866,17 +870,20 @@
     "title": "Configuración",
     "sections": {
       "storage": "Almacenamiento",
-      "appearance": "Apariencia",
-      "language": "Idioma",
+      "preferences": "Preferencias e idioma",
       "archive": "Archivo",
       "trash": "Papelera"
     },
     "menu": {
       "storage": "Almacenamiento",
+      "preferences": "Preferencias e idioma",
       "archive": "Archivo",
-      "themes": "Temas",
-      "language": "Idioma",
       "trash": "Papelera"
+    },
+    "groups": {
+      "appearance": "Apariencia",
+      "region": "Idioma y región",
+      "documents": "Documentos"
     },
     "languageHint": "Idioma de la interfaz en este navegador.",
     "languages": {

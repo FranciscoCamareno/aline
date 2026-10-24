@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../../app/ui/Icon.tsx';
 
@@ -29,11 +29,18 @@ export function RenameableTitle({
   const { t } = useTranslation();
   const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * Última petición atendida. Empieza en la del montaje: una fila que vuelve a montarse (cambio de
+   * sección, carpeta que se despliega, «Mostrar más») no debe reabrir una edición ya pedida antes
+   * (plan 10.1).
+   */
+  const handled = useRef(editRequest);
 
   useEffect(() => {
+    if (!editRequest || editRequest === handled.current) return;
+    handled.current = editRequest;
     // Abrir la edición cuando la pide otro control: sincroniza con una orden externa.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (editRequest) setDraft(title);
+    setDraft(title);
     // Solo cuenta la petición; el título vigente se toma en ese momento.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editRequest]);

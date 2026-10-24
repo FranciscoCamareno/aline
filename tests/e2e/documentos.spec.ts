@@ -72,10 +72,16 @@ test('documento con formato: crear, dar formato, cambiar la vista y que se guard
   await expect(editor.locator('strong')).toHaveText('uno');
   await expect(page.getByTestId('save-status')).toHaveText('Guardado en este dispositivo');
 
-  // La vista «Hoja» o «Continuo» es solo presentación.
-  // En la barra de los documentos con formato, la vista es un desplegable.
-  await page.getByTestId('doc-layout').click();
-  await page.getByTestId('doc-layout-continuous').click();
+  // La vista «Hoja» o «Continuo» es solo presentación; con formato, en hoja por defecto.
+  await expect(page.getByTestId('doc-view')).toHaveClass(/layout-page/);
+  // La presentación se elige solo en Configuración (plan 10.3): el documento no la ofrece.
+  await expect(page.getByTestId('doc-layout')).toHaveCount(0);
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-preferences').click();
+  await expect(page.getByTestId('doc-layout-doc')).toHaveValue('page');
+  await expect(page.getByTestId('doc-layout-mddoc')).toHaveValue('continuous');
+  await page.getByTestId('doc-layout-doc').selectOption('continuous');
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('doc-view')).toHaveClass(/layout-continuous/);
 
   // «Notas» no lo muestra; al volver a «Documentos» se abre el más reciente.
@@ -105,6 +111,9 @@ test('documento Markdown en una carpeta de «Documentos»: se guarda como Markdo
 
   const editor = page.getByTestId('md-doc-view').getByTestId('doc-editor');
   await expect(editor).toBeFocused();
+  // Los documentos Markdown salen en continuo y sin selector de vista (plan 10.3).
+  await expect(page.getByTestId('md-doc-view')).toHaveClass(/layout-continuous/);
+  await expect(page.getByTestId('doc-layout')).toHaveCount(0);
   await page.keyboard.type('Escena uno');
   await page.getByTestId('doc-block-style').selectOption('h2');
   await page.keyboard.press('End');

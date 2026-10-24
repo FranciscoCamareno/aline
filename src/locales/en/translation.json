@@ -559,7 +559,12 @@
     "cursors": "Pointer",
     "cursorsHint": "aline’s own or the system’s (for example, if you use a large pointer).",
     "cursorsAline": "aline",
-    "cursorsSystem": "System"
+    "cursorsSystem": "System",
+    "cursorsAlineNote": "Arrow, link, text, move and loading.",
+    "cursorsSystemNote": "For reference: each system draws its own.",
+    "docLayoutRich": "Rich documents",
+    "docLayoutMarkdown": "Markdown documents",
+    "docLayoutHint": "How they are shown in this browser."
   },
   "nav": {
     "links": "Links",
@@ -786,7 +791,6 @@
     "placeholder": "Start writing…",
     "editor": "Document content",
     "toolbar": "Document formatting",
-    "layout": "Layout",
     "layout_continuous": "Continuous",
     "layout_page": "Page",
     "undo": "Undo",
@@ -866,17 +870,20 @@
     "title": "Settings",
     "sections": {
       "storage": "Storage",
-      "appearance": "Appearance",
-      "language": "Language",
+      "preferences": "Preferences and language",
       "archive": "Archive",
       "trash": "Trash"
     },
     "menu": {
       "storage": "Storage",
+      "preferences": "Preferences and language",
       "archive": "Archive",
-      "themes": "Themes",
-      "language": "Language",
       "trash": "Trash"
+    },
+    "groups": {
+      "appearance": "Appearance",
+      "region": "Language and region",
+      "documents": "Documents"
     },
     "languageHint": "Interface language in this browser.",
     "languages": {

@@ -45,17 +45,11 @@ export function ProfileMenu({
           onSelect: () => onOpenSettings('storage'),
         },
         {
-          id: 'settings-appearance',
-          label: t('settings.menu.themes'),
-          icon: 'tema-sistema',
-          onSelect: () => onOpenSettings('appearance'),
-        },
-        {
-          id: 'settings-language',
-          label: t('settings.menu.language'),
-          icon: 'idioma',
+          id: 'settings-preferences',
+          label: t('settings.menu.preferences'),
+          icon: 'ajustes',
           hint: i18n.language.startsWith('en') ? 'EN' : 'ES',
-          onSelect: () => onOpenSettings('language'),
+          onSelect: () => onOpenSettings('preferences'),
         },
         {
           id: 'settings-archive',

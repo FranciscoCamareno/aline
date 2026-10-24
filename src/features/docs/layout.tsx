@@ -1,87 +1,48 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Icon } from '../../app/ui/Icon.tsx';
-import { Menu } from '../../app/ui/Menu.tsx';
+import { useSyncExternalStore } from 'react';
 
 /**
  * Presentación de un documento de la sección «Documentos»: texto corrido o una hoja A4. Es una
- * preferencia de este navegador (no contenido): no crea revisiones. La comparten Tiptap y Milkdown.
+ * preferencia de este navegador por tipo (no contenido): no crea revisiones. Desde el plan 10.3 se
+ * elige solo en Configuración → Preferencias e idioma; los documentos con formato salen en hoja y
+ * los Markdown en continuo. La clave anterior, común a los dos (`mindnote.docLayout`), se ignora.
  */
 export type DocLayout = 'continuous' | 'page';
-const LAYOUT_KEY = 'mindnote.docLayout';
+export type DocLayoutKind = 'doc' | 'mddoc';
 
-function readLayout(): DocLayout {
+const DEFAULTS: Record<DocLayoutKind, DocLayout> = { doc: 'page', mddoc: 'continuous' };
+const key = (kind: DocLayoutKind) => `mindnote.docLayout.${kind}`;
+const listeners = new Set<() => void>();
+
+function readLayout(kind: DocLayoutKind): DocLayout {
   try {
-    return localStorage.getItem(LAYOUT_KEY) === 'continuous' ? 'continuous' : 'page';
+    const stored = localStorage.getItem(key(kind));
+    return stored === 'continuous' || stored === 'page' ? stored : DEFAULTS[kind];
   } catch {
-    return 'page';
+    return DEFAULTS[kind];
   }
 }
 
-export function useDocLayout(): [DocLayout, (layout: DocLayout) => void] {
-  const [layout, setLayout] = useState<DocLayout>(readLayout);
-  const change = (next: DocLayout) => {
-    setLayout(next);
-    try {
-      localStorage.setItem(LAYOUT_KEY, next);
-    } catch {
-      // Sin almacenamiento del navegador: la preferencia dura lo que la pestaña.
-    }
-  };
-  return [layout, change];
-}
+const layouts: Record<DocLayoutKind, DocLayout> = {
+  doc: readLayout('doc'),
+  mddoc: readLayout('mddoc'),
+};
 
-/**
- * Selector «Continuo · Hoja» de la barra del documento. `compact`: un desplegable «Vista» con
- * las dos opciones (barra de los documentos con formato, donde no cabe el selector entero).
- */
-export function LayoutToggle({
-  layout,
-  onChange,
-  compact = false,
-}: {
-  layout: DocLayout;
-  onChange: (layout: DocLayout) => void;
-  compact?: boolean;
-}) {
-  const { t } = useTranslation();
-  if (compact) {
-    return (
-      <Menu
-        trigger={
-          <>
-            <Icon name="documento" size={18} />
-            <span className="doc-layout-label">{t(`docs.layout_${layout}`)}</span>
-            <Icon name="chevron-abajo" size={12} />
-          </>
-        }
-        label={t('docs.layout')}
-        triggerClassName="icon-button doc-layout-trigger"
-        testId="doc-layout"
-        placement="bottom-end"
-        items={(['continuous', 'page'] as const).map((value) => ({
-          id: `doc-layout-${value}`,
-          label: t(`docs.layout_${value}`),
-          ...(value === layout ? { icon: 'check' as const } : {}),
-          onSelect: () => onChange(value),
-        }))}
-      />
-    );
-  }
-  return (
-    <div className="segmented" role="group" aria-label={t('docs.layout')}>
-      {(['continuous', 'page'] as const).map((value) => (
-        <button
-          key={value}
-          type="button"
-          aria-pressed={layout === value}
-          data-testid={`doc-layout-${value}`}
-          className={`segmented-option${layout === value ? ' is-active' : ''}`}
-          onClick={() => onChange(value)}
-        >
-          {t(`docs.layout_${value}`)}
-        </button>
-      ))}
-    </div>
+export function useDocLayout(kind: DocLayoutKind): DocLayout {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => layouts[kind],
   );
+}
+
+export function setDocLayout(kind: DocLayoutKind, layout: DocLayout): void {
+  layouts[kind] = layout;
+  try {
+    localStorage.setItem(key(kind), layout);
+  } catch {
+    // Sin almacenamiento del navegador: la preferencia dura lo que la pestaña.
+  }
+  for (const listener of listeners) listener();
 }

@@ -113,14 +113,14 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   stickers de la marca (B), que se colocan con clic o arrastrándolos al lienzo y conservan su
   color en el tema oscuro. Los demás atajos de teclado son los del motor.
 - **Punteros propios** de aline, en estilo pegatina (`brand/cursors/`), en la interfaz y en el
-  lienzo; en Configuración → Apariencia se puede volver a los del sistema.
+  lienzo; en Configuración → Preferencias e idioma se puede volver a los del sistema.
 - **Mapa mental en el lienzo:** con un nodo seleccionado, Tab crea un hijo conectado listo para
   escribir; «Plegar rama» oculta los descendientes (con un contador «+N» junto al nodo) y
   «Desplegar» los devuelve a su sitio; lo plegado no sale en PNG, SVG ni PDF. «Tarjeta de nota»
   pone en el lienzo una tarjeta con el título y un extracto de una nota, que sigue a la nota.
 - **Versiones:** el historial muestra cuánto ocupan y deja eliminar una versión o las anteriores
   a ella (nunca la actual).
-- **Barra lateral plegable** (Configuración → Apariencia): al plegarla se oculta del todo o queda
+- **Barra lateral plegable** (Configuración → Preferencias e idioma): al plegarla se oculta del todo o queda
   una columna de iconos con las secciones, Nuevo, Buscar y Perfil.
 - **Calendario** (DESIGN.md §8): sección propia de la barra lateral, vistas de día, semana y mes,
   eventos de todo el día, con hora o de varios días con los colores de las notas adhesivas,
@@ -160,7 +160,7 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   origen y descargadas solo al usarse, en el selector de fuentes del lienzo (con un parche de
   Excalidraw) y en la barra de los documentos con formato, junto con el tamaño (A− / A+).
 - **Tema y esquemas de color:** 8 esquemas en 4 pares (Papel/Noche, Blanco/Negro, Bruma/Marea,
-  Salvia/Bosque). En Configuración → Apariencia (y en la bienvenida) se elige uno claro y uno
+  Salvia/Bosque). En Configuración → Preferencias e idioma (y en la bienvenida) se elige uno claro y uno
   oscuro; el interruptor de la cabecera alterna entre ellos y «Seguir al sistema» usa el que
   toque (preferencias de este navegador). El lienzo pinta el fondo del esquema sin guardarlo.
   Fuente Nunito servida desde el propio origen.

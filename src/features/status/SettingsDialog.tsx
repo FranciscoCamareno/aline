@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, setLanguage, type AppLanguage } from '../../app/i18n.ts';
 import {
@@ -14,19 +14,24 @@ import type { SyncRuntime } from '../../app/syncRuntime.ts';
 import { setScheme, setThemePreference, useTheme } from '../../app/theme.ts';
 import { setWeekStart, useWeekStart } from '../calendar/calendarPrefs.ts';
 import { setSidebarCollapse, useSidebarCollapse } from '../../app/sidebarPref.ts';
-import { setCursorPreference, useCursorPreference } from '../../app/cursors.ts';
+import {
+  CURSOR_PREVIEW,
+  setCursorPreference,
+  useCursorPreference,
+  type CursorPreference,
+} from '../../app/cursors.ts';
 import { Icon, KindIcon, type IconName } from '../../app/ui/Icon.tsx';
 import { isFolderKind } from '../../domain/revision.ts';
+import { setDocLayout, useDocLayout, type DocLayoutKind } from '../docs/layout.tsx';
 import { StorageSection } from './StorageSection.tsx';
 
 /** Secciones de la configuración, en el orden de la navegación lateral. */
-export const SETTINGS_SECTIONS = ['storage', 'appearance', 'language', 'archive', 'trash'] as const;
+export const SETTINGS_SECTIONS = ['storage', 'preferences', 'archive', 'trash'] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 const SECTION_ICONS: Record<SettingsSection, IconName> = {
   storage: 'nube',
-  appearance: 'tema-sistema',
-  language: 'idioma',
+  preferences: 'ajustes',
   archive: 'archivar',
   trash: 'eliminar',
 };
@@ -45,7 +50,8 @@ interface Props {
 
 /**
  * Configuración (se abre desde el menú de Perfil de la barra lateral y desde el estado remoto de
- * la cabecera): navegación lateral con almacenamiento, apariencia, idioma y papelera. Un modal:
+ * la cabecera): navegación lateral con almacenamiento, preferencias e idioma, archivo y papelera.
+ * Un modal:
  * almacenamiento incluye decisiones con consecuencias (RN-12, cifrado), así que no se cierra por
  * un clic accidental fuera, que perdería una contraseña a medio escribir.
  */
@@ -124,17 +130,22 @@ export function SettingsDialog({
                 )}
               </>
             )}
-            {section === 'appearance' && (
+            {/* Preferencias e idioma (plan 10.2): lo que antes eran Apariencia e Idioma. */}
+            {section === 'preferences' && (
               <>
-                <AppearanceSettings />
-                <CursorSettings />
-                <SidebarCollapseSettings />
-              </>
-            )}
-            {section === 'language' && (
-              <>
-                <LanguageSettings />
-                <WeekStartSettings />
+                <PreferenceGroup id="appearance">
+                  <AppearanceSettings />
+                  <CursorSettings />
+                  <SidebarCollapseSettings />
+                </PreferenceGroup>
+                <PreferenceGroup id="region">
+                  <LanguageSettings />
+                  <WeekStartSettings />
+                </PreferenceGroup>
+                <PreferenceGroup id="documents">
+                  <DocLayoutSettings kind="doc" />
+                  <DocLayoutSettings kind="mddoc" />
+                </PreferenceGroup>
               </>
             )}
             {section === 'archive' && (
@@ -150,26 +161,108 @@ export function SettingsDialog({
   );
 }
 
-/** Punteros de «aline» o del sistema (plan 9.18): quien use un puntero grande del sistema lo conserva. */
+/** Grupo de Preferencias e idioma con su título (plan 10.2). */
+function PreferenceGroup({
+  id,
+  children,
+}: {
+  id: 'appearance' | 'region' | 'documents';
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section
+      className="preference-group"
+      aria-labelledby={`preferences-${id}-title`}
+      data-testid={`preferences-${id}`}
+    >
+      <h4 id={`preferences-${id}-title`} className="preference-group-title">
+        {t(`settings.groups.${id}`)}
+      </h4>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * Punteros de «aline» o del sistema (plan 9.18): quien use un puntero grande del sistema lo
+ * conserva. Cada opción muestra los básicos en una vista previa estática (plan 10.4); los del
+ * sistema son dibujos orientativos.
+ */
 function CursorSettings() {
   const { t } = useTranslation();
   const preference = useCursorPreference();
   return (
-    <label className="preference-row">
-      <Icon name="puntero" size={18} />
-      <span>
+    <section className="scheme-group" aria-labelledby="cursor-preference-title">
+      <h4 id="cursor-preference-title" className="section-title">
         {t('preferences.cursors')}
-        <small className="muted">{t('preferences.cursorsHint')}</small>
+      </h4>
+      <p className="muted small">{t('preferences.cursorsHint')}</p>
+      <div className="scheme-grid" role="radiogroup" aria-labelledby="cursor-preference-title">
+        {(['aline', 'system'] as const satisfies readonly CursorPreference[]).map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={preference === value}
+            className={`scheme-card${preference === value ? ' is-selected' : ''}`}
+            data-testid={`cursor-preference-${value}`}
+            onClick={() => setCursorPreference(value)}
+          >
+            <span className="cursor-preview" aria-hidden="true">
+              {CURSOR_PREVIEW.map((cursor) => (
+                <img
+                  key={cursor.name}
+                  src={cursor[value]}
+                  alt=""
+                  width={32}
+                  height={32}
+                  draggable={false}
+                />
+              ))}
+            </span>
+            <span className="scheme-name">
+              {t(value === 'aline' ? 'preferences.cursorsAline' : 'preferences.cursorsSystem')}
+              {preference === value && <Icon name="check" size={16} />}
+            </span>
+            <span className="scheme-note">
+              {t(
+                value === 'aline'
+                  ? 'preferences.cursorsAlineNote'
+                  : 'preferences.cursorsSystemNote',
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Presentación de los documentos (plan 10.3): ya no se cambia desde el documento. Por defecto, los
+ * documentos con formato en hoja y los Markdown en continuo.
+ */
+function DocLayoutSettings({ kind }: { kind: DocLayoutKind }) {
+  const { t } = useTranslation();
+  const layout = useDocLayout(kind);
+  const label = t(kind === 'doc' ? 'preferences.docLayoutRich' : 'preferences.docLayoutMarkdown');
+  return (
+    <label className="preference-row">
+      <KindIcon kind={kind} />
+      <span>
+        {label}
+        <small className="muted">{t('preferences.docLayoutHint')}</small>
       </span>
       <select
-        name="cursor-preference"
-        aria-label={t('preferences.cursors')}
-        value={preference}
-        data-testid="cursor-preference"
-        onChange={(e) => setCursorPreference(e.target.value === 'system' ? 'system' : 'aline')}
+        name={`doc-layout-${kind}`}
+        aria-label={label}
+        value={layout}
+        data-testid={`doc-layout-${kind}`}
+        onChange={(e) => setDocLayout(kind, e.target.value === 'page' ? 'page' : 'continuous')}
       >
-        <option value="aline">{t('preferences.cursorsAline')}</option>
-        <option value="system">{t('preferences.cursorsSystem')}</option>
+        <option value="page">{t('docs.layout_page')}</option>
+        <option value="continuous">{t('docs.layout_continuous')}</option>
       </select>
     </label>
   );

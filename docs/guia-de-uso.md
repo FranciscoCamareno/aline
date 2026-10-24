@@ -49,12 +49,12 @@ _English version: [user-guide.md](user-guide.md)._
   - **Documento con formato:** títulos, negrita, cursiva, subrayado, tachado, listas, citas y alineación. Se edita solo dentro de la aplicación.
   - **Documento Markdown:** se ve con formato pero se guarda en Markdown, como una nota: tiene copia legible en la carpeta o en Drive sin cifrar, se puede editar fuera y entra en la búsqueda. Al guardarlo, el Markdown se normaliza (por ejemplo, el estilo de las listas). Las imágenes se muestran como texto, sin descargarlas.
   - **Carpeta:** solo para documentos.
-- **Continuo / Hoja** cambia solo la presentación (texto corrido o una hoja A4); no hay saltos de página al editar.
+- **Continuo / Hoja** cambia solo la presentación (texto corrido o una hoja A4); no hay saltos de página al editar. Los documentos con formato se ven en hoja y los Markdown en continuo; se cambia en **Perfil → Preferencias e idioma → Documentos**, no desde el documento.
 - Antes de usar documentos, actualiza la aplicación en todos tus dispositivos: una versión anterior no los reconoce.
 
 ## 3 quater. Apariencia y modo Zen
 
-- **Esquemas de color:** en **Perfil → Temas** eliges un esquema claro (Papel, Blanco, Bruma o Salvia) y uno oscuro (Noche, Negro, Marea o Bosque). El interruptor de arriba a la derecha alterna entre los dos y recuerda cuál dejaste; «Seguir al sistema» usa el claro de día y el oscuro de noche. El idioma está en **Perfil → Idioma**.
+- **Esquemas de color:** en **Perfil → Preferencias e idioma** eliges un esquema claro (Papel, Blanco, Bruma o Salvia) y uno oscuro (Noche, Negro, Marea o Bosque). El interruptor de arriba a la derecha alterna entre los dos y recuerda cuál dejaste; «Seguir al sistema» usa el claro de día y el oscuro de noche. En la misma sección están el puntero (con una vista previa de los de aline y los del sistema), el idioma y el día en que empieza la semana.
 - El lienzo se pinta con el fondo del esquema, pero lo guardado y lo exportado conservan su propio fondo.
 - **Modo Zen** (clic derecho en el lienzo → «Modo zen», o Alt+Z): oculta también la barra lateral y la cabecera. Las herramientas del lienzo siguen a la vista; al salir, vuelve todo.
 

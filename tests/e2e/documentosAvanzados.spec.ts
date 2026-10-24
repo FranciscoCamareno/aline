@@ -139,9 +139,14 @@ test('paginación: la vista «Hoja» se parte en páginas A4 y «Continuo» no',
   await saved(page);
   expect(await headBody(page, docId)).not.toContain('page');
 
-  // En la barra de los documentos con formato, la vista es un desplegable.
-  await page.getByTestId('doc-layout').click();
-  await page.getByTestId('doc-layout-continuous').click();
+  // La presentación se elige solo en Configuración (plan 10.3): el documento no la ofrece.
+  await expect(page.getByTestId('doc-layout')).toHaveCount(0);
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('settings-preferences').click();
+  await expect(page.getByTestId('doc-layout-doc')).toHaveValue('page');
+  await expect(page.getByTestId('doc-layout-mddoc')).toHaveValue('continuous');
+  await page.getByTestId('doc-layout-doc').selectOption('continuous');
+  await page.keyboard.press('Escape');
   await expect(pageBreak).toHaveCount(0);
   await expect(page.getByTestId('doc-page-count')).toHaveCount(0);
 });

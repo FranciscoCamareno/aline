@@ -154,6 +154,32 @@ test('documento con formato: el botón enlaza la selección con una nota y el en
   await expect(page.getByTestId('active-title-text')).toHaveText('Destino');
 });
 
+/** Plan 10.1: seguir un enlace a un lienzo no abre «Cambiar nombre» en la barra lateral. */
+test('documento con formato: seguir un enlace a un lienzo no abre el renombrado de la fila', async ({
+  page,
+}) => {
+  await freshStart(page);
+  const canvasId = await activeId(page);
+  const canvas = page.locator(`[data-testid="library-item"][data-document-id="${canvasId}"]`);
+  // Renombrar antes la fila desde «⋯» deja una petición de edición en la barra lateral.
+  await canvas.getByTestId('library-actions').click();
+  await canvas.getByTestId('library-title-rename').click();
+  await canvas.getByTestId('library-title-input').fill('Mapa');
+  await canvas.getByTestId('library-title-input').press('Enter');
+  await expect(canvas.getByTestId('library-title-text')).toHaveText('Mapa');
+
+  await newDocument(page, 'Documento con formato', 'Ver el mapa');
+  await selectBack(page, 4);
+  await page.getByTestId('doc-link').click();
+  await pick(page, 'Mapa', 'Mapa');
+  await saved(page);
+
+  await page.getByTestId('doc-editor').locator('a').click();
+  await expect(page.getByTestId('canvas-host')).toBeVisible();
+  await expect(page.getByTestId('active-title-text')).toHaveText('Mapa');
+  await expect(page.getByTestId('library-title-input')).toHaveCount(0);
+});
+
 test('documento Markdown: Ctrl+K enlaza la selección y se guarda como enlace Markdown', async ({
   page,
 }) => {

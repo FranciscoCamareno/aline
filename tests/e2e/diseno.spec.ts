@@ -100,11 +100,11 @@ test('claro: selección agua profunda y fondo papel; oscuro: agua pre-invertida 
   await expect(follow).not.toBeChecked();
 });
 
-/** Temas: Perfil (menú del pie) → Temas abre Configuración en Apariencia. */
+/** Temas: Perfil (menú del pie) → Preferencias e idioma (plan 10.2). */
 async function openPreferences(page: Page) {
   await page.getByTestId('open-profile').click();
-  await page.getByTestId('settings-appearance').click();
-  await expect(page.getByTestId('settings-section-appearance')).toBeVisible();
+  await page.getByTestId('settings-preferences').click();
+  await expect(page.getByTestId('settings-section-preferences')).toBeVisible();
 }
 
 /** Revisiones guardadas del lienzo inicial (el esquema no debe crear ninguna). */

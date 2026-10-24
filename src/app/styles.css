@@ -3575,7 +3575,6 @@ a,
   border-radius: 6px;
 }
 .doc-toolbar > .icon-button,
-.doc-toolbar > .segmented,
 .doc-toolbar > .doc-page-count {
   flex: none;
 }
@@ -3610,15 +3609,6 @@ a,
   background: var(--bg-canvas);
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-.doc-toolbar .segmented {
-  flex: none;
-  padding: 2px;
-}
-.doc-toolbar .segmented-option {
-  min-height: 26px;
-  padding: 0 9px;
-  font-size: 13px;
 }
 .doc-toolbar .doc-page-count {
   padding: 0 4px;
@@ -3893,6 +3883,25 @@ a,
   border-radius: 8px;
   border: 1px solid var(--border-soft);
 }
+/* Vista previa estática de los punteros (plan 10.4): tamaño real, sin el marco de las vistas. */
+.cursor-preview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-canvas);
+}
+.scheme-card .cursor-preview img {
+  width: 32px;
+  height: 32px;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
 .scheme-card.is-selected {
   border-color: var(--focus);
   box-shadow: inset 0 0 0 1px var(--focus);
@@ -3992,6 +4001,21 @@ a,
   min-height: 0;
   padding: 16px 20px 24px;
   overflow-y: auto;
+}
+/* Grupos de Preferencias e idioma (plan 10.2). */
+.preference-group {
+  display: grid;
+  gap: 10px;
+}
+.preference-group + .preference-group {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+}
+.preference-group-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
 }
 .settings-body .preference-row > span:not(.icon) {
   display: grid;
@@ -4597,13 +4621,6 @@ a,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.doc-layout-trigger {
-  gap: 4px;
-  flex: none;
-}
-.doc-layout-label {
-  font-size: 13px;
 }
 
 /*

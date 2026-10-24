@@ -72,7 +72,7 @@ import { downloadBlob } from '../../app/download.ts';
 import { safeFilename } from '../../application/portability.ts';
 import { CommentsPanel } from './CommentsPanel.tsx';
 import { domSelectionRange } from './domSelection.ts';
-import { LayoutToggle, useDocLayout } from './layout.tsx';
+import { useDocLayout } from './layout.tsx';
 import { Pagination, paginationKey, setPagination } from './pagination.ts';
 import {
   BlockStyleSelect,
@@ -166,7 +166,7 @@ function DocEditor({
   const copyToStore = useUiStore((s) => s.copyLink);
   /** El fragmento del último enlace seguido cambió o ya no está. */
   const [anchorStatus, setAnchorStatus] = useState<AnchorStatus>(null);
-  const [layout, setLayout] = useDocLayout();
+  const layout = useDocLayout('doc');
   // Imágenes (fase 8.4): las nuevas se guardan con el documento; las URL locales se liberan al
   // cerrarlo.
   const images = useMemo(
@@ -748,7 +748,6 @@ function DocEditor({
             <span className="doc-comments-count">{comments.filter((c) => !c.resolved).length}</span>
           )}
         </button>
-        <LayoutToggle layout={layout} onChange={setLayout} compact />
       </div>
       <div className="doc-body">
         {outlineOpen && editor && (
