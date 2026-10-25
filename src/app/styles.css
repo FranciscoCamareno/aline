@@ -1757,8 +1757,13 @@ button.section-title {
   align-items: flex-end;
   gap: 6px;
 }
-.canvas-tools > button:not(.danger) {
+.canvas-tools > button:not(.danger),
+.canvas-tools > .menu-root > button {
   background: var(--bg-panel);
+}
+/* «Fondo» (plan 10.9) es un menú: con su lista abierta, como «Plantillas» con su panel. */
+.canvas-tools > .menu-root > button[aria-expanded='true'] {
+  background: var(--selection-soft);
 }
 .canvas-tools > button.danger {
   background: var(--danger-bg);

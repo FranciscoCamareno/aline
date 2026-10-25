@@ -130,8 +130,13 @@ test('Tab crea un hijo conectado listo para escribir; un solo deshacer lo quita 
   await freshStart(page);
   await node(page, 300, 200);
   await child(page, 'Hijo');
-  await expect.poll(async () => shapes((await saved(page)).elements)).toHaveLength(2);
+  // El hijo se guarda en cuanto se crea (vacío) y su texto en un guardado posterior: se espera
+  // a ese, o en una máquina lenta se leería la revisión anterior.
+  await expect
+    .poll(async () => (await saved(page)).elements.some((e) => e.text === 'Hijo'))
+    .toBe(true);
   const { elements, mindMap } = await saved(page);
+  expect(shapes(elements)).toHaveLength(2);
   const [parent, kid] = shapes(elements).sort((a, b) => a.x - b.x);
   expect(kid!.x).toBeGreaterThan(parent!.x + 120);
   expect(labelOf(elements, kid!.id)).toBe('Hijo');
