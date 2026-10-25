@@ -51,7 +51,8 @@ export function SelectionBubble({
           return;
         }
         const { from, to, empty } = view.state.selection;
-        if (empty) {
+        // Una imagen seleccionada tiene su propia barra (plan 10.8).
+        if (empty || 'node' in view.state.selection) {
           setPosition(null);
           return;
         }

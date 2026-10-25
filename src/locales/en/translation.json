@@ -860,7 +860,21 @@
     "linksCount_other": "{{count}} links",
     "linksClose": "Close the links",
     "linksEmpty": "This document has no links yet.",
-    "linksGoToText": "Go to the text"
+    "linksGoToText": "Go to the text",
+    "fontSimilar": "like {{font}}",
+    "image": {
+      "toolbar": "Image",
+      "rotateLeft": "Rotate left",
+      "rotateRight": "Rotate right",
+      "crop": "Crop",
+      "cropHint": "Drag the frame or its corners. Enter applies; Escape cancels; the arrow keys move the frame.",
+      "cropFrame": "Crop area",
+      "cropRemove": "Remove crop",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "reset": "Reset (size, rotation and crop)",
+      "copyHint": "In a Markdown document, rotating or cropping saves a copy of the image."
+    }
   },
   "schemes": {
     "papel": {

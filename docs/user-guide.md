@@ -51,6 +51,8 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
   - **Markdown document:** shown formatted but saved as Markdown, like a note: it has a readable copy in the folder or in unencrypted Drive, can be edited outside and is searchable. Saving normalises the Markdown (list style, for example). Images are shown as text, without downloading them.
   - **Folder:** for documents only.
 - **Continuous / Page** only changes the presentation (running text or an A4 sheet); there are no page breaks while editing. Rich documents show as a page and Markdown documents as continuous text; change it in **Profile → Preferences and language → Documents**, not from the document.
+- **Images:** click an image to select it. Drag its corners to resize it, or use the bar above it: 25/50/75/100 % of the width, rotate left or right, **Crop** (drag the frame or its corners; Enter applies) and **Reset**. The original file does not change; Word and Markdown get the image already cropped and rotated. In Markdown documents you can only rotate or crop, and a copy of the image is saved.
+- **Fonts like Arial, Times New Roman and Georgia:** those fonts cannot be shipped with the app, so **Arimo**, **Tinos** and **Gelasio**, with the same metrics, are offered instead; search for them by either name.
 - **Document links:** the link button on the right of the toolbar opens a panel with every link in the document (all tabs), where each one leads and whether its target changed or was lost. Hovering one shows a preview of the target (an excerpt, a canvas thumbnail or the event; web addresses are not loaded). "Go to the text" selects the link in the document.
 - Before using documents, update the app on all your devices: an older version does not recognise them.
 

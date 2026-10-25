@@ -156,7 +156,8 @@ tal cual desde `brand/`; si cambian allí, hay que volver a copiarlos.
   archivar. Abajo solo está Perfil, cuyo menú abre Configuración (almacenamiento, temas, idioma,
   archivo y papelera). La cabecera deja a la vista Historial, Enlaces y Exportar; Buscar y
   Estado y diagnóstico están en «⋯».
-- **Fuentes:** 24 fuentes de Google Fonts (OFL, y una Apache-2.0), servidas desde el propio
+- **Fuentes:** 27 fuentes de Google Fonts (OFL, y una Apache-2.0), entre ellas Arimo, Tinos y
+  Gelasio, con las medidas de Arial, Times New Roman y Georgia (que no se pueden distribuir), servidas desde el propio
   origen y descargadas solo al usarse, en el selector de fuentes del lienzo (con un parche de
   Excalidraw) y en la barra de los documentos con formato, junto con el tamaño (A− / A+).
 - **Tema y esquemas de color:** 8 esquemas en 4 pares (Papel/Noche, Blanco/Negro, Bruma/Marea,

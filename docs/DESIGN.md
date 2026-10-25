@@ -237,7 +237,7 @@ Viven en el lienzo, así que usan **la misma paleta de rellenos del lienzo** y p
 | **Cherry Bomb One** | Base del logotipo (ya convertido a SVG) | 400 (único) | Google Fonts, OFL |
 | **Nunito** | Toda la interfaz | 400, 600, 700 | Google Fonts, OFL |
 | **Excalifont** (por defecto de Excalidraw) | Texto dentro del lienzo | — | Incluida en Excalidraw |
-| **Catálogo de 24 fuentes** (Inter, Lora, JetBrains Mono, Caveat…) | Texto del lienzo y de los documentos con formato, a elección | 400 en el lienzo; 400 y 700 con cursivas en documentos, si existen | Google Fonts vía Fontsource, OFL (Permanent Marker: Apache-2.0) |
+| **Catálogo de 27 fuentes** (Inter, Lora, JetBrains Mono, Caveat…; Arimo, Tinos y Gelasio con las medidas de Arial, Times New Roman y Georgia, que no se pueden distribuir) | Texto del lienzo y de los documentos con formato, a elección | 400 en el lienzo; 400 y 700 con cursivas en documentos, si existen | Google Fonts vía Fontsource, OFL (Permanent Marker: Apache-2.0) |
 
 Cherry Bomb One no se carga en la app: el logotipo se usa como SVG. No se usa en títulos, botones ni ningún otro texto.
 

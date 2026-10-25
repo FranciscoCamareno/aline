@@ -40,7 +40,7 @@ Los paquetes no se versionan en este repositorio (`node_modules/` y `public/font
 | docx (exportar Word)                      | `docx`                                                                                                                                               | MIT                                  | © 2016 Dolan Miu                                |
 | Workbox (Service Worker, solo en `dist/`) | `workbox-*` (desarrollo, incluido en la compilación)                                                                                                 | MIT                                  | © 2018 Google LLC                               |
 | Fuentes del lienzo                        | Virgil, Excalifont, Assistant, Cascadia Code, Nunito, Lilita One, Xiaolai SC, Comic Shanns (con `@excalidraw/excalidraw`)                            | OFL-1.1, MIT                         | Sus autores (aviso leído de cada archivo WOFF2) |
-| Fuentes adicionales                       | `@fontsource/*` (24 familias de Google Fonts)                                                                                                        | OFL-1.1; Permanent Marker Apache-2.0 | Sus autores                                     |
+| Fuentes adicionales                       | `@fontsource/*` (27 familias de Google Fonts)                                                                                                        | OFL-1.1; Permanent Marker Apache-2.0 | Sus autores                                     |
 
 Los años y titulares exactos son los de cada archivo de licencia, reproducidos íntegros en
 `THIRD-PARTY-NOTICES.txt`; si difieren de esta tabla, prevalece ese archivo.

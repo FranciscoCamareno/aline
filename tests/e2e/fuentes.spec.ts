@@ -201,3 +201,48 @@ test('documento con formato: fuente con búsqueda y A+/A− sobre la selección,
   await expect(editor.locator('span[style*="font-family"]')).toHaveCount(0);
   expect(foreign).toEqual([]);
 });
+
+/** Plan 10.7: buscar una fuente comercial encuentra su equivalente libre, también en el lienzo. */
+test('equivalentes libres: «Arial» encuentra Arimo en los documentos y Tinos está en el lienzo', async ({
+  page,
+}) => {
+  await freshStart(page);
+  const foreign = watchForeignRequests(page);
+  const canvasId = await activeId(page);
+  const box = (await page.getByTestId('canvas-host').boundingBox())!;
+  await page.mouse.dblclick(box.x + 400, box.y + 260);
+  await page.keyboard.type('Hola');
+  await page.keyboard.press('Escape');
+  await page.getByTestId('font-family-show-fonts').click();
+  await page.keyboard.type('Tinos');
+  await page.getByRole('button', { name: 'Tinos', exact: true }).click();
+  await expect
+    .poll(async () => {
+      const scene = JSON.parse(await headBody(page, canvasId)) as {
+        elements: Array<{ type: string; fontFamily?: number }>;
+      };
+      return scene.elements.find((e) => e.type === 'text')?.fontFamily;
+    })
+    .toBe(2026);
+
+  await page.getByRole('tab', { name: 'Documentos' }).click();
+  await page.getByTestId('new-menu').click();
+  await page.getByRole('menuitem', { name: 'Documento con formato' }).click();
+  await expect(page.getByTestId('doc-editor')).toBeFocused();
+  await page.keyboard.type('Informe');
+  await page.keyboard.press('ControlOrMeta+a');
+  // Abrir la lista descarga cada fuente para pintar su opción, también Arimo.
+  const arimoRequest = page.waitForRequest((r) => r.url().includes('/fonts-extra/arimo/'));
+  await page.getByTestId('doc-font').click();
+  await arimoRequest;
+  await page.getByTestId('doc-font-search').fill('arial');
+  const option = page.getByTestId('doc-font-option');
+  await expect(option).toHaveCount(1);
+  await expect(option).toContainText('Arimo');
+  await expect(option).toContainText('similar a Arial');
+  await option.click();
+  await expect(page.getByTestId('doc-font')).toContainText('Arimo');
+  await expect(page.getByTestId('save-status')).toHaveText('Guardado en este dispositivo');
+  expect(await headBody(page, await activeId(page))).toContain('Arimo');
+  expect(foreign).toEqual([]);
+});

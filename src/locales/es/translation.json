@@ -860,7 +860,21 @@
     "linksCount_other": "{{count}} enlaces",
     "linksClose": "Cerrar los enlaces",
     "linksEmpty": "Este documento no tiene enlaces todavía.",
-    "linksGoToText": "Ir al texto"
+    "linksGoToText": "Ir al texto",
+    "fontSimilar": "similar a {{font}}",
+    "image": {
+      "toolbar": "Imagen",
+      "rotateLeft": "Girar a la izquierda",
+      "rotateRight": "Girar a la derecha",
+      "crop": "Recortar",
+      "cropHint": "Arrastra el marco o sus esquinas. Intro aplica; Escape cancela; las flechas mueven el marco.",
+      "cropFrame": "Recorte",
+      "cropRemove": "Quitar recorte",
+      "cancel": "Cancelar",
+      "apply": "Aplicar",
+      "reset": "Restablecer (tamaño, giro y recorte)",
+      "copyHint": "En un documento Markdown, girar o recortar guarda una copia de la imagen."
+    }
   },
   "schemes": {
     "papel": {

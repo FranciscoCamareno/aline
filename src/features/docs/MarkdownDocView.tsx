@@ -25,7 +25,13 @@ import {
   deleteTable,
   goToNextCell,
 } from '@milkdown/prose/tables';
-import { Plugin, Selection, TextSelection, type EditorState } from '@milkdown/prose/state';
+import {
+  NodeSelection,
+  Plugin,
+  Selection,
+  TextSelection,
+  type EditorState,
+} from '@milkdown/prose/state';
 import { $prose, callCommand, getMarkdown } from '@milkdown/utils';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -61,6 +67,9 @@ import { downloadMarkdown } from '../../app/importExport.ts';
 import { domSelectionRange } from './domSelection.ts';
 import { useDocLayout } from './layout.tsx';
 import { liveLinks } from './docLinks.ts';
+import { bakeImage } from './imageBake.ts';
+import { ImageBar, ImageCropDialog, type ImageBarAction } from './ImageTools.tsx';
+import type { ImageCrop } from '../../domain/imageEdit.ts';
 import { LinksPanel, type PanelLink } from './LinksPanel.tsx';
 import { SelectionBubble } from './SelectionBubble.tsx';
 import {
@@ -603,6 +612,67 @@ function MarkdownDocEditor({
     }
   }, [editor]);
 
+  // Imagen seleccionada (plan 10.8): Markdown no guarda tamaño, giro ni recorte, así que girar o
+  // recortar crea una copia de la imagen y el documento pasa a citarla (el original sigue en las
+  // versiones anteriores).
+  const [cropping, setCropping] = useState<{ pos: number; url: string } | null>(null);
+  const imageView = readOnly === null ? getEditorView() : null;
+  const imageSelection = imageView?.state.selection;
+  const selectedImage =
+    imageSelection instanceof NodeSelection &&
+    imageSelection.node.type.name === 'image' &&
+    assetHashOf(imageSelection.node.attrs['src'])
+      ? { pos: imageSelection.from, src: String(imageSelection.node.attrs['src']) }
+      : null;
+  const replaceImage = async (
+    pos: number,
+    src: string,
+    edit: { rotation: 0 | 90 | 270; crop: ImageCrop | null },
+  ) => {
+    const hash = assetHashOf(src);
+    const asset = hash ? (images.added.get(hash) ?? (await service.loadAsset(hash))) : undefined;
+    const baked = asset ? await bakeImage(asset, edit) : null;
+    const view = getEditorView();
+    const node = view?.state.doc.nodeAt(pos);
+    if (!baked || !view || node?.type.name !== 'image') return;
+    const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+      ...node.attrs,
+      src: images.addAsset(baked),
+    });
+    view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, pos)));
+    view.focus();
+  };
+  const imageActions: Array<ImageBarAction | 'separator'> = selectedImage
+    ? [
+        {
+          id: 'rotate-left',
+          label: `${t('docs.image.rotateLeft')}. ${t('docs.image.copyHint')}`,
+          icon: 'girar-izq',
+          onRun: () => void replaceImage(selectedImage.pos, selectedImage.src, { rotation: 270, crop: null }),
+        },
+        {
+          id: 'rotate-right',
+          label: `${t('docs.image.rotateRight')}. ${t('docs.image.copyHint')}`,
+          icon: 'girar-der',
+          onRun: () => void replaceImage(selectedImage.pos, selectedImage.src, { rotation: 90, crop: null }),
+        },
+        {
+          id: 'crop',
+          label: `${t('docs.image.crop')}. ${t('docs.image.copyHint')}`,
+          icon: 'recortar',
+          onRun: () => {
+            const hash = assetHashOf(selectedImage.src);
+            if (!hash) return;
+            void images.url(hash).then((url) => url && setCropping({ pos: selectedImage.pos, url }));
+          },
+        },
+      ]
+    : [];
+  const imageTarget =
+    selectedImage && imageView && !cropping
+      ? (imageView.nodeDOM(selectedImage.pos) as HTMLElement | null)
+      : null;
+
   // Enlaces del documento (plan 10.5): la vista se repinta en cada cambio (estado del formato).
   const [linksOpen, setLinksOpen] = useState(false);
   const linksView = linksOpen ? getEditorView() : null;
@@ -933,6 +1003,26 @@ function MarkdownDocEditor({
       )}
       </div>
       {linker.picker}
+      <ImageBar target={imageTarget} actions={imageActions} />
+      {cropping && (
+        <ImageCropDialog
+          url={cropping.url}
+          rotation={0}
+          crop={null}
+          onApply={(crop) => {
+            const view = getEditorView();
+            const src = view?.state.doc.nodeAt(cropping.pos)?.attrs['src'];
+            setCropping(null);
+            if (crop && typeof src === 'string') {
+              void replaceImage(cropping.pos, src, { rotation: 0, crop });
+            }
+          }}
+          onCancel={() => {
+            setCropping(null);
+            getEditorView()?.focus();
+          }}
+        />
+      )}
       {/* Burbuja al seleccionar texto: enlazar (los documentos Markdown no tienen comentarios). */}
       <SelectionBubble
         getView={getEditorView}

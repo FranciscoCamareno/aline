@@ -49,7 +49,10 @@ export function FontFamilyPicker({
 
   const filtered = useMemo(() => {
     const q = normalizeForSearch(query.trim());
-    return FONT_CATALOG.filter((f) => !q || normalizeForSearch(f.name).includes(q));
+    // Buscar «Arial» encuentra su equivalente libre (plan 10.7).
+    return FONT_CATALOG.filter(
+      (f) => !q || normalizeForSearch(`${f.name} ${f.similarTo ?? ''}`).includes(q),
+    );
   }, [query]);
 
   /**
@@ -192,6 +195,11 @@ export function FontFamilyPicker({
                           onClick={() => pick(font)}
                         >
                           {font.name}
+                          {font.similarTo && (
+                            <span className="doc-font-similar">
+                              {t('docs.fontSimilar', { font: font.similarTo })}
+                            </span>
+                          )}
                         </button>
                       </li>
                     ))}

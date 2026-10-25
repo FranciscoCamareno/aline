@@ -4283,6 +4283,14 @@ a,
   background: var(--selection-soft);
   color: var(--on-selection-soft);
 }
+/* Pista de la fuente comercial a la que sustituye (plan 10.7), en la letra de la interfaz. */
+.doc-font-similar {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--text-secondary);
+  font-family: var(--font-ui, inherit);
+  font-size: 12px;
+}
 .doc-font-category {
   display: block;
   padding: 8px 10px 2px;
@@ -4626,6 +4634,73 @@ a,
   border: 1px dashed var(--border-soft);
 }
 
+/*
+ * Imagen editable de los documentos con formato (plan 10.8): el marco tiene el tamaño y la
+ * proporción del resultado; dentro, la caja del recorte girada y la imagen original desplazada.
+ * Hasta que la imagen carga se muestra tal cual.
+ */
+.doc-content .doc-image-frame {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+}
+.doc-image-frame .doc-image-box {
+  display: block;
+}
+.doc-image-frame.is-ready .doc-image-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  overflow: hidden;
+}
+.doc-content .doc-image-frame img.doc-image {
+  margin: 0;
+  border-radius: 0;
+}
+.doc-image-frame.is-ready img.doc-image {
+  position: absolute;
+  max-width: none;
+}
+.doc-content .doc-image-frame.ProseMirror-selectednode {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.doc-image-handle {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--bg-canvas);
+  border-radius: 3px;
+  background: var(--focus);
+  touch-action: none;
+}
+.doc-image-frame.ProseMirror-selectednode .doc-image-handle {
+  display: block;
+}
+.doc-image-handle--nw {
+  top: -8px;
+  left: -8px;
+  cursor: var(--cursor-nwse-resize, nwse-resize);
+}
+.doc-image-handle--se {
+  right: -8px;
+  bottom: -8px;
+  cursor: var(--cursor-nwse-resize, nwse-resize);
+}
+.doc-image-handle--ne {
+  top: -8px;
+  right: -8px;
+  cursor: var(--cursor-nesw-resize, nesw-resize);
+}
+.doc-image-handle--sw {
+  bottom: -8px;
+  left: -8px;
+  cursor: var(--cursor-nesw-resize, nesw-resize);
+}
+
 /* Exportar a PDF un documento con formato (fase 8.4): solo la copia del contenido, en A4. */
 .print-root {
   display: none;
@@ -4691,6 +4766,123 @@ a,
   min-width: 32px;
   min-height: 32px;
   border-radius: 999px;
+}
+
+/* Barra de la imagen seleccionada y recorte (plan 10.8). */
+.image-bar {
+  position: fixed;
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--bg-popover);
+  box-shadow: var(--shadow-popover);
+}
+.image-bar .icon-button,
+.image-bar .image-bar-text {
+  min-width: 32px;
+  min-height: 32px;
+  border: none;
+  border-radius: 8px;
+}
+.image-bar .image-bar-text {
+  padding: 0 6px;
+  background: transparent;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.image-bar .image-bar-text:hover:not(:disabled) {
+  background: var(--selection-soft);
+}
+.image-bar-separator {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--border-soft);
+}
+.dialog.image-crop-dialog {
+  width: auto;
+  max-width: calc(100vw - 32px);
+  max-height: none;
+}
+.image-crop-stage {
+  position: relative;
+  align-self: center;
+  margin: 8px;
+  touch-action: none;
+  user-select: none;
+}
+.image-crop-shade {
+  position: absolute;
+  background: var(--backdrop);
+  pointer-events: none;
+}
+.image-crop-stage canvas {
+  display: block;
+}
+.image-crop-frame {
+  position: absolute;
+  outline: 2px solid var(--focus);
+  cursor: var(--cursor-move, move);
+}
+.image-crop-frame:focus-visible {
+  outline-width: 3px;
+}
+.image-crop-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid var(--bg-canvas);
+  border-radius: 3px;
+  background: var(--focus);
+}
+.image-crop-handle--nw,
+.image-crop-handle--n,
+.image-crop-handle--ne {
+  top: 0;
+}
+.image-crop-handle--w,
+.image-crop-handle--e {
+  top: 50%;
+}
+.image-crop-handle--sw,
+.image-crop-handle--s,
+.image-crop-handle--se {
+  top: 100%;
+}
+.image-crop-handle--nw,
+.image-crop-handle--w,
+.image-crop-handle--sw {
+  left: 0;
+}
+.image-crop-handle--n,
+.image-crop-handle--s {
+  left: 50%;
+}
+.image-crop-handle--ne,
+.image-crop-handle--e,
+.image-crop-handle--se {
+  left: 100%;
+}
+.image-crop-handle--nw,
+.image-crop-handle--se {
+  cursor: var(--cursor-nwse-resize, nwse-resize);
+}
+.image-crop-handle--ne,
+.image-crop-handle--sw {
+  cursor: var(--cursor-nesw-resize, nesw-resize);
+}
+.image-crop-handle--n,
+.image-crop-handle--s {
+  cursor: var(--cursor-ns-resize, ns-resize);
+}
+.image-crop-handle--e,
+.image-crop-handle--w {
+  cursor: var(--cursor-ew-resize, ew-resize);
 }
 
 /* «Pestañas del documento» (como Google Docs): pestañas y, bajo la activa, sus capítulos. */

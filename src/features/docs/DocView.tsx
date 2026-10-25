@@ -62,8 +62,26 @@ import { fontStack } from '../../app/fontCatalog.ts';
 import { DocTabsPanel, useDocZoom, useOutlineOpen, ZoomSelect } from './docPanels.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
 import { commentIdsIn, CommentMark, setCommentView, withoutCommentsAndAnchors } from './comments.ts';
-import { DocImage, DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
+import {
+  DocImage,
+  DocImageStore,
+  editorContentWidth,
+  IMAGE_ACCEPT,
+  imageFiles,
+} from './docImages.ts';
+import { ImageBar, ImageCropDialog, type ImageBarAction } from './ImageTools.tsx';
+import { NodeSelection } from '@tiptap/pm/state';
+import { assetHashOf } from '../../domain/docAssets.ts';
+import {
+  isEdited,
+  MIN_IMAGE_WIDTH,
+  readImageEdit,
+  rotateBy,
+  type ImageCrop,
+  type ImageRotation,
+} from '../../domain/imageEdit.ts';
 import { browserDocxImage, docxBlob } from './exportDocx.ts';
+import { withBakedImages } from './imageBake.ts';
 import { exportRichDocMarkdown } from '../../app/importExport.ts';
 import type { MarkdownLoss } from '../../domain/richDocMarkdown.ts';
 import { printRichDoc } from './printDoc.ts';
@@ -554,23 +572,31 @@ function DocEditor({
         snapshotActive();
         const loadAsset = async (hash: string) =>
           images.added.get(hash) ?? (await service.loadAsset(hash));
+        // Las imágenes recortadas o giradas salen ya generadas así (plan 10.8).
+        const baked = withBakedImages(buildDoc(), loadAsset);
         if (viewCommand.kind === 'export-md') {
-          void exportRichDocMarkdown(buildDoc(), title, {
-            tabLabel: (n) => t('docs.tabUntitled', { n }),
-            loadAsset,
-          })
+          void baked
+            .then(({ doc, load }) =>
+              exportRichDocMarkdown(doc, title, {
+                tabLabel: (n) => t('docs.tabUntitled', { n }),
+                loadAsset: load,
+              }),
+            )
             .then(setMarkdownLosses)
             .catch(() => setExportError(true));
           return;
         }
-        void docxBlob(buildDoc(), {
-            title,
-            tabLabel: (n) => t('docs.tabUntitled', { n }),
-            image: async (hash) => {
-              const asset = await loadAsset(hash);
-              return asset ? browserDocxImage(asset) : null;
-            },
-          })
+        void baked
+          .then(({ doc, load }) =>
+            docxBlob(doc, {
+              title,
+              tabLabel: (n) => t('docs.tabUntitled', { n }),
+              image: async (hash) => {
+                const asset = await load(hash);
+                return asset ? browserDocxImage(asset) : null;
+              },
+            }),
+          )
           .then((blob) => downloadBlob(safeFilename(title, 'docx'), blob))
           .catch(() => setExportError(true));
       }),
@@ -724,6 +750,92 @@ function DocEditor({
     }, 0);
     return () => clearTimeout(timer);
   }, [editor]);
+
+  // --- Imagen seleccionada: tamaño, giro y recorte (plan 10.8) ---
+  const selectedImage = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      const selection = e?.state.selection;
+      return selection instanceof NodeSelection && selection.node.type.name === 'image'
+        ? { pos: selection.from, attrs: selection.node.attrs }
+        : null;
+    },
+  });
+  const [cropping, setCropping] = useState<{
+    pos: number;
+    url: string;
+    rotation: ImageRotation;
+    crop: ImageCrop | null;
+  } | null>(null);
+  /** Cambia atributos de la imagen en `pos` (un paso de deshacer) y la deja seleccionada. */
+  const setImageAttrs = (pos: number, patch: Record<string, unknown>) =>
+    editor
+      ?.chain()
+      .focus()
+      .command(({ tr }) => {
+        const node = tr.doc.nodeAt(pos);
+        if (node?.type.name !== 'image') return false;
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...patch });
+        tr.setSelection(NodeSelection.create(tr.doc, pos));
+        return true;
+      })
+      .run();
+  const imageTarget =
+    editor && selectedImage && readOnly === null && !cropping
+      ? (editor.view.nodeDOM(selectedImage.pos) as HTMLElement | null)
+      : null;
+  const imageActions: Array<ImageBarAction | 'separator'> = [];
+  if (editor && selectedImage) {
+    const { pos, attrs } = selectedImage;
+    const edit = readImageEdit(attrs);
+    for (const percent of [25, 50, 75, 100]) {
+      imageActions.push({
+        id: `size-${percent}`,
+        label: `${percent} %`,
+        onRun: () =>
+          setImageAttrs(pos, {
+            width: Math.max(
+              MIN_IMAGE_WIDTH,
+              Math.round((editorContentWidth(editor.view.dom) * percent) / 100),
+            ),
+          }),
+      });
+    }
+    imageActions.push(
+      'separator',
+      {
+        id: 'rotate-left',
+        label: t('docs.image.rotateLeft'),
+        icon: 'girar-izq',
+        onRun: () => setImageAttrs(pos, { rotation: rotateBy(edit.rotation, -90) || null }),
+      },
+      {
+        id: 'rotate-right',
+        label: t('docs.image.rotateRight'),
+        icon: 'girar-der',
+        onRun: () => setImageAttrs(pos, { rotation: rotateBy(edit.rotation, 90) || null }),
+      },
+      {
+        id: 'crop',
+        label: t('docs.image.crop'),
+        icon: 'recortar',
+        onRun: () => {
+          const hash = assetHashOf(attrs['src']);
+          if (!hash) return;
+          void images.url(hash).then((url) => {
+            if (url) setCropping({ pos, url, rotation: edit.rotation, crop: edit.crop });
+          });
+        },
+      },
+      {
+        id: 'reset',
+        label: t('docs.image.reset'),
+        icon: 'restaurar',
+        disabled: !isEdited(edit),
+        onRun: () => setImageAttrs(pos, { width: null, rotation: null, crop: null }),
+      },
+    );
+  }
 
   /** Enlaces: los internos se abren en la app; los externos solo con Ctrl/⌘ y sin opener. */
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -890,6 +1002,22 @@ function DocEditor({
         )}
       </div>
       {linker.picker}
+      <ImageBar target={imageTarget} actions={imageActions} />
+      {cropping && (
+        <ImageCropDialog
+          url={cropping.url}
+          rotation={cropping.rotation}
+          crop={cropping.crop}
+          onApply={(crop) => {
+            setImageAttrs(cropping.pos, { crop });
+            setCropping(null);
+          }}
+          onCancel={() => {
+            setCropping(null);
+            editor?.commands.focus();
+          }}
+        />
+      )}
       {/* Burbuja al seleccionar texto: comentar y enlazar (como Google Docs). */}
       <SelectionBubble
         getView={getEditorView}

@@ -1,6 +1,7 @@
 /**
- * Fuentes adicionales de lienzos y documentos (fase 8.2, 17/10/2026): fuentes de Google Fonts
- * empaquetadas por Fontsource (licencias OFL-1.1, y Apache-2.0 en Permanent Marker), servidas
+ * Fuentes adicionales de lienzos y documentos (fase 8.2, 17/10/2026; Arimo, Tinos y Gelasio desde
+ * el plan 10.7): fuentes de Google Fonts empaquetadas por Fontsource (licencias OFL-1.1, y
+ * Apache-2.0 en Permanent Marker), servidas
  * desde el propio origen (`public/fonts-extra/`, las copia `scripts/copy-fonts.ts`). El
  * navegador solo descarga una fuente cuando algo la usa, así que ofrecer muchas no ralentiza.
  *
@@ -23,6 +24,11 @@ export interface CatalogFont {
   italic: boolean;
   /** Sin latín extendido (solo latín básico); casi todas lo tienen. */
   latinOnly?: boolean;
+  /**
+   * Fuente comercial con las mismas medidas a la que sustituye (plan 10.7): se muestra como pista
+   * en el selector y se encuentra al buscarla. Las originales no se pueden distribuir.
+   */
+  similarTo?: string;
   /**
    * Identificador de la familia en las escenas del lienzo (`element.fontFamily`). Desde 2001 para
    * no chocar con los del motor (1–9, 100, 1000). Nunca se reutiliza ni se renumera: está en los
@@ -107,6 +113,16 @@ export const FONT_CATALOG: readonly CatalogFont[] = [
     metrics: { unitsPerEm: 1000, ascender: 950, descender: -290, lineHeight: 1.24 },
   },
   {
+    id: 'arimo',
+    name: 'Arimo',
+    category: 'sans',
+    bold: true,
+    italic: true,
+    similarTo: 'Arial',
+    canvasId: 2025,
+    metrics: { unitsPerEm: 2048, ascender: 1854, descender: -434, lineHeight: 1.15 },
+  },
+  {
     id: 'merriweather',
     name: 'Merriweather',
     category: 'serif',
@@ -159,6 +175,26 @@ export const FONT_CATALOG: readonly CatalogFont[] = [
     italic: true,
     canvasId: 2014,
     metrics: { unitsPerEm: 1000, ascender: 1036, descender: -335, lineHeight: 1.37 },
+  },
+  {
+    id: 'tinos',
+    name: 'Tinos',
+    category: 'serif',
+    bold: true,
+    italic: true,
+    similarTo: 'Times New Roman',
+    canvasId: 2026,
+    metrics: { unitsPerEm: 2048, ascender: 1825, descender: -443, lineHeight: 1.15 },
+  },
+  {
+    id: 'gelasio',
+    name: 'Gelasio',
+    category: 'serif',
+    bold: true,
+    italic: true,
+    similarTo: 'Georgia',
+    canvasId: 2027,
+    metrics: { unitsPerEm: 2048, ascender: 1900, descender: -700, lineHeight: 1.27 },
   },
   {
     id: 'jetbrains-mono',

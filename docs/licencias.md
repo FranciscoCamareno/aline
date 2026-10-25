@@ -1,6 +1,6 @@
 # Inventario de licencias
 
-Generado con `node scripts/licenses.ts` el 2026-10-20 a partir de `pnpm licenses list --prod`. No editar a mano.
+Generado con `node scripts/licenses.ts` el 2026-10-25 a partir de `pnpm licenses list --prod`. No editar a mano.
 
 Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso previsto. Se admiten las licencias permisivas de la lista del script; cualquier otra aparece en «Por revisar» y hace fallar `--check`.
 
@@ -10,7 +10,7 @@ Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso prev
 | --- | --- |
 | MIT | 368 |
 | ISC | 39 |
-| OFL-1.1 | 24 |
+| OFL-1.1 | 27 |
 | Apache-2.0 | 12 |
 | BSD-3-Clause | 7 |
 | (MIT AND Zlib) | 1 |
@@ -105,11 +105,13 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @floating-ui/react-dom | 2.1.9 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
 | @fontsource/architects-daughter | 5.3.0 | OFL-1.1 |
+| @fontsource/arimo | 5.3.0 | OFL-1.1 |
 | @fontsource/atkinson-hyperlegible | 5.3.0 | OFL-1.1 |
 | @fontsource/bebas-neue | 5.3.0 | OFL-1.1 |
 | @fontsource/caveat | 5.3.0 | OFL-1.1 |
 | @fontsource/eb-garamond | 5.3.0 | OFL-1.1 |
 | @fontsource/fira-code | 5.3.0 | OFL-1.1 |
+| @fontsource/gelasio | 5.3.0 | OFL-1.1 |
 | @fontsource/ibm-plex-mono | 5.3.0 | OFL-1.1 |
 | @fontsource/ibm-plex-sans | 5.3.0 | OFL-1.1 |
 | @fontsource/inter | 5.3.0 | OFL-1.1 |
@@ -128,6 +130,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | @fontsource/playfair-display | 5.3.0 | OFL-1.1 |
 | @fontsource/roboto | 5.3.0 | OFL-1.1 |
 | @fontsource/source-serif-4 | 5.3.0 | OFL-1.1 |
+| @fontsource/tinos | 5.3.0 | OFL-1.1 |
 | @fontsource/work-sans | 5.3.0 | OFL-1.1 |
 | @iconify/types | 2.0.0 | MIT |
 | @iconify/utils | 3.1.7 | MIT |

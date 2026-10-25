@@ -105,7 +105,11 @@ export async function buildDocx(doc: RichDocData, options: DocxOptions) {
     const hash = assetHashOf(node.attrs?.['src']);
     const found = hash ? await options.image(hash) : null;
     if (!found) return;
-    const scale = Math.min(1, CONTENT_WIDTH_PX / Math.max(found.width, 1));
+    // El ancho elegido en el documento (plan 10.8), sin pasar del ancho útil de la página.
+    const chosen = node.attrs?.['width'];
+    const wanted =
+      typeof chosen === 'number' && Number.isFinite(chosen) && chosen > 0 ? chosen : found.width;
+    const scale = Math.min(wanted, CONTENT_WIDTH_PX) / Math.max(found.width, 1);
     add({
       ...extra,
       children: [

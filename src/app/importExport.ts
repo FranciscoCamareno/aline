@@ -12,6 +12,7 @@ import { relinkAssets, richDocToMarkdown, type MarkdownLoss } from '../domain/ri
 import type { DocumentRecord } from '../domain/revision.ts';
 import { describeError } from '../ports/Diagnostics.ts';
 import { utf8Encode } from '../shared/hash.ts';
+import { withBakedImages } from '../features/docs/imageBake.ts';
 import { createZipWorkerArchiver } from '../workers/zipClient.ts';
 import { downloadBlob, fileTimestamp } from './download.ts';
 import { logDiagnostic } from './runtime.ts';
@@ -204,12 +205,18 @@ export async function exportMarkdownZip(
   const files = new Map<string, Uint8Array>();
   const loadAsset: AssetLoader = (hash) => service.loadAsset(hash);
   for (const [path, { id, kind }] of tree) {
-    const markdown =
-      kind === 'doc'
-        ? richDocToMarkdown(await service.exportRichDoc(id), labels).markdown
-        : await service.exportNoteMarkdown(id);
+    let markdown: string;
+    let load = loadAsset;
+    if (kind === 'doc') {
+      // Imágenes recortadas o giradas, ya generadas así (plan 10.8).
+      const baked = await withBakedImages(await service.exportRichDoc(id), loadAsset);
+      markdown = richDocToMarkdown(baked.doc, labels).markdown;
+      load = baked.load;
+    } else {
+      markdown = await service.exportNoteMarkdown(id);
+    }
     const dir = path.slice(0, path.lastIndexOf('/') + 1);
-    files.set(path, utf8Encode(await withAssetFiles(markdown, loadAsset, files, dir)));
+    files.set(path, utf8Encode(await withAssetFiles(markdown, load, files, dir)));
   }
   const folder = folderId ? documents.find((d) => d.id === folderId)?.title : null;
   await downloadZip(`${folder ?? services.vault.name} - Markdown ${fileTimestamp()}`, files);
