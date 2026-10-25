@@ -155,7 +155,8 @@ export class DexieSyncStore implements SyncLocalStore {
     const revisions = (await this.db.revisions.bulkGet(missing)).filter(
       (r): r is Revision => r !== undefined,
     );
-    // Padres antes que hijos: el orden de creación lo garantiza dentro de un dispositivo.
+    // Por fecha de creación; el motor de sincronización las pone después con los padres antes
+    // que los hijos (la fecha sola no lo garantiza: dos versiones pueden empatar).
     return revisions.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 

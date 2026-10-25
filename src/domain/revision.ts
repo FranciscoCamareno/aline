@@ -176,3 +176,43 @@ export function sameHeads(a: readonly string[], b: readonly string[]): boolean {
   const set = new Set(a);
   return b.every((id) => set.has(id));
 }
+
+/**
+ * Versiones con cada padre antes que sus hijos (los padres que no están en la lista ya se dan por
+ * publicados). Entre las que están listas a la vez manda la fecha de creación, y después el id.
+ * La fecha sola no basta: dos versiones creadas en el mismo milisegundo empatan, y un reloj que
+ * retrocede pondría un hijo antes que su padre.
+ */
+export function parentsFirst<T extends Pick<Revision, 'id' | 'parentIds' | 'createdAt'>>(
+  revisions: readonly T[],
+): T[] {
+  const byId = new Map(revisions.map((r) => [r.id, r]));
+  const waiting = new Map<string, number>();
+  const children = new Map<string, string[]>();
+  for (const rev of revisions) {
+    const parents = rev.parentIds.filter((p) => byId.has(p));
+    waiting.set(rev.id, parents.length);
+    for (const p of parents) children.set(p, [...(children.get(p) ?? []), rev.id]);
+  }
+  const before = (a: T, b: T) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+  const ready = revisions.filter((r) => waiting.get(r.id) === 0).sort(before);
+  const ordered: T[] = [];
+  while (ready.length) {
+    const next = ready.shift()!;
+    ordered.push(next);
+    for (const id of children.get(next.id) ?? []) {
+      const left = waiting.get(id)! - 1;
+      waiting.set(id, left);
+      if (left === 0) {
+        ready.push(byId.get(id)!);
+        ready.sort(before);
+      }
+    }
+  }
+  // Un ciclo (no debería existir) no se pierde: va al final, por fecha.
+  if (ordered.length < revisions.length) {
+    const done = new Set(ordered.map((r) => r.id));
+    ordered.push(...revisions.filter((r) => !done.has(r.id)).sort(before));
+  }
+  return ordered;
+}

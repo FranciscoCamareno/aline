@@ -1,5 +1,5 @@
 import { checkRevision } from '../domain/compat.ts';
-import type { Revision } from '../domain/revision.ts';
+import { parentsFirst, type Revision } from '../domain/revision.ts';
 import { versionPruneSchema, type Vault, type VersionPrune } from '../domain/vault.ts';
 import { sha256Hex } from '../shared/hash.ts';
 import { forEachLimited, onceByKey } from '../shared/pool.ts';
@@ -225,7 +225,8 @@ export class SyncEngine implements SyncEnginePort {
     // 4. Saliente: objetos primero, revisión al final; operationId = id de la revisión.
     // Documentos distintos van en paralelo; las versiones de un mismo documento, en orden, para
     // que una versión nunca se publique antes que su padre.
-    const pending = await local.unpublishedRevisions(target);
+    // Por padres, no solo por fecha: dos versiones del mismo milisegundo empatarían.
+    const pending = parentsFirst(await local.unpublishedRevisions(target));
     const byDocument = new Map<string, Revision[]>();
     for (const rev of pending) {
       const list = byDocument.get(rev.documentId);

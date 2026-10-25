@@ -21,9 +21,10 @@ async function device(
   folder: MemoryDirectory,
   from?: Device,
   wrap?: (s: RemoteStore) => RemoteStore,
+  now?: () => Date,
 ): Promise<Device> {
   const db = new VaultDatabase(`sync-${crypto.randomUUID()}`);
-  const repo = new DexieVaultRepository(db);
+  const repo = new DexieVaultRepository(db, now);
   if (from) {
     // Mismo almacén (mismo vaultId) en otro equipo: identidad nueva de dispositivo.
     await repo.importContent({
@@ -302,41 +303,51 @@ function bind(store: RemoteStore): RemoteStore {
 }
 
 describe('sincronización en paralelo', () => {
-  it('publica documentos distintos a la vez y cada versión después de sus padres', async () => {
-    const folder = new MemoryDirectory();
-    const published: string[] = [];
-    const parentsMissing: string[] = [];
-    let running = 0;
-    let peak = 0;
-    const a = await device(folder, undefined, (store) => ({
-      ...bind(store),
-      publishRevision: async (rev, op) => {
-        running++;
-        peak = Math.max(peak, running);
-        if (rev.parentIds.some((p) => !published.includes(p))) parentsMissing.push(rev.id);
-        await new Promise((r) => setTimeout(r, 5));
-        const copy = await store.publishRevision(rev, op);
-        published.push(rev.id);
-        running--;
-        return copy;
-      },
-    }));
-    const docs: string[] = [];
-    for (let n = 0; n < 6; n++) {
-      const note = await a.service.createDocument('note', `Nota ${n}`);
-      docs.push(note.id);
-      for (let v = 0; v < 3; v++) await edit(a, note.id, `versión ${v}`);
-    }
-    const result = await a.engine.runCycle();
-    expect(result.pushedRevisions).toBe(24);
-    expect(published).toHaveLength(24);
-    expect(parentsMissing).toEqual([]);
-    expect(peak).toBeGreaterThan(1);
-    expect(peak).toBeLessThanOrEqual(4);
-    const b = await device(folder, a);
-    await b.engine.runCycle();
-    for (const doc of docs) expect(await body(b, doc)).toBe('versión 2');
-  });
+  // Con un reloj fijo, todas las versiones tienen la misma fecha: el orden no puede salir de ella
+  // (en la CI, rápida, varias caían en el mismo milisegundo y un hijo salía antes que su padre).
+  for (const clock of ['real', 'mismo milisegundo'] as const) {
+    it(`publica documentos distintos a la vez y cada versión después de sus padres (reloj ${clock})`, async () => {
+      const folder = new MemoryDirectory();
+      const fixed = new Date('2026-10-24T12:00:00.000Z');
+      const published: string[] = [];
+      const parentsMissing: string[] = [];
+      let running = 0;
+      let peak = 0;
+      const a = await device(
+        folder,
+        undefined,
+        (store) => ({
+          ...bind(store),
+          publishRevision: async (rev, op) => {
+            running++;
+            peak = Math.max(peak, running);
+            if (rev.parentIds.some((p) => !published.includes(p))) parentsMissing.push(rev.id);
+            await new Promise((r) => setTimeout(r, 5));
+            const copy = await store.publishRevision(rev, op);
+            published.push(rev.id);
+            running--;
+            return copy;
+          },
+        }),
+        clock === 'real' ? undefined : () => fixed,
+      );
+      const docs: string[] = [];
+      for (let n = 0; n < 6; n++) {
+        const note = await a.service.createDocument('note', `Nota ${n}`);
+        docs.push(note.id);
+        for (let v = 0; v < 3; v++) await edit(a, note.id, `versión ${v}`);
+      }
+      const result = await a.engine.runCycle();
+      expect(result.pushedRevisions).toBe(24);
+      expect(published).toHaveLength(24);
+      expect(parentsMissing).toEqual([]);
+      expect(peak).toBeGreaterThan(1);
+      expect(peak).toBeLessThanOrEqual(4);
+      const b = await device(folder, a);
+      await b.engine.runCycle();
+      for (const doc of docs) expect(await body(b, doc)).toBe('versión 2');
+    });
+  }
 });
 
 describe('carpeta: lecturas simultáneas', () => {
