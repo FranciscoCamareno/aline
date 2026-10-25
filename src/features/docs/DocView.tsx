@@ -71,6 +71,8 @@ import { SelectionBubble } from './SelectionBubble.tsx';
 import { downloadBlob } from '../../app/download.ts';
 import { safeFilename } from '../../application/portability.ts';
 import { CommentsPanel } from './CommentsPanel.tsx';
+import { jsonLinks, liveLinks, type FoundLink } from './docLinks.ts';
+import { LinksPanel, type PanelLink } from './LinksPanel.tsx';
 import { domSelectionRange } from './domSelection.ts';
 import { useDocLayout } from './layout.tsx';
 import { Pagination, paginationKey, setPagination } from './pagination.ts';
@@ -208,6 +210,12 @@ function DocEditor({
   const [commentDraft, setCommentDraft] = useState<{ from: number; to: number } | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(() => (opened.doc.comments ?? []).length > 0);
   const commentRef = useRef<() => void>(() => undefined);
+  // Enlaces del documento (plan 10.5): panel derecho, cerrado al abrir.
+  const [linksOpen, setLinksOpen] = useState(false);
+  /** Enlaces de las pestañas que no están abiertas (de su contenido guardado en memoria). */
+  const [otherTabLinks, setOtherTabLinks] = useState<Map<string, FoundLink[]>>(new Map());
+  /** «Ir al texto» de un enlace de otra pestaña: se selecciona al abrirse su editor. */
+  const pendingLink = useRef<PanelLink | null>(null);
   /** Insertar imágenes vigente, para pegar y arrastrar (el editor se crea una sola vez). */
   const insertImagesRef = useRef<(files: File[], at?: number) => Promise<void>>(async () => {});
 
@@ -660,6 +668,63 @@ function DocEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, focus, opened.document.id]);
 
+  // --- Enlaces del documento (plan 10.5) ---
+  const activeLinks =
+    useEditorState({
+      editor,
+      selector: ({ editor: e }) => (linksOpen && e ? liveLinks(e.state.doc) : []),
+    }) ?? [];
+  useEffect(() => {
+    if (!linksOpen) return;
+    // Las otras pestañas solo cambian al cambiar de pestaña o de lista: se leen entonces.
+    setOtherTabLinks(
+      new Map(
+        tabs
+          .filter((tab) => tab.id !== activeTab)
+          .map((tab) => [tab.id, jsonLinks(contents.current.get(tab.id))]),
+      ),
+    );
+  }, [linksOpen, tabs, activeTab]);
+  const panelLinks: PanelLink[] = tabs.flatMap((tab, n) => {
+    const title = tab.title || t('docs.tabUntitled', { n: n + 1 });
+    const found = tab.id === activeTab ? activeLinks : (otherTabLinks.get(tab.id) ?? []);
+    return found.map((link, index) => ({
+      href: link.href,
+      text: link.text,
+      tab: { id: tab.id, title },
+      index,
+    }));
+  });
+  const selectLink = (target: Editor, index: number) => {
+    const found = liveLinks(target.state.doc)[index];
+    if (found) {
+      target.chain().focus().setTextSelection({ from: found.from, to: found.to }).scrollIntoView().run();
+    }
+  };
+  const goToLink = (link: PanelLink) => {
+    if (!editor) return;
+    if (link.tab && link.tab.id !== activeTab) {
+      pendingLink.current = link;
+      switchTab(link.tab.id);
+    } else {
+      selectLink(editor, link.index);
+    }
+  };
+  // Solo con el editor nuevo: al cambiar `activeTab` el de la pestaña anterior sigue un momento.
+  useEffect(() => {
+    const pending = pendingLink.current;
+    if (!editor || editor.isDestroyed || !pending || pending.tab?.id !== activeTabRef.current) {
+      return;
+    }
+    // El editor recién creado aún no está en la página: se selecciona cuando ya lo está.
+    const timer = setTimeout(() => {
+      if (editor.isDestroyed || pendingLink.current !== pending) return;
+      pendingLink.current = null;
+      selectLink(editor, pending.index);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [editor]);
+
   /** Enlaces: los internos se abren en la app; los externos solo con Ctrl/⌘ y sin opener. */
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
     // Pulsar un texto comentado abre su hilo.
@@ -748,6 +813,17 @@ function DocEditor({
             <span className="doc-comments-count">{comments.filter((c) => !c.resolved).length}</span>
           )}
         </button>
+        <button
+          type="button"
+          className="icon-button"
+          aria-pressed={linksOpen}
+          aria-label={t('docs.links')}
+          title={t('docs.links')}
+          data-testid="doc-links-toggle"
+          onClick={() => setLinksOpen(!linksOpen)}
+        >
+          <Icon name="enlace" size={18} />
+        </button>
       </div>
       <div className="doc-body">
         {outlineOpen && editor && (
@@ -800,6 +876,16 @@ function DocEditor({
               setCommentsOpen(false);
               setCommentDraft(null);
             }}
+          />
+        )}
+        {linksOpen && (
+          <LinksPanel
+            documentId={opened.document.id}
+            links={panelLinks}
+            service={service}
+            knowledge={knowledge}
+            onGoToText={goToLink}
+            onClose={() => setLinksOpen(false)}
           />
         )}
       </div>

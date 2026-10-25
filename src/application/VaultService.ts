@@ -355,6 +355,21 @@ export class VaultService {
     };
   }
 
+  /**
+   * Eventos vigentes de un calendario sin sesión de edición (selector de enlaces y vistas previas,
+   * plan 10.5): leerlo no cambia lo que sigue el editor del calendario.
+   */
+  async readCalendar(documentId: Uuid): Promise<CalendarData> {
+    await this.pendingWrites(documentId);
+    const { head } = await this.loadHead(documentId, 'calendar');
+    if (!head.contentRefs.body) return emptyCalendar();
+    try {
+      return parseCalendar(JSON.parse(await this.readText(head.contentRefs.body))).calendar;
+    } catch {
+      return emptyCalendar();
+    }
+  }
+
   /** SaveCalendar: el calendario entero en una revisión nueva (los eventos se validan antes). */
   saveCalendar(session: EditSession, calendar: CalendarData): Promise<CommitResult> {
     return this.serialized(session.documentId, async () => {
@@ -601,6 +616,29 @@ export class VaultService {
       extensions: sidecar.extensions ?? emptyCanvasExtensions(documentId),
       readOnly,
     };
+  }
+
+  /**
+   * Escena y sidecar vigentes de un lienzo sin sesión de edición (elegir un elemento al enlazar y
+   * vistas previas, planes 10.5 y 10.6). Un sidecar ilegible se devuelve como null.
+   */
+  async readCanvas(
+    documentId: Uuid,
+  ): Promise<{ sceneJson: string | null; extensions: CanvasExtensions | null }> {
+    await this.pendingWrites(documentId);
+    const { head } = await this.loadHead(documentId, 'canvas');
+    const sceneJson = head.contentRefs.body ? await this.readText(head.contentRefs.body) : null;
+    let extensions: CanvasExtensions | null = emptyCanvasExtensions(documentId);
+    if (head.contentRefs.extensions) {
+      try {
+        extensions = parseCanvasExtensions(
+          JSON.parse(await this.readText(head.contentRefs.extensions)),
+        ).extensions;
+      } catch {
+        extensions = null;
+      }
+    }
+    return { sceneJson, extensions };
   }
 
   async loadAsset(hash: string): Promise<CanvasAsset | undefined> {

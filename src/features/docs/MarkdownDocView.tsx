@@ -60,6 +60,8 @@ import { DocImageStore, IMAGE_ACCEPT, imageFiles } from './docImages.ts';
 import { downloadMarkdown } from '../../app/importExport.ts';
 import { domSelectionRange } from './domSelection.ts';
 import { useDocLayout } from './layout.tsx';
+import { liveLinks } from './docLinks.ts';
+import { LinksPanel, type PanelLink } from './LinksPanel.tsx';
 import { SelectionBubble } from './SelectionBubble.tsx';
 import {
   BlockStyleSelect,
@@ -601,6 +603,29 @@ function MarkdownDocEditor({
     }
   }, [editor]);
 
+  // Enlaces del documento (plan 10.5): la vista se repinta en cada cambio (estado del formato).
+  const [linksOpen, setLinksOpen] = useState(false);
+  const linksView = linksOpen ? getEditorView() : null;
+  const panelLinks: PanelLink[] = linksView
+    ? liveLinks(linksView.state.doc).map((link, index) => ({
+        href: link.href,
+        text: link.text,
+        tab: null,
+        index,
+      }))
+    : [];
+  const goToLink = (link: PanelLink) => {
+    const view = getEditorView();
+    const found = view ? liveLinks(view.state.doc)[link.index] : undefined;
+    if (!view || !found) return;
+    view.dispatch(
+      view.state.tr
+        .setSelection(TextSelection.create(view.state.doc, found.from, found.to))
+        .scrollIntoView(),
+    );
+    view.focus();
+  };
+
   /** Inserta imágenes del equipo en `at` o en la selección (nodo `image` de Milkdown). */
   const insertImages = async (files: File[], at?: number) => {
     if (!editor || readOnly !== null) return;
@@ -869,7 +894,15 @@ function MarkdownDocEditor({
         <span className="doc-format-badge" title={t('docs.markdownHint')}>
           Markdown
         </span>
+        <ToolIconButton
+          id="links-toggle"
+          icon="enlace"
+          label={t('docs.links')}
+          active={linksOpen}
+          onRun={() => setLinksOpen(!linksOpen)}
+        />
       </div>
+      <div className="doc-body">
       <div className="doc-scroll">
         <div className="doc-sheet" onClick={onClick}>
           <div ref={host} className="md-doc-host" />
@@ -887,6 +920,17 @@ function MarkdownDocEditor({
             }}
           />
         </div>
+      </div>
+      {linksOpen && (
+        <LinksPanel
+          documentId={opened.document.id}
+          links={panelLinks}
+          service={service}
+          knowledge={knowledge}
+          onGoToText={goToLink}
+          onClose={() => setLinksOpen(false)}
+        />
+      )}
       </div>
       {linker.picker}
       {/* Burbuja al seleccionar texto: enlazar (los documentos Markdown no tienen comentarios). */}

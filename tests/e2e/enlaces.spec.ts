@@ -171,7 +171,10 @@ test('documento con formato: seguir un enlace a un lienzo no abre el renombrado 
   await newDocument(page, 'Documento con formato', 'Ver el mapa');
   await selectBack(page, 4);
   await page.getByTestId('doc-link').click();
-  await pick(page, 'Mapa', 'Mapa');
+  await page.getByTestId('link-search').fill('Mapa');
+  await page.getByTestId('link-candidate').filter({ hasText: 'Mapa' }).click();
+  await page.getByTestId('link-whole-canvas').click();
+  await expect(page.getByTestId('link-picker')).toBeHidden();
   await saved(page);
 
   await page.getByTestId('doc-editor').locator('a').click();
@@ -566,4 +569,75 @@ test('resaltado: un documento Markdown marca la frase que otra nota enlaza', asy
   const mark = page.getByTestId('doc-editor').locator('.backlink-mark');
   await expect(mark).toHaveText('presupuesto anual');
   await expect(mark).toHaveAttribute('data-backlinks', '1');
+});
+
+/** Plan 10.5: el panel de enlaces lista cada enlace con su destino, vista previa e «Ir al texto». */
+test('documento Markdown: el panel de enlaces muestra el destino con su extracto y va al texto', async ({
+  page,
+}) => {
+  await freshStart(page);
+  await newNote(page, 'Primera línea del destino con contenido');
+  await renameActive(page, 'Destino');
+
+  await newDocument(page, 'Documento Markdown', 'Ver el destino. Fin');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft');
+  await selectBack(page, 7);
+  await page.keyboard.press('ControlOrMeta+k');
+  await pick(page, 'Dest', 'Destino');
+  await saved(page);
+
+  await page.getByTestId('doc-links-toggle').click();
+  const panel = page.getByTestId('doc-links-panel');
+  const item = panel.getByTestId('doc-link-item');
+  await expect(item).toHaveCount(1);
+  await expect(item).toContainText('Destino');
+  await expect(item).toContainText('«destino»');
+  await item.hover();
+  await expect(panel.getByTestId('link-preview-text')).toContainText('Primera línea del destino');
+
+  // «Ir al texto» selecciona el enlace en el editor.
+  await page.getByTestId('doc-editor').click();
+  await page.keyboard.press('End');
+  await item.getByTestId('doc-link-go').click();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('destino');
+
+  // Abrir el destino.
+  await item.getByTestId('doc-link-open').click();
+  await expect(page.getByTestId('active-title-text')).toHaveText('Destino');
+});
+
+test('documento con formato: el panel de enlaces lista los de todas las pestañas y una web', async ({
+  page,
+}) => {
+  await freshStart(page);
+  await newNote(page, 'contenido');
+  await renameActive(page, 'Destino');
+  await newDocument(page, 'Documento con formato', 'Ver el destino');
+  await selectBack(page, 7);
+  await page.getByTestId('doc-link').click();
+  await pick(page, 'Dest', 'Destino');
+
+  // Segunda pestaña con una dirección web.
+  await page.getByTestId('doc-outline-toggle').click();
+  await page.getByTestId('doc-tab-add').click();
+  await expect(page.getByTestId('doc-tab')).toHaveCount(2);
+  await page.getByTestId('doc-editor').click();
+  await page.keyboard.type('Web');
+  await selectBack(page, 3);
+  await page.getByTestId('doc-link').click();
+  await page.locator('input[name="link-web"]').fill('https://example.org/');
+  await page.locator('input[name="link-web"]').press('Enter');
+  await saved(page);
+
+  await page.getByTestId('doc-links-toggle').click();
+  const items = page.getByTestId('doc-links-panel').getByTestId('doc-link-item');
+  await expect(items).toHaveCount(2);
+  await expect(items.first()).toContainText('Destino');
+  await expect(items.last()).toContainText('https://example.org/');
+  await items.last().hover();
+  await expect(page.getByTestId('link-preview')).toContainText('aquí no se carga nada');
+
+  // «Ir al texto» de un enlace de otra pestaña cambia a ella y lo selecciona.
+  await items.first().getByTestId('doc-link-go').click();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('destino');
 });

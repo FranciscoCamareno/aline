@@ -21,7 +21,8 @@ import {
 
 /**
  * `approximate`: el bloque enlazado sigue, pero la cita ya no está en él ni en el documento.
- * `anchor-lost`: ni la cita ni el bloque (o el evento) siguen en el destino.
+ * `anchor-lost`: ni la cita ni el bloque (o el evento, o el elemento del lienzo) siguen en el
+ * destino.
  */
 export type LinkStatus =
   'ok' | 'approximate' | 'anchor-lost' | 'missing' | 'trashed' | 'unresolved' | 'ambiguous';
@@ -33,9 +34,10 @@ export function reachesTarget(status: LinkStatus): boolean {
 
 /**
  * Formato de los índices derivados. 2 (16/10/2026): documentos con formato y calendarios,
- * anclas de destino y contexto en los enlaces, texto mostrado en notas y documentos.
+ * anclas de destino y contexto en los enlaces, texto mostrado en notas y documentos. 3
+ * (24/10/2026, plan 10.6): ids de los elementos de cada lienzo, para los enlaces a un elemento.
  */
-export const KNOWLEDGE_INDEX_FORMAT = 2;
+export const KNOWLEDGE_INDEX_FORMAT = 3;
 
 export interface ResolvedLink {
   link: StoredLink;
@@ -88,6 +90,7 @@ export class KnowledgeService {
       text: extracted.text,
       elements: extracted.elements,
       ...(extracted.blocks ? { blocks: extracted.blocks } : {}),
+      ...(extracted.elementIds ? { elementIds: extracted.elementIds } : {}),
     };
     await this.store.replaceDerived(
       documentId,
@@ -134,6 +137,11 @@ export class KnowledgeService {
 
   allSearchDocuments(): Promise<SearchDocument[]> {
     return this.store.allSearchDocuments();
+  }
+
+  /** Documento de búsqueda de uno (texto mostrado, bloques, elementos): vistas previas, plan 10.5. */
+  async searchDocument(documentId: Uuid): Promise<SearchDocument | null> {
+    return (await this.store.getSearchDocument(documentId)) ?? null;
   }
 
   /** Backlinks de un documento (RF-22): calculados desde los enlaces existentes, no editables. */
@@ -192,7 +200,11 @@ export class KnowledgeService {
   private async anchorTargets(links: StoredLink[]): Promise<Map<Uuid, SearchDocument>> {
     const ids = new Set(
       links
-        .filter((l) => l.targetDocumentId && (l.targetBlockId || l.targetQuote || l.targetEventId))
+        .filter(
+          (l) =>
+            l.targetDocumentId &&
+            (l.targetBlockId || l.targetQuote || l.targetEventId || l.targetElementId),
+        )
         .map((l) => l.targetDocumentId!),
     );
     const found = new Map<Uuid, SearchDocument>();
@@ -208,6 +220,14 @@ export class KnowledgeService {
     // Destino aún sin indexar: no se puede saber; se da por bueno.
     if (!target) return 'ok';
     if (link.targetEventId && !target.elements.some((e) => e.elementId === link.targetEventId)) {
+      return 'anchor-lost';
+    }
+    // Elemento de un lienzo borrado (un índice anterior al formato 3 no lo sabe: se da por bueno).
+    if (
+      link.targetElementId &&
+      target.elementIds &&
+      !target.elementIds.includes(link.targetElementId)
+    ) {
       return 'anchor-lost';
     }
     const result = resolveAnchor(

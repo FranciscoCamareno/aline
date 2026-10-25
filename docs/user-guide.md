@@ -31,6 +31,7 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 
 - **New note:** "+ New" → "Note". You write Markdown on the left and see the result on the right.
 - **Linking another note:** type `[[` and pick a note from the list; if it does not exist, you can create it.
+- **Linking a canvas element:** when you choose a canvas in the link picker (`[[`, Ctrl/⌘+K or the link button), you can link the whole canvas or one of its elements: search for it in the list or click it in the preview. Following the link opens the canvas with that element selected.
 - **Details and links** ("Links" button in the top bar): backlinks (what links here), broken links and tags.
 - **Exporting the note:** "Export" → "Note as Markdown (.md)" downloads the note with its frontmatter (id, title and tags).
 
@@ -50,6 +51,7 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
   - **Markdown document:** shown formatted but saved as Markdown, like a note: it has a readable copy in the folder or in unencrypted Drive, can be edited outside and is searchable. Saving normalises the Markdown (list style, for example). Images are shown as text, without downloading them.
   - **Folder:** for documents only.
 - **Continuous / Page** only changes the presentation (running text or an A4 sheet); there are no page breaks while editing. Rich documents show as a page and Markdown documents as continuous text; change it in **Profile → Preferences and language → Documents**, not from the document.
+- **Document links:** the link button on the right of the toolbar opens a panel with every link in the document (all tabs), where each one leads and whether its target changed or was lost. Hovering one shows a preview of the target (an excerpt, a canvas thumbnail or the event; web addresses are not loaded). "Go to the text" selects the link in the document.
 - Before using documents, update the app on all your devices: an older version does not recognise them.
 
 ## 3 quater. Appearance and Zen mode

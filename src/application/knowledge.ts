@@ -53,6 +53,8 @@ export interface Extracted {
   elements: SearchElement[];
   /** Documentos con formato: bloques anclados dentro de `text` (destino de `#b=`). */
   blocks?: TextBlock[];
+  /** Lienzos: ids de todos los elementos vivos, para saber si sigue el destino de `#<id>`. */
+  elementIds?: string[];
 }
 
 const CONTEXT_MAX = 160;
@@ -342,6 +344,7 @@ export function extractCanvas(sceneJson: string | null, sidecarJson: string | nu
     links,
     text: searchElements.map((e) => e.text).join(' '),
     elements: searchElements,
+    elementIds: elements.flatMap((e) => (typeof e.id === 'string' ? [e.id] : [])),
   };
 }
 

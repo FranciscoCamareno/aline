@@ -7,6 +7,7 @@ import type { VaultService } from '../../application/VaultService.ts';
 import type { CalendarEvent } from '../../domain/calendar.ts';
 import { internalLink } from '../../domain/links.ts';
 import { isLinkableKind, type DocumentRecord } from '../../domain/revision.ts';
+import { CanvasStep } from './CanvasStep.tsx';
 
 /** Destino elegido: el enlace interno y un título para usarlo como texto si no hay selección. */
 export interface LinkPick {
@@ -46,7 +47,8 @@ export function validWebUrl(value: string): string | null {
 
 /**
  * Selector de destino de un enlace (RF-20, FP-03): cualquier nota, lienzo, documento o
- * calendario, y dentro de un calendario, uno de sus eventos.
+ * calendario; dentro de un calendario, uno de sus eventos, y dentro de un lienzo, uno de sus
+ * elementos (plan 10.6).
  */
 export function LinkPicker({
   title,
@@ -67,6 +69,8 @@ export function LinkPicker({
   const [web, setWeb] = useState('');
   /** Calendario elegido: se ofrecen sus eventos. */
   const [calendar, setCalendar] = useState<DocumentRecord | null>(null);
+  /** Lienzo elegido: se ofrecen sus elementos (plan 10.6). */
+  const [canvas, setCanvas] = useState<DocumentRecord | null>(null);
 
   const candidates = useMemo(() => {
     const q = normalizeForSearch(query.trim());
@@ -85,6 +89,9 @@ export function LinkPicker({
     if (doc.kind === 'calendar') {
       setCalendar(doc);
       setQuery('');
+    } else if (doc.kind === 'canvas') {
+      setCanvas(doc);
+      setQuery('');
     } else {
       onPick({ url: internalLink(doc.id), title: doc.title });
     }
@@ -93,7 +100,7 @@ export function LinkPicker({
   return (
     <div className="dialog-backdrop" role="presentation" onClick={onClose}>
       <div
-        className="dialog"
+        className={`dialog${canvas ? ' link-picker--wide' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -112,7 +119,14 @@ export function LinkPicker({
             )}
           </p>
         )}
-        {calendar ? (
+        {canvas ? (
+          <CanvasStep
+            canvas={canvas}
+            service={service}
+            onPick={onPick}
+            onBack={() => setCanvas(null)}
+          />
+        ) : calendar ? (
           <EventStep
             calendar={calendar}
             service={service}
@@ -217,11 +231,11 @@ function EventStep({
 
   useEffect(() => {
     let cancelled = false;
-    service.openCalendar(calendar.id).then(
-      (opened) =>
+    service.readCalendar(calendar.id).then(
+      (data) =>
         !cancelled &&
         setEvents(
-          [...opened.calendar.events].sort((a, b) =>
+          [...data.events].sort((a, b) =>
             `${a.date}${a.start ?? ''}`.localeCompare(`${b.date}${b.start ?? ''}`),
           ),
         ),

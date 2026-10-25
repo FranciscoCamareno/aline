@@ -38,6 +38,8 @@ export interface SearchDocument {
   elements: Array<{ elementId: string; text: string }>;
   /** Documentos con formato: bloques anclados dentro de `text`. */
   blocks?: TextBlock[];
+  /** Lienzos: ids de los elementos vivos (desde el formato 3 del índice, plan 10.6). */
+  elementIds?: string[];
 }
 
 export interface KnowledgeStore {

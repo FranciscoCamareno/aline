@@ -31,6 +31,7 @@ _English version: [user-guide.md](user-guide.md)._
 
 - **Nota nueva:** «+ Nuevo» → «Nota». A la izquierda se escribe en Markdown y a la derecha se ve el resultado.
 - **Enlazar otra nota:** escribe `[[` y elige una nota de la lista; si no existe, se puede crear.
+- **Enlazar con un elemento de un lienzo:** al elegir un lienzo en el selector de enlaces (`[[`, Ctrl/⌘+K o el botón de enlazar), puedes enlazar el lienzo entero o uno de sus elementos: búscalo en la lista o púlsalo en la vista previa. Seguir el enlace abre el lienzo con ese elemento seleccionado.
 - **Detalles y enlaces** (botón «Enlaces» de la barra superior): backlinks (quién enlaza a esta nota), enlaces rotos y etiquetas.
 - **Exportar la nota:** «Exportar» → «Nota en Markdown (.md)» descarga la nota con su frontmatter (id, título y etiquetas).
 
@@ -50,6 +51,7 @@ _English version: [user-guide.md](user-guide.md)._
   - **Documento Markdown:** se ve con formato pero se guarda en Markdown, como una nota: tiene copia legible en la carpeta o en Drive sin cifrar, se puede editar fuera y entra en la búsqueda. Al guardarlo, el Markdown se normaliza (por ejemplo, el estilo de las listas). Las imágenes se muestran como texto, sin descargarlas.
   - **Carpeta:** solo para documentos.
 - **Continuo / Hoja** cambia solo la presentación (texto corrido o una hoja A4); no hay saltos de página al editar. Los documentos con formato se ven en hoja y los Markdown en continuo; se cambia en **Perfil → Preferencias e idioma → Documentos**, no desde el documento.
+- **Enlaces del documento:** el botón de enlace de la derecha de la barra abre un panel con todos los enlaces del documento (de todas las pestañas), a dónde lleva cada uno y si su destino cambió o se perdió. Al pasar por uno se ve una vista previa del destino (un extracto, una miniatura del lienzo o el evento; las direcciones web no se cargan). «Ir al texto» selecciona el enlace en el documento.
 - Antes de usar documentos, actualiza la aplicación en todos tus dispositivos: una versión anterior no los reconoce.
 
 ## 3 quater. Apariencia y modo Zen

@@ -299,6 +299,30 @@
       "ambiguous": "título ambiguo",
       "approximate": "el texto enlazado cambió",
       "anchor-lost": "fragmento perdido"
+    },
+    "searchElements": "Buscar un elemento…",
+    "wholeCanvas": "Todo el lienzo",
+    "canvasEmpty": "El lienzo está vacío.",
+    "canvasError": "No se pudo leer el lienzo.",
+    "noElements": "Este lienzo no tiene elementos que enlazar; puedes enlazar el lienzo entero.",
+    "elementKind": {
+      "text": "Texto",
+      "shape": "Forma",
+      "frame": "Marco",
+      "image": "Imagen",
+      "arrow": "Flecha",
+      "line": "Línea",
+      "drawing": "Dibujo"
+    },
+    "preview": {
+      "web": "Dirección web: se abre en el navegador; aquí no se carga nada.",
+      "missing": "El destino ya no existe.",
+      "loading": "Cargando…",
+      "empty": "Sin texto todavía.",
+      "elementLost": "El elemento enlazado ya no está en el lienzo.",
+      "eventLost": "El evento enlazado ya no está en el calendario.",
+      "events_one": "{{count}} evento.",
+      "events_other": "{{count}} eventos."
     }
   },
   "details": {
@@ -830,7 +854,13 @@
       "underline": "subrayado",
       "alignment": "alineación",
       "comments": "comentarios"
-    }
+    },
+    "links": "Enlaces",
+    "linksCount_one": "{{count}} enlace",
+    "linksCount_other": "{{count}} enlaces",
+    "linksClose": "Cerrar los enlaces",
+    "linksEmpty": "Este documento no tiene enlaces todavía.",
+    "linksGoToText": "Ir al texto"
   },
   "schemes": {
     "papel": {

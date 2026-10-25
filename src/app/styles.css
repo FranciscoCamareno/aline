@@ -1786,6 +1786,79 @@ button.section-title {
   min-height: var(--touch);
   gap: 8px;
 }
+
+/*
+ * Paso de un lienzo en el selector de enlaces (plan 10.6): lista de elementos y vista previa
+ * donde se resalta y se elige uno. En pantallas estrechas, la vista previa va arriba.
+ */
+.dialog.link-picker--wide {
+  width: min(920px, 100%);
+  max-height: 88vh;
+}
+.canvas-step {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 1.4fr);
+  gap: 12px;
+  min-height: 0;
+}
+.canvas-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-height: min(60vh, 460px);
+  overflow-y: auto;
+}
+.canvas-step-list .link-button.is-current {
+  background: var(--selection-soft);
+}
+.canvas-step-kind {
+  flex: none;
+}
+.canvas-step-shot {
+  height: min(60vh, 460px);
+}
+@media (max-width: 720px) {
+  .canvas-step {
+    grid-template-columns: 1fr;
+  }
+  .canvas-step-shot {
+    order: -1;
+    height: 200px;
+  }
+}
+
+/* Vista previa de un lienzo (planes 10.5 y 10.6): papel claro, como las miniaturas de plantillas. */
+.canvas-shot {
+  position: relative;
+  min-height: 120px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: #fffdf4;
+}
+.canvas-shot-drawing,
+.canvas-shot-overlay {
+  position: absolute;
+  inset: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+}
+.canvas-shot-target {
+  fill: transparent;
+  pointer-events: all;
+  cursor: var(--cursor-pointer, pointer);
+}
+.canvas-shot-highlight {
+  fill: color-mix(in srgb, var(--focus) 14%, transparent);
+  stroke: var(--focus);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.canvas-shot-empty {
+  margin: 0;
+  padding: 16px;
+}
 .link-list-panel li > span {
   display: inline-flex;
   align-items: center;
@@ -4373,7 +4446,8 @@ a,
   font-weight: 700;
   line-height: 16px;
 }
-.doc-comments {
+.doc-comments,
+.doc-links {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4384,16 +4458,84 @@ a,
   border-left: 1px solid var(--border-soft);
   background: var(--bg-panel);
 }
-.doc-comments header {
+.doc-comments header,
+.doc-links header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.doc-comments h2 {
+.doc-comments h2,
+.doc-links h2 {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
   color: var(--text-secondary);
+}
+/* Enlaces del documento (plan 10.5): cada uno con su destino y, al pasar, la vista previa. */
+.doc-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.doc-links-item {
+  display: grid;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 8px;
+}
+.doc-links-item:hover,
+.doc-links-item:focus-within {
+  background: var(--selection-soft);
+}
+.doc-links-tab {
+  margin: 6px 0 0;
+}
+.doc-links-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.doc-links-open {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+.doc-links-text {
+  display: grid;
+  min-width: 0;
+}
+.doc-links-target,
+.doc-links-text .small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-preview {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-popover);
+}
+.link-preview p {
+  margin: 0;
+}
+.link-preview-url {
+  overflow-wrap: anywhere;
+}
+.link-preview-text mark {
+  background: var(--selection-soft);
+  color: inherit;
+}
+.link-preview-canvas {
+  height: 150px;
 }
 .doc-comment-list {
   display: flex;

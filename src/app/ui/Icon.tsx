@@ -53,6 +53,7 @@ export type IconName =
   | 'editar'
   | 'eliminar'
   | 'enlace'
+  | 'externo'
   | 'duplicar'
   | 'archivar'
   | 'zoom-mas'

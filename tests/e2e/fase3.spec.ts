@@ -590,3 +590,70 @@ test('búsqueda con el volumen de referencia en el navegador: 2 000 notas y 500 
   await page.locator('.library-scroll').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   await expect(rows).toHaveCount(450);
 });
+
+/** Plan 10.6: un texto de un documento enlaza con un elemento concreto de un lienzo. */
+test('documento con formato: enlazar un texto con un elemento del lienzo (lista y vista previa)', async ({
+  page,
+}) => {
+  await freshStart(page);
+  const canvasId = await activeId(page);
+  await focusCanvas(page);
+  await draw(page, 'r', [300, 200], [440, 280]);
+  const o = await origin(page);
+  await page.mouse.dblclick(o.x + 370, o.y + 240);
+  await page.keyboard.type('Nodo clave');
+  await page.keyboard.press('Escape');
+  await draw(page, 'o', [520, 320], [640, 400]);
+  await saved(page);
+  const els = (await scene(page, canvasId)).elements.filter((e) => !e.isDeleted);
+  const rect = els.find((e) => e.type === 'rectangle')!;
+  const ellipse = els.find((e) => e.type === 'ellipse')!;
+
+  await page.getByRole('tab', { name: 'Documentos' }).click();
+  await page.getByTestId('new-menu').click();
+  await page.getByRole('menuitem', { name: 'Documento con formato' }).click();
+  const editor = page.getByTestId('doc-editor');
+  await expect(editor).toBeFocused();
+  await page.keyboard.type('Ver el nodo y la elipse');
+  const openCanvasStep = async () => {
+    await page.getByTestId('doc-link').click();
+    await page.getByTestId('link-search').fill('Lienzo');
+    await page.getByTestId('link-candidate').filter({ hasText: 'Lienzo sin título' }).click();
+    await expect(page.getByTestId('canvas-preview')).toBeVisible();
+  };
+
+  // Desde la vista previa: «elipse» se enlaza pulsando la elipse.
+  for (let i = 0; i < 6; i++) await page.keyboard.press('Shift+ArrowLeft');
+  await openCanvasStep();
+  await page.locator(`.canvas-shot-target[data-element-id="${ellipse.id}"]`).click();
+  await expect(page.getByTestId('link-picker')).toBeHidden();
+  await expect(editor.locator('a')).toHaveAttribute(
+    'href',
+    `aline://document/${canvasId}#${ellipse.id}`,
+  );
+
+  // Desde la lista: la forma sale con su texto, la elipse sin texto como «Forma»; se busca.
+  await page.keyboard.press('Home');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowRight');
+  await openCanvasStep();
+  const items = page.getByTestId('link-canvas-element');
+  await expect(items).toHaveCount(2);
+  await expect(items.first()).toContainText('Nodo clave');
+  await expect(items.last()).toContainText('Forma');
+  await items.first().hover();
+  await expect(page.getByTestId('canvas-shot-highlight')).toBeVisible();
+  await page.getByTestId('link-element-search').fill('nodo');
+  await expect(items).toHaveCount(1);
+  await items.first().click();
+  await expect(page.getByTestId('link-picker')).toBeHidden();
+  await expect(editor.locator('a').first()).toHaveAttribute(
+    'href',
+    `aline://document/${canvasId}#${rect.id}`,
+  );
+  await saved(page);
+
+  // Seguir el enlace abre el lienzo.
+  await editor.locator('a').first().click();
+  await expect(page.getByTestId('canvas-host')).toBeVisible();
+  await expect(page.getByTestId('active-title-text')).toHaveText('Lienzo sin título');
+});

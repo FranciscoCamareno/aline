@@ -299,6 +299,30 @@
       "ambiguous": "ambiguous title",
       "approximate": "the linked text changed",
       "anchor-lost": "passage lost"
+    },
+    "searchElements": "Search for an element…",
+    "wholeCanvas": "The whole canvas",
+    "canvasEmpty": "The canvas is empty.",
+    "canvasError": "The canvas could not be read.",
+    "noElements": "This canvas has no elements to link; you can link the whole canvas.",
+    "elementKind": {
+      "text": "Text",
+      "shape": "Shape",
+      "frame": "Frame",
+      "image": "Image",
+      "arrow": "Arrow",
+      "line": "Line",
+      "drawing": "Drawing"
+    },
+    "preview": {
+      "web": "Web address: it opens in the browser; nothing is loaded here.",
+      "missing": "The target no longer exists.",
+      "loading": "Loading…",
+      "empty": "No text yet.",
+      "elementLost": "The linked element is no longer on the canvas.",
+      "eventLost": "The linked event is no longer in the calendar.",
+      "events_one": "{{count}} event.",
+      "events_other": "{{count}} events."
     }
   },
   "details": {
@@ -830,7 +854,13 @@
       "underline": "underline",
       "alignment": "alignment",
       "comments": "comments"
-    }
+    },
+    "links": "Links",
+    "linksCount_one": "{{count}} link",
+    "linksCount_other": "{{count}} links",
+    "linksClose": "Close the links",
+    "linksEmpty": "This document has no links yet.",
+    "linksGoToText": "Go to the text"
   },
   "schemes": {
     "papel": {
