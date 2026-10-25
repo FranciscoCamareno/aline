@@ -19,6 +19,7 @@ import {
   type ExportSize,
 } from '../../application/portability.ts';
 import { describeError } from '../../ports/Diagnostics.ts';
+import type { CanvasPattern } from '../../domain/canvasBackground.ts';
 
 type Format = 'png' | 'svg' | 'pdf' | 'excalidraw';
 const SCALES = [1, 2, 3] as const;
@@ -32,6 +33,7 @@ export function ExportDialog({
   api,
   title,
   storedBackground,
+  pattern = 'plain',
   hidden,
   onClose,
 }: {
@@ -39,6 +41,8 @@ export function ExportDialog({
   title: string;
   /** Fondo guardado del lienzo; el que se ve puede ser el del esquema activo (DESIGN.md §2.5). */
   storedBackground: () => string | null;
+  /** Estilo del fondo del lienzo (plan 10.9); se exporta solo si se pide. */
+  pattern?: CanvasPattern;
   /**
    * Elementos ocultos por ramas plegadas (plan 9.23): la exportación visual usa la proyección
    * visible (diseño §9.3); el .excalidraw los conserva.
@@ -49,6 +53,8 @@ export function ExportDialog({
   const { t } = useTranslation();
   const [format, setFormat] = useState<Format>('png');
   const [background, setBackground] = useState(true);
+  /** «Incluir el estilo del fondo»: desmarcado de entrada (plan 10.9). */
+  const [withPattern, setWithPattern] = useState(false);
   const [scale, setScale] = useState(2);
   const [onlySelected, setOnlySelected] = useState(false);
   const [pdfMode, setPdfMode] = useState<'fit' | 'paginate'>('fit');
@@ -77,7 +83,12 @@ export function ExportDialog({
   }, [scene]);
   const hasSelection = Object.values(scene.appState.selectedElementIds ?? {}).some(Boolean);
   const visibleCount = visual.elements.filter((e) => !e.isDeleted).length;
-  const options = { background, scale, onlySelected: onlySelected && hasSelection };
+  const options = {
+    background,
+    scale,
+    onlySelected: onlySelected && hasSelection,
+    ...(withPattern ? { pattern } : {}),
+  };
   const raster = exportRasterSize(visual, options);
   const rasterized = format === 'png' || format === 'pdf';
   const tooBig = rasterized && raster.width * raster.height > EXPORT_PIXEL_BUDGET;
@@ -153,6 +164,19 @@ export function ExportDialog({
               />
               {t('export.background')}
             </label>
+            {pattern !== 'plain' && (
+              <label className="inline-option">
+                <input
+                  name="export-pattern"
+                  type="checkbox"
+                  disabled={!background}
+                  checked={withPattern && background}
+                  data-testid="export-pattern"
+                  onChange={(e) => setWithPattern(e.target.checked)}
+                />
+                {t('export.pattern', { pattern: t(`canvas.background.${pattern}`) })}
+              </label>
+            )}
             <label className="inline-option">
               {t('export.scale')}
               <select

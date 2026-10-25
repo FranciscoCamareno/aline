@@ -19,6 +19,7 @@ _English version: [user-guide.md](user-guide.md)._
 - **Lienzo nuevo:** en la pestaña **Notas** de la barra lateral, «+ Nuevo» → «Lienzo». Las herramientas están en la bandeja de abajo; sus atajos y estilos son los de Excalidraw.
 - **Notas adhesivas y stickers:** la nota de la bandeja (o la tecla N) pone una nota adhesiva en el centro; con doble clic se escribe en ella. La hoja de stickers (o la tecla B) abre los stickers: se colocan con un clic o arrastrándolos al lienzo.
 - **Plantillas:** selecciona elementos (también imágenes y stickers), pulsa «Plantillas» (arriba a la derecha) → «Guardar selección» y ponle un nombre. Cada plantilla muestra una miniatura. Para usarla, púlsala en el panel o arrástrala al lienzo: se inserta una copia.
+- **Fondo del lienzo:** el botón **Fondo** de encima del lienzo elige liso, puntos, renglones o cuadrícula. Es de cada lienzo y se guarda con él. Al exportar a imagen o PDF, marca «Incluir el estilo del fondo» si lo quieres en la imagen.
 - **Vincular un elemento** con una nota, otro lienzo o una web: selecciona el elemento y pulsa «Vincular» (encima del lienzo). El enlace se abre haciendo clic en el icono del elemento.
 - **Conectores sueltos:** si una flecha deja de estar unida a una forma, aparece un aviso que permite seleccionar esas flechas.
 - **Exportar** («Exportar» en la barra superior → «Imagen, PDF o .excalidraw…», o el menú ☰ del lienzo):

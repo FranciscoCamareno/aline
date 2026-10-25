@@ -178,7 +178,14 @@
     "expandBranch_one": "Desplegar rama ({{count}} oculto)",
     "expandBranch_other": "Desplegar rama ({{count}} ocultos)",
     "noteCard": "Tarjeta de nota",
-    "noteCardTitle": "Insertar la tarjeta de una nota"
+    "noteCardTitle": "Insertar la tarjeta de una nota",
+    "background": {
+      "title": "Fondo",
+      "plain": "Liso",
+      "dots": "Puntos",
+      "lines": "Renglones",
+      "grid": "Cuadrícula"
+    }
   },
   "toolbar": {
     "label": "Herramientas",
@@ -537,7 +544,8 @@
     "working": "Exportando…",
     "run": "Exportar",
     "noNotes": "No hay notas ni documentos que exportar.",
-    "documentsDir": "Documentos"
+    "documentsDir": "Documentos",
+    "pattern": "Incluir el estilo del fondo ({{pattern}})"
   },
   "import": {
     "title": "Importación terminada",

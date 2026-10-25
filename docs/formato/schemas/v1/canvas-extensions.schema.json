@@ -110,6 +110,19 @@
       "items": {
         "type": "string"
       }
+    },
+    "background": {
+      "type": "object",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "maxLength": 32
+        }
+      },
+      "required": [
+        "pattern"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

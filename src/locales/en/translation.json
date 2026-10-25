@@ -178,7 +178,14 @@
     "expandBranch_one": "Expand branch ({{count}} hidden)",
     "expandBranch_other": "Expand branch ({{count}} hidden)",
     "noteCard": "Note card",
-    "noteCardTitle": "Insert a note card"
+    "noteCardTitle": "Insert a note card",
+    "background": {
+      "title": "Background",
+      "plain": "Plain",
+      "dots": "Dots",
+      "lines": "Ruled lines",
+      "grid": "Grid"
+    }
   },
   "toolbar": {
     "label": "Tools",
@@ -537,7 +544,8 @@
     "working": "Exporting…",
     "run": "Export",
     "noNotes": "There are no notes or documents to export.",
-    "documentsDir": "Documents"
+    "documentsDir": "Documents",
+    "pattern": "Include the background style ({{pattern}})"
   },
   "import": {
     "title": "Import finished",

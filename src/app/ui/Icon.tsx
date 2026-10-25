@@ -57,6 +57,7 @@ export type IconName =
   | 'girar-izq'
   | 'girar-der'
   | 'recortar'
+  | 'cuadricula'
   | 'duplicar'
   | 'archivar'
   | 'zoom-mas'

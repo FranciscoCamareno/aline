@@ -35,6 +35,11 @@ export const canvasExtensionsSchema = z.object({
   }),
   noteEmbeds: z.array(z.unknown()),
   danglingConnectorIds: z.array(z.string()),
+  /**
+   * Desde el 24/10/2026 (plan 10.9): estilo del fondo del lienzo (`domain/canvasBackground.ts`).
+   * Opcional: sin la clave, liso. Un patrón desconocido se muestra liso y se conserva.
+   */
+  background: z.object({ pattern: z.string().max(32) }).optional(),
 });
 
 export type CanvasExtensions = z.infer<typeof canvasExtensionsSchema>;

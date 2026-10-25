@@ -1123,6 +1123,19 @@ a {
   position: absolute;
   inset: 0;
 }
+/*
+ * Estilo del fondo del lienzo (plan 10.9): capa detrás del canvas estático del motor (que queda
+ * transparente); el color, el patrón y el filtro del tema oscuro los pone CanvasView.
+ */
+.canvas-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.canvas-backdrop[hidden] {
+  display: none;
+}
 
 /* Estado vacío (§6): sticker girado, título, una línea y el botón principal. */
 .empty-state {

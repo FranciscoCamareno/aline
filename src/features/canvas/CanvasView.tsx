@@ -21,6 +21,14 @@ import { excalidrawLangCode } from '../../app/i18n.ts';
 import { logDiagnostic } from '../../app/runtime.ts';
 import { describeError } from '../../ports/Diagnostics.ts';
 import { displayedCanvasBackground } from '../../app/schemes.ts';
+import { Menu } from '../../app/ui/Menu.tsx';
+import {
+  CANVAS_PATTERNS,
+  patternInk,
+  readPattern,
+  type CanvasPattern,
+} from '../../domain/canvasBackground.ts';
+import { backdropStyle, type EngineView } from './canvasBackdrop.ts';
 import { linkFocus, useUiStore } from '../../app/store.ts';
 import { activeScheme, useTheme } from '../../app/theme.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
@@ -127,10 +135,31 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const stickerLayer = useRef<ReturnType<typeof attachStickerLayer> | null>(null);
   const { scheme } = useTheme();
   /**
-   * Fondo del lienzo (DESIGN.md §2.5): `stored` es el de la escena guardada y `shown` el que se
-   * pinta con el esquema activo. Guardar y exportar usan siempre `stored`.
+   * Fondo del lienzo (DESIGN.md §2.5): `stored` es el de la escena guardada, `painted` el color
+   * que se ve con el esquema activo y `shown` el que tiene el motor: `painted`, o transparente si
+   * el lienzo tiene un estilo de fondo (plan 10.9), que pinta la capa de detrás. Guardar y
+   * exportar usan siempre `stored`.
    */
-  const backgroundRef = useRef<{ stored: string; shown: string } | null>(null);
+  const backgroundRef = useRef<{ stored: string; shown: string; painted: string } | null>(null);
+  /** Estilo del fondo (sidecar `background.pattern`) y la capa que lo pinta. */
+  const [pattern, setPatternState] = useState<CanvasPattern>('plain');
+  const patternRef = useRef<CanvasPattern>('plain');
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EngineView>({ scrollX: 0, scrollY: 0, zoom: 1 });
+  /** Pinta la capa del fondo con el color, el estilo y la vista vigentes (sin React). */
+  const paintBackdrop = useCallback(() => {
+    const el = backdropRef.current;
+    const background = backgroundRef.current;
+    if (!el || !background) return;
+    const current = patternRef.current;
+    el.hidden = current === 'plain';
+    if (current === 'plain') return;
+    el.style.backgroundColor = background.painted;
+    Object.assign(
+      el.style,
+      backdropStyle(current, patternInk(background.painted), viewRef.current),
+    );
+  }, []);
   /** Modo Zen del motor: la aplicación oculta su barra lateral y su cabecera. */
   const zenRef = useRef(false);
   useEffect(() => () => useUiStore.getState().setZen(false), []);
@@ -197,8 +226,12 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         : excalidrawCanvasAdapter.contentSignature(scene);
       // El fondo se pinta con el del esquema activo, sin cambiar lo guardado (ni la firma).
       const stored = scene.appState.viewBackgroundColor ?? '#ffffff';
-      const shown = displayedCanvasBackground(stored, activeScheme());
-      backgroundRef.current = { stored, shown };
+      const painted = displayedCanvasBackground(stored, activeScheme());
+      const initialPattern = readPattern(opened.extensions.background?.pattern);
+      patternRef.current = initialPattern;
+      setPatternState(initialPattern);
+      const shown = initialPattern === 'plain' ? painted : 'transparent';
+      backgroundRef.current = { stored, shown, painted };
       scene.appState = { ...scene.appState, viewBackgroundColor: shown };
       extensionsRef.current = opened.extensions;
       setMindMapState(opened.extensions.mindMap);
@@ -271,6 +304,20 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         useUiStore.getState().setZen(appState.zenModeEnabled);
       }
       if (pendingFocus.current) applyPendingFocus();
+      // La capa del estilo de fondo sigue al desplazamiento y al zoom (plan 10.9).
+      const view = viewRef.current;
+      if (
+        view.scrollX !== appState.scrollX ||
+        view.scrollY !== appState.scrollY ||
+        view.zoom !== appState.zoom.value
+      ) {
+        viewRef.current = {
+          scrollX: appState.scrollX,
+          scrollY: appState.scrollY,
+          zoom: appState.zoom.value,
+        };
+        if (patternRef.current !== 'plain') paintBackdrop();
+      }
       // Selección actual, para ofrecer «Vincular» cuando hay un solo elemento.
       const ids = Object.keys(appState.selectedElementIds).filter(
         (id) => appState.selectedElementIds[id],
@@ -297,7 +344,19 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       // Un fondo distinto del que pintamos lo eligió el usuario en el motor: pasa a ser el guardado.
       if (backgroundRef.current && appState.viewBackgroundColor !== backgroundRef.current.shown) {
         const chosen = appState.viewBackgroundColor;
-        backgroundRef.current = { stored: chosen, shown: chosen };
+        if (patternRef.current === 'plain') {
+          backgroundRef.current = { stored: chosen, shown: chosen, painted: chosen };
+        } else {
+          // Con estilo, el color lo pinta la capa: el motor vuelve a transparente.
+          backgroundRef.current = { stored: chosen, shown: 'transparent', painted: chosen };
+          paintBackdrop();
+          queueMicrotask(() =>
+            api?.updateScene({
+              appState: { viewBackgroundColor: 'transparent' },
+              captureUpdate: CaptureUpdateAction.NEVER,
+            }),
+          );
+        }
       }
       const stored = backgroundRef.current?.stored ?? appState.viewBackgroundColor;
       const scene: EngineScene = {
@@ -315,7 +374,16 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       signatureRef.current = signature;
       autosave.push(scene);
     },
-    [autosave, session, service, documentId, applyPendingFocus, scheduleProjection],
+    [
+      autosave,
+      session,
+      service,
+      documentId,
+      applyPendingFocus,
+      scheduleProjection,
+      paintBackdrop,
+      api,
+    ],
   );
 
   // Guardar también al terminar un trazo o una manipulación. El motor emite el último onChange
@@ -334,18 +402,49 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
     }, 50);
   }, [autosave, service, documentId]);
 
-  // Al cambiar de esquema, el fondo pintado cambia con él (sin crear una revisión).
+  // Al cambiar de esquema o de estilo de fondo, el fondo pintado cambia con ellos (sin crear una
+  // revisión). En oscuro, la capa toma el mismo filtro que el canvas del motor.
   useEffect(() => {
     const background = backgroundRef.current;
     if (!api || !background) return;
-    const shown = displayedCanvasBackground(background.stored, scheme);
-    if (shown === background.shown) return;
-    backgroundRef.current = { stored: background.stored, shown };
-    api.updateScene({
-      appState: { viewBackgroundColor: shown },
-      captureUpdate: CaptureUpdateAction.NEVER,
+    const painted = displayedCanvasBackground(background.stored, scheme);
+    const shown = pattern === 'plain' ? painted : 'transparent';
+    backgroundRef.current = { stored: background.stored, shown, painted };
+    paintBackdrop();
+    const frame = requestAnimationFrame(() => {
+      const canvas = hostRef.current?.querySelector('canvas.excalidraw__canvas.static');
+      if (backdropRef.current) {
+        backdropRef.current.style.filter = canvas ? getComputedStyle(canvas).filter : 'none';
+      }
     });
-  }, [api, scheme, loaded]);
+    if (shown !== api.getAppState().viewBackgroundColor) {
+      api.updateScene({
+        appState: { viewBackgroundColor: shown },
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    }
+    return () => cancelAnimationFrame(frame);
+  }, [api, scheme, theme, loaded, pattern, paintBackdrop]);
+
+  /** Cambia el estilo del fondo: va al sidecar y se guarda en una revisión (plan 10.9). */
+  const setPattern = (next: CanvasPattern) => {
+    const extensions = extensionsRef.current;
+    const background = backgroundRef.current;
+    if (!api || !extensions || !background || next === patternRef.current) return;
+    const rest = { ...extensions };
+    delete rest.background;
+    extensionsRef.current = next === 'plain' ? rest : { ...rest, background: { pattern: next } };
+    patternRef.current = next;
+    setPatternState(next);
+    // Solo cambia el sidecar: se guarda la escena tal cual, con el fondo guardado.
+    const scene: EngineScene = {
+      elements: api.getSceneElements(),
+      appState: { ...api.getAppState(), viewBackgroundColor: background.stored },
+      files: api.getFiles(),
+    };
+    signatureRef.current = excalidrawCanvasAdapter.contentSignature(scene);
+    autosave.push(scene);
+  };
 
   // Abrir un lienzo desde un enlace, un backlink o la búsqueda: centrar y resaltar el elemento.
   // El motor entrega su API antes de cargar la escena, así que el destino queda pendiente hasta
@@ -539,6 +638,8 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           {t(`readOnly.${loaded.session.readOnly}`)}
         </p>
       )}
+      {/* Estilo del fondo (plan 10.9): detrás del canvas del motor, que queda transparente. */}
+      <div ref={backdropRef} className="canvas-backdrop" aria-hidden="true" hidden />
       {/* Barra propia (DESIGN.md §7); la del motor queda oculta por CSS. */}
       {api && !loaded.session.readOnly && <ToolTray api={api} theme={theme} />}
       <div className="canvas-tools">
@@ -576,6 +677,24 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           </button>
         )}
         {api && !loaded.session.readOnly && (
+          <Menu
+            trigger={
+              <>
+                <Icon name="cuadricula" size={18} />
+                {t('canvas.background.title')}
+              </>
+            }
+            label={t('canvas.background.title')}
+            testId="canvas-background"
+            items={CANVAS_PATTERNS.map((value) => ({
+              id: `canvas-background-${value}`,
+              label: t(`canvas.background.${value}`),
+              ...(value === pattern ? { icon: 'check' as const } : {}),
+              onSelect: () => setPattern(value),
+            }))}
+          />
+        )}
+        {api && !loaded.session.readOnly && (
           <button
             type="button"
             data-testid="insert-note-card"
@@ -607,6 +726,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           api={api}
           title={title}
           storedBackground={() => backgroundRef.current?.stored ?? null}
+          pattern={pattern}
           hidden={() => hiddenIds(extensionsRef.current?.mindMap)}
           onClose={() => setExportOpen(false)}
         />

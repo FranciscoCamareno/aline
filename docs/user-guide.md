@@ -19,6 +19,7 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 - **New canvas:** in the sidebar's **Notes** tab, "+ New" → "Canvas". The tools are in the tray at the bottom; their shortcuts and styles are Excalidraw's.
 - **Sticky notes and stickers:** the note in the tray (or the N key) puts a sticky note in the middle of the view; double-click it to write. The sticker sheet (or the B key) opens the stickers: click one or drag it onto the canvas.
 - **Templates:** select elements (images and stickers too), press "Templates" (top right) → "Save selection" and give it a name. Each template shows a thumbnail. To use it, click it in the panel or drag it onto the canvas: a copy is inserted.
+- **Canvas background:** the **Background** button above the canvas picks plain, dots, ruled lines or grid. It belongs to each canvas and is saved with it. When exporting to an image or PDF, tick "Include the background style" if you want it in the image.
 - **Linking an element** to a note, another canvas or a web page: select the element and press "Link" (above the canvas). The link opens from the element's icon.
 - **Loose connectors:** if an arrow becomes detached from a shape, a notice lets you select those arrows.
 - **Export** ("Export" in the top bar → "Image, PDF or .excalidraw…", or the canvas ☰ menu):
