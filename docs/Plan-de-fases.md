@@ -470,7 +470,7 @@ Punto de partida: la 0.2.0 publicada (21/10/2026). Lista del propietario analiza
 
 | # | Tarea | Notas | Tamaño |
 | --- | --- | --- | --- |
-| 10.10 | `version` 1.0.0, README (versión, verificación y tabla de pendientes), guía de uso con lo nuevo, etiqueta `v1.0.0`; `pnpm verify` y e2e en Chromium y Edge; publicar en Cloudflare | Antes de la 1.0, lo que la definición del §2 pide del propietario: la matriz del iPad (`pruebas-ipad.md`) y el uso real | S |
+| 10.10 | `version` 1.0.0, README (versión, verificación y tabla de pendientes), guía de uso con lo nuevo, etiqueta `v1.0.0`; `pnpm verify` y e2e en Chromium y Edge; publicar en Cloudflare | **Preparada (28/10/2026).** `version` 1.0.0, README (versión, aviso de actualizar todos los dispositivos por las imágenes editadas y el estilo del fondo, verificación y tabla de pendientes), `pnpm verify` y e2e en Chromium y Edge, etiqueta `v1.0.0` local. Falta empujar la etiqueta y publicar en Cloudflare, a decisión del propietario. Antes de la 1.0, lo que la definición del §2 pide del propietario: la matriz del iPad (`pruebas-ipad.md`) y el uso real | S |
 
 **Del propietario para esta fase:** confirmar la interpretación de 10.2; aprobar los dibujos genéricos de los punteros del sistema (10.4) antes de aplicarlos. Decididos el 23/10/2026: 10.4 (estática, básicos), 10.7 (equivalentes libres), 10.8 (tamaño, giro y recorte) y 10.9 (por lienzo, exportación opcional).
 

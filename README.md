@@ -8,18 +8,24 @@ con historial de versiones. No necesita cuenta ni servidor; la carpeta local y G
 
 El diseño técnico es [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md) y el plan
 de trabajo, [docs/Plan-de-fases.md](docs/Plan-de-fases.md). Están implementadas las fases 0 a 5
-y 7 a 9 (la 9 es la versión 0.2.0, que trajo también el núcleo de mapa mental de la fase 6:
-hijos con Tab, ramas plegables y tarjetas de nota); para la beta faltan las pruebas en el iPad
-y dos semanas de uso real, y de la fase 6 queda el modo «Solo lápiz» propio.
+y 7 a 10 (la 9 es la versión 0.2.0, que trajo también el núcleo de mapa mental de la fase 6:
+hijos con Tab, ramas plegables y tarjetas de nota; la 10 es la 1.0.0). Quedan las pruebas en el
+iPad y el uso real que el plan pide al propietario, y de la fase 6 el modo «Solo lápiz» propio,
+que no entra en la 1.0.
 
-**Versión actual: 0.2.0** (etiqueta `v0.2.0`, 21/10/2026; se muestra en «Estado y diagnóstico»).
+**Versión actual: 1.0.0** (etiqueta `v1.0.0`, 28/10/2026; se muestra en «Estado y diagnóstico»).
 Publicada en https://aline.projeck.workers.dev (Cloudflare Workers, recursos estáticos de
-`dist/`). Qué trae está en la fase 9 de [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
+`dist/`). Qué trae está en la fase 10 de [docs/Plan-de-fases.md](docs/Plan-de-fases.md):
+«Preferencias e idioma», enlaces a elementos concretos de un lienzo, panel de enlaces de los
+documentos, Arimo/Tinos/Gelasio (equivalentes libres de Arial, Times New Roman y Georgia),
+imágenes que se agrandan, giran y recortan, y estilos de fondo del lienzo.
 
-> **Al pasar a la 0.2.0, actualiza todos tus dispositivos antes de usar dos novedades.** Una
-> versión anterior muestra solo la primera aparición de un **evento repetido**, y los nodos de
-> una **rama plegada** del mapa mental como invisibles y bloqueados. No se pierde nada: en
-> cuanto ese dispositivo se actualiza (la aplicación lo ofrece sola), todo se ve bien.
+> **Al pasar a la 1.0.0, actualiza todos tus dispositivos antes de usar dos novedades.** Una
+> versión anterior muestra la **imagen original** de un documento (sin el tamaño, el giro ni el
+> recorte) y el **lienzo liso** (sin puntos, renglones ni cuadrícula); y si guarda ese documento
+> o ese lienzo, esa edición se pierde. Desde la 0.2.0 sigue valiendo lo mismo para los eventos
+> repetidos y las ramas plegadas. En cuanto un dispositivo se actualiza (la aplicación lo ofrece
+> sola), todo se ve bien.
 
 > El sistema se llama **aline**. Para no romper datos existentes, la base local conserva su
 > nombre original (`mindnote-vault`) y los enlaces internos anteriores a 16/10/2026 (`mindnote://`)
@@ -331,15 +337,18 @@ adaptadores, y que la interfaz llame directamente a Drive o a la carpeta.
 
 ## Verificación
 
-Última ejecución: 21/10/2026 (0.2.0), Windows 11, Node 24.22.1 (con las correcciones de seguridad de
-octubre de 2026).
+Última ejecución: 28/10/2026 (1.0.0), Windows 11, Node 24.22.1.
 
-- `pnpm verify`: formato, typecheck, lint, 273 pruebas unitarias y compilación, todo correcto.
-- `pnpm test:e2e` en Chromium: pasan los 124 recorridos (los 2 del banco de rendimiento se
-  omiten, como siempre). Con los dos navegadores a la vez (Chromium y Edge, 248
-  recorridos en paralelo, más lentos) pasan 245; los 3 que fallaron por tiempos (dos de
-  documentos con formato y el de conflicto entre dos pestañas en Edge) pasan al repetirlos
-  solos, y bajo carga (10 y 16 repeticiones en paralelo) no se reprodujo ningún fallo.
+- `pnpm verify`: formato, typecheck, lint, 290 pruebas unitarias y compilación, todo correcto.
+- `pnpm test:e2e:all` (Chromium y Edge a la vez, 268 recorridos): pasan 263 y se omiten 4 (los
+  2 del banco de rendimiento en cada navegador). En Chromium pasan los 132. Falló 1 en Edge, el
+  de conflicto entre dos pestañas, que ya fallaba por tiempos con los dos navegadores a la vez en
+  la 0.2.0: solo pasa 5 de 5.
+- La CI de GitHub (Chromium) pasa con el commit `f7477d6`. Antes había destapado dos fallos que
+  en local no salían: una carrera en la prueba de Tab del mapa mental (ahora espera al guardado
+  del texto) y un error real de la sincronización en paralelo, que podía publicar una versión
+  antes que su padre si las dos tenían la misma fecha al milisegundo (ahora se ordenan por
+  `parentIds`).
 - En GitHub Actions falló una vez el de anclas en documentos con formato
   (`enlaces.spec.ts`), que no se reproduce en local ni bajo carga. Desde la 0.2.0 la CI hace un
   reintento (`retries` solo con `CI`): un fallo intermitente sale como «flaky» en el informe.
@@ -466,19 +475,20 @@ Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes d
 error `not-implemented` en vez de simular un éxito.
 El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
 
-| Área                                                                     | Estado                                                                                                                                                                                                                                                                                                  | Dónde                                     |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Google Drive: cerrar la comprobación real                                | Funciona con Google real, la aplicación OAuth está publicada (19/10/2026) y la CSP es obligatoria (21/10/2026). Falta probar con Google real el modo cifrado y dos equipos                                                                                                                              | `adapters/drive/`, `public/_headers`      |
-| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                                                                                                             | —                                         |
-| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                                                                                                            | `app/importExport.ts`                     |
-| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                                                                                                           | —                                         |
-| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6                                                                                    | `features/canvas/CanvasView.tsx`          |
-| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                                                                                                    | `application/KnowledgeService.ts`         |
-| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                                                                                                     | `domain/frontmatter.ts`                   |
-| Calendario, plantillas y mapa mental con versiones antiguas de la app    | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento, una anterior al 20/10/2026 muestra solo la primera aparición de un evento repetido, y una anterior a la 0.2.0 muestra los nodos de una rama plegada invisibles y bloqueados: actualizar todos los dispositivos antes de usarlos | `domain/revision.ts`, `domain/sidecar.ts` |
-| Documentos: lo que falta (beta)                                          | Pruebas en el iPad de los dos tipos de documento                                                                                                                                                                                                                                                        | `features/docs/`                          |
-| Documentos con versiones antiguas de la app                              | Una versión anterior al 15/10/2026 no reconoce `doc`, ni una anterior al 16/10/2026 `mddoc` y `docfolder`: actualizar todos los dispositivos antes de usarlos                                                                                                                                           | `domain/revision.ts`                      |
-| Biblioteca externa de Excalidraw                                         | Las plantillas propias la sustituyen y su botón está oculto; falta comprobar que ningún atajo del motor abra «Explorar bibliotecas»                                                                                                                                                                     | `features/canvas/`                        |
+| Área                                                                     | Estado                                                                                                                                                                                                                                                                                                                                                                                         | Dónde                                     |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Google Drive: cerrar la comprobación real                                | Funciona con Google real, la aplicación OAuth está publicada (19/10/2026) y la CSP es obligatoria (21/10/2026). Falta probar con Google real el modo cifrado y dos equipos                                                                                                                                                                                                                     | `adapters/drive/`, `public/_headers`      |
+| Google Picker (abrir archivos ajenos a la aplicación)                    | No implementado; no hace falta para sincronizar (`drive.file` ve lo que crea la aplicación)                                                                                                                                                                                                                                                                                                    | —                                         |
+| Importar `.excalidraw`: conservar el original si hubo conversión (§12.1) | Se importa la escena normalizada y se informa de lo descartado, pero no se guarda el archivo original aparte                                                                                                                                                                                                                                                                                   | `app/importExport.ts`                     |
+| Pruebas en el iPad y dos semanas de uso real (5.8)                       | Las hace el propietario: [docs/pruebas-ipad.md](docs/pruebas-ipad.md) y despliegue con copias                                                                                                                                                                                                                                                                                                  | —                                         |
+| Interfaz propia del modo «Solo lápiz» (RF-47, fase 6)                    | El motor activa su modo lápiz al detectar el Apple Pencil y la barra propia muestra el interruptor «Solo lápiz»; el modo propio con rechazo de palma documentado y los bloques manuscritos en notas son de la fase 6                                                                                                                                                                           | `features/canvas/CanvasView.tsx`          |
+| Búsqueda en documentos en conflicto                                      | Se indexa la cabeza más reciente; el diseño pide indexar todas con una marca visible                                                                                                                                                                                                                                                                                                           | `application/KnowledgeService.ts`         |
+| Frontmatter YAML completo                                                | Hay un subconjunto: valores simples y listas en línea. Si no lo reconoce, conserva el texto y avisa                                                                                                                                                                                                                                                                                            | `domain/frontmatter.ts`                   |
+| Calendario, plantillas y mapa mental con versiones antiguas de la app    | Una versión anterior al 14/10/2026 no reconoce esos tipos de documento, una anterior al 20/10/2026 muestra solo la primera aparición de un evento repetido, una anterior a la 0.2.0 muestra los nodos de una rama plegada invisibles y bloqueados, y una anterior a la 1.0.0 muestra el lienzo sin su estilo de fondo y lo quita si guarda: actualizar todos los dispositivos antes de usarlos | `domain/revision.ts`, `domain/sidecar.ts` |
+| Documentos: lo que falta (beta)                                          | Pruebas en el iPad de los dos tipos de documento, también de los tiradores y el recorte de imágenes (1.0.0) con el dedo y el Apple Pencil                                                                                                                                                                                                                                                      | `features/docs/`                          |
+| Imágenes editadas con versiones antiguas de la app                       | Una versión anterior a la 1.0.0 muestra la imagen original de un documento con formato y, si guarda, pierde el tamaño, el giro y el recorte (el archivo original nunca cambia): actualizar todos los dispositivos antes de usarlo                                                                                                                                                              | `domain/imageEdit.ts`                     |
+| Documentos con versiones antiguas de la app                              | Una versión anterior al 15/10/2026 no reconoce `doc`, ni una anterior al 16/10/2026 `mddoc` y `docfolder`: actualizar todos los dispositivos antes de usarlos                                                                                                                                                                                                                                  | `domain/revision.ts`                      |
+| Biblioteca externa de Excalidraw                                         | Las plantillas propias la sustituyen y su botón está oculto; falta comprobar que ningún atajo del motor abra «Explorar bibliotecas»                                                                                                                                                                                                                                                            | `features/canvas/`                        |
 
 ## Decisiones de implementación
 

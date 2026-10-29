@@ -1,7 +1,7 @@
 {
   "name": "mindnote",
   "private": true,
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Sistema personal de mapas mentales y notas conectadas (núcleo local)",
   "type": "module",
   "packageManager": "pnpm@12.11.2",
