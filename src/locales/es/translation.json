@@ -62,7 +62,9 @@
     "importFolder": "Importar carpeta…",
     "sections": "Secciones",
     "sectionNotes": "Notas",
-    "showMore": "Mostrar {{count}} más"
+    "showMore": "Mostrar {{count}} más",
+    "kindNotebook": "Cuaderno",
+    "untitledNotebook": "Cuaderno sin título"
   },
   "title": {
     "edit": "Editar título",
@@ -528,7 +530,8 @@
     "pdfLayout": "Páginas",
     "pdf": {
       "fit": "Encajar en una página",
-      "paginate": "Varias páginas, a lo ancho de la hoja"
+      "paginate": "Varias páginas, a lo ancho de la hoja",
+      "pages": "Una página del PDF por página del cuaderno"
     },
     "size": "Tamaño de la imagen: {{width}} × {{height}} px",
     "tooBig": "A esta escala la imagen no cabe en la memoria del navegador. Baja la escala (como máximo {{max}}×), exporta solo la selección o usa SVG. No se recorta nada.",
@@ -1054,5 +1057,32 @@
       "failed": "No se pudo importar el paquete.",
       "open": "Abrir el entorno"
     }
+  },
+  "notebook": {
+    "newTitle": "Nuevo cuaderno",
+    "size": "Tamaño de página",
+    "sizes": {
+      "a4": "A4",
+      "letter": "Carta"
+    },
+    "orientation": "Orientación",
+    "orientations": {
+      "portrait": "Vertical",
+      "landscape": "Horizontal"
+    },
+    "create": "Crear cuaderno",
+    "pages": "Páginas",
+    "previous": "Página anterior",
+    "next": "Página siguiente",
+    "addPage": "Añadir una página detrás de esta",
+    "pageOf": "Página {{page}} de {{total}}",
+    "goTo": "Ir a la página {{page}}",
+    "moveUp": "Subir la página",
+    "moveDown": "Bajar la página",
+    "duplicate": "Duplicar la página",
+    "delete": "Borrar la página",
+    "deleteConfirm": "Borrar",
+    "toCanvas": "Convertir en lienzo infinito",
+    "toNotebook": "Convertir en cuaderno…"
   }
 }

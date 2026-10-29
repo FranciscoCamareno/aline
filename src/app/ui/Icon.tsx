@@ -61,6 +61,7 @@ export type IconName =
   | 'inicio'
   | 'entorno'
   | 'compartir'
+  | 'cuaderno'
   | 'ordenar'
   | 'filtrar'
   | 'duplicar'

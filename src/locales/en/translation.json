@@ -62,7 +62,9 @@
     "importFolder": "Import folder…",
     "sections": "Sections",
     "sectionNotes": "Notes",
-    "showMore": "Show {{count}} more"
+    "showMore": "Show {{count}} more",
+    "kindNotebook": "Notebook",
+    "untitledNotebook": "Untitled notebook"
   },
   "title": {
     "edit": "Edit title",
@@ -528,7 +530,8 @@
     "pdfLayout": "Pages",
     "pdf": {
       "fit": "Fit on one page",
-      "paginate": "Several pages, page-wide"
+      "paginate": "Several pages, page-wide",
+      "pages": "One PDF page per notebook page"
     },
     "size": "Image size: {{width}} × {{height}} px",
     "tooBig": "At this scale the image does not fit in the browser memory. Lower the scale (at most {{max}}×), export only the selection or use SVG. Nothing is cropped.",
@@ -1054,5 +1057,32 @@
       "failed": "The package could not be imported.",
       "open": "Open the workspace"
     }
+  },
+  "notebook": {
+    "newTitle": "New notebook",
+    "size": "Page size",
+    "sizes": {
+      "a4": "A4",
+      "letter": "Letter"
+    },
+    "orientation": "Orientation",
+    "orientations": {
+      "portrait": "Portrait",
+      "landscape": "Landscape"
+    },
+    "create": "Create notebook",
+    "pages": "Pages",
+    "previous": "Previous page",
+    "next": "Next page",
+    "addPage": "Add a page after this one",
+    "pageOf": "Page {{page}} of {{total}}",
+    "goTo": "Go to page {{page}}",
+    "moveUp": "Move the page up",
+    "moveDown": "Move the page down",
+    "duplicate": "Duplicate the page",
+    "delete": "Delete the page",
+    "deleteConfirm": "Delete",
+    "toCanvas": "Convert to an infinite canvas",
+    "toNotebook": "Convert to a notebook…"
   }
 }

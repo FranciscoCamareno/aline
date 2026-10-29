@@ -103,6 +103,8 @@ function Glyph({ name }: { name: string }) {
 interface Props {
   api: ExcalidrawImperativeAPI;
   theme: 'light' | 'dark';
+  /** Herramientas que no se ofrecen (en un cuaderno, el marco: los marcos son las páginas). */
+  hidden?: readonly string[];
 }
 
 /**
@@ -111,7 +113,7 @@ interface Props {
  * a la barra del motor (oculta por CSS) y lo maneja solo con su API pública; los atajos de
  * teclado siguen siendo los del motor, y la barra refleja la herramienta activa.
  */
-export function ToolTray({ api, theme }: Props) {
+export function ToolTray({ api, theme, hidden = [] }: Props) {
   const { t } = useTranslation();
   const [state, setState] = useState<ToolState>(() => readState(api.getAppState()));
   const [lastShape, setLastShape] = useState<ShapeTool>(() => {
@@ -236,6 +238,7 @@ export function ToolTray({ api, theme }: Props) {
     tool.shortcut ? `${t(`toolbar.${tool.label}`)} (${tool.shortcut})` : t(`toolbar.${tool.label}`);
 
   const slot = (tool: ToolDef, group: 'main' | 'secondary') => {
+    if (hidden.includes(tool.id)) return null;
     if (tool.id === 'sticker') return stickerSlot(tool);
     const active = tool.id === state.type;
     return (

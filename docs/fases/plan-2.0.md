@@ -105,23 +105,19 @@ de motor es hacer las páginas con lo que ya trae y con capas propias:
 
 | # | Tarea | Notas | Tamaño |
 | --- | --- | --- | --- |
-| 13.1 | Prueba de viabilidad: páginas como marcos bloqueados, recorte, límites de desplazamiento y rendimiento con 50 páginas, también con el lápiz en el iPad | Como la fase 0: se decide si seguir antes de construir encima. El iPad lo prueba el propietario | M |
-| 13.2 | Modelo: `layout` en el sidecar (`{ mode: 'notebook', page: { size, orientation }, pages: [ids de los marcos] }`); «Nuevo → Cuaderno» además de «Lienzo» | **Cambio de formato** compatible (como `background` en la 10.9): una versión anterior vería las páginas como marcos sueltos en un lienzo infinito, sin perder nada | M |
-| 13.3 | Vista de cuaderno: columna de páginas, límites de desplazamiento, ajustar a la página, paso de página (botones, teclado y deslizar), número de página | — | L |
-| 13.4 | Páginas: añadir (al final o detrás de la actual), duplicar, borrar con confirmación, reordenar (miniaturas en un panel lateral) | Un paso de deshacer por operación (como 9.25) | M |
-| 13.5 | Fondo por cuaderno con los estilos de la 10.9 (y quizá plantillas de página: Cornell, pentagrama…, D-13d) | La capa del fondo dibuja solo dentro de las páginas | M |
-| 13.6 | Exportar: PDF con una página por página del cuaderno (tamaño real), PNG de la página actual | jsPDF ya está | M |
-| 13.7 | Convertir un lienzo infinito en cuaderno y al revés (D-13b) | — | M |
+| 13.1 | Prueba de viabilidad: páginas como marcos bloqueados, recorte, límites de desplazamiento y rendimiento con 50 páginas, también con el lápiz en el iPad | **Hecha en Chromium (28/10/2026); falta el iPad (propietario).** Los marcos bloqueados recortan lo suyo y se exportan solos; dibujar en la mesa se detiene antes de llegar al motor; lo arrastrado fuera vuelve dentro; con 50 páginas, añadir y desplazarse sigue fluido en el PC. Como la fase 0: se decide si seguir antes de construir encima. El iPad lo prueba el propietario | M |
+| 13.2 | Modelo: `layout` en el sidecar (`{ mode: 'notebook', page: { size, orientation }, pages: [ids de los marcos] }`); «Nuevo → Cuaderno» además de «Lienzo» | **Hecha (28/10/2026).** «Nuevo → Cuaderno» (debajo de «Lienzo», también en Inicio y en la barra plegada) con tamaño y orientación; sidecar `notebook` y primera página ya en la escena. **Cambio de formato** compatible (como `background` en la 10.9): una versión anterior vería las páginas como marcos sueltos en un lienzo infinito, sin perder nada | M |
+| 13.3 | Vista de cuaderno: columna de páginas, límites de desplazamiento, ajustar a la página, paso de página (botones, teclado y deslizar), número de página | **Hecha (28/10/2026).** Columna de páginas sobre la mesa, límites del desplazamiento, la primera página a lo ancho al abrir, barra de páginas (anterior, siguiente, página N de M, añadir) y solo se dibuja dentro de las páginas (decisión del propietario: nada fuera, como GoodNotes). — | L |
+| 13.4 | Páginas: añadir (al final o detrás de la actual), duplicar, borrar con confirmación, reordenar (miniaturas en un panel lateral) | **Hecha (28/10/2026).** Panel con miniaturas (exportación del marco): ir, subir, bajar, duplicar y borrar con confirmación (nunca la última); cada operación es un paso de deshacer y devuelve el foco al lienzo. Un paso de deshacer por operación (como 9.25) | M |
+| 13.5 | Fondo por cuaderno con los estilos de la 10.9 (y quizá plantillas de página: Cornell, pentagrama…, D-13d) | **Hecha (28/10/2026)** con los estilos de la 10.9, recortados a cada página. Sin plantillas de página (D-13d). La capa del fondo dibuja solo dentro de las páginas | M |
+| 13.6 | Exportar: PDF con una página por página del cuaderno (tamaño real), PNG de la página actual | **Hecha (28/10/2026).** PDF con una página por página del cuaderno, a su tamaño (A4 o Carta) y orientación, con el estilo del fondo si se pide. jsPDF ya está | M |
+| 13.7 | Convertir un lienzo infinito en cuaderno y al revés (D-13b) | **Hecha (28/10/2026)** desde el menú «Fondo»: lienzo → cuaderno (el contenido sin escalar desde la primera página, con las páginas que hagan falta) y cuaderno → lienzo (se quitan las páginas). Vacía el historial de deshacer. — | M |
 
-**Decisiones pendientes del propietario:**
-
-- **D-13a** Tamaños de página: ¿A4 y Carta, vertical y horizontal? Recomendación: A4 y Carta,
-  las dos orientaciones, elegidas al crear el cuaderno.
-- **D-13b** ¿Se puede convertir un lienzo existente en cuaderno? Recomendación: sí, colocando el
-  contenido en páginas sin escalarlo; y de cuaderno a lienzo, quitando las páginas.
-- **D-13c** ¿Qué pasa con lo que se dibuja fuera de las páginas? Recomendación: se acepta, pero
-  se marca y no se exporta (como en una mesa).
-- **D-13d** ¿Plantillas de página (Cornell, pentagrama, agenda) además de los estilos de fondo?
+**Decidido (28/10/2026):** A4 y Carta en las dos orientaciones, elegidos al crear (D-13a); se
+puede convertir en los dos sentidos (D-13b); **solo se dibuja dentro de las páginas**, como
+GoodNotes (D-13c, distinto de lo recomendado); sin plantillas de página por ahora (D-13d); y
+«Cuaderno» es una opción propia de «Nuevo», debajo de «Lienzo». Recorridos en
+`tests/e2e/cuaderno.spec.ts`; geometría en `tests/unit/cuaderno.test.ts`.
 
 ## 3. Riesgos de la 2.0
 

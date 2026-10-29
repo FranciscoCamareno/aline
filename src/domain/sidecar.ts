@@ -1,3 +1,4 @@
+import { notebookSchema } from './notebook.ts';
 import { z } from './zod.ts';
 
 /**
@@ -40,6 +41,11 @@ export const canvasExtensionsSchema = z.object({
    * Opcional: sin la clave, liso. Un patrón desconocido se muestra liso y se conserva.
    */
   background: z.object({ pattern: z.string().max(32) }).optional(),
+  /**
+   * Desde el 28/10/2026 (plan 13): el lienzo es un cuaderno con páginas de este tamaño y
+   * orientación (`domain/notebook.ts`). Sin la clave, lienzo infinito.
+   */
+  notebook: notebookSchema.optional(),
 });
 
 export type CanvasExtensions = z.infer<typeof canvasExtensionsSchema>;

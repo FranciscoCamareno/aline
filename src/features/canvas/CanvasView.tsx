@@ -28,7 +28,29 @@ import {
   readPattern,
   type CanvasPattern,
 } from '../../domain/canvasBackground.ts';
-import { backdropStyle, type EngineView } from './canvasBackdrop.ts';
+import { backdropStyle, drawNotebookBackdrop, type EngineView } from './canvasBackdrop.ts';
+import {
+  clampScroll,
+  columnRect,
+  currentPageIndex,
+  PAGE_GAP,
+  pageIndexAt,
+  pageSize,
+  type NotebookLayout,
+  type Rect,
+} from '../../domain/notebook.ts';
+import {
+  addPage,
+  deletePage,
+  newPage,
+  duplicatePage,
+  movePage,
+  notebookPages,
+  projectNotebook,
+  rectOf,
+} from './notebookCanvas.ts';
+import { NotebookBar, NotebookPagesPanel } from './NotebookPages.tsx';
+import { NewNotebookDialog } from './NewNotebookDialog.tsx';
 import { linkFocus, useUiStore } from '../../app/store.ts';
 import { activeScheme, useTheme } from '../../app/theme.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
@@ -145,13 +167,39 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
   const [pattern, setPatternState] = useState<CanvasPattern>('plain');
   const patternRef = useRef<CanvasPattern>('plain');
   const backdropRef = useRef<HTMLDivElement>(null);
+  const backdropCanvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<EngineView>({ scrollX: 0, scrollY: 0, zoom: 1 });
+  /**
+   * Cuaderno (plan 13): tamaño de sus páginas (sidecar `notebook`), sus rectángulos de arriba abajo
+   * (de los marcos de la escena) y la página que se está viendo. Null en un lienzo infinito.
+   */
+  const [notebook, setNotebookState] = useState<NotebookLayout | null>(null);
+  const notebookRef = useRef<NotebookLayout | null>(null);
+  const pagesRef = useRef<Rect[]>([]);
+  const [pageInfo, setPageInfo] = useState({ current: 0, total: 1 });
+  const [pagesOpen, setPagesOpen] = useState(false);
+  const [converting, setConverting] = useState(false);
   /** Pinta la capa del fondo con el color, el estilo y la vista vigentes (sin React). */
   const paintBackdrop = useCallback(() => {
     const el = backdropRef.current;
     const background = backgroundRef.current;
     if (!el || !background) return;
     const current = patternRef.current;
+    const canvas = backdropCanvasRef.current;
+    // Cuaderno: la mesa y las páginas, con el estilo recortado a cada una.
+    if (notebookRef.current && canvas) {
+      el.hidden = false;
+      el.style.backgroundImage = 'none';
+      canvas.hidden = false;
+      drawNotebookBackdrop(canvas, {
+        view: viewRef.current,
+        pages: pagesRef.current,
+        paper: background.painted,
+        pattern: current,
+      });
+      return;
+    }
+    if (canvas) canvas.hidden = true;
     el.hidden = current === 'plain';
     if (current === 'plain') return;
     el.style.backgroundColor = background.painted;
@@ -230,9 +278,20 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       const initialPattern = readPattern(opened.extensions.background?.pattern);
       patternRef.current = initialPattern;
       setPatternState(initialPattern);
-      const shown = initialPattern === 'plain' ? painted : 'transparent';
+      const layout = opened.extensions.notebook ?? null;
+      notebookRef.current = layout;
+      setNotebookState(layout);
+      if (layout) pagesRef.current = notebookPages(scene.elements).map(rectOf);
+      const shown = initialPattern === 'plain' && !layout ? painted : 'transparent';
       backgroundRef.current = { stored, shown, painted };
-      scene.appState = { ...scene.appState, viewBackgroundColor: shown };
+      scene.appState = {
+        ...scene.appState,
+        viewBackgroundColor: shown,
+        // Las páginas recortan lo suyo, sin nombre ni borde del marco (la página es el papel).
+        ...(layout
+          ? { frameRendering: { enabled: true, name: false, outline: false, clip: true } }
+          : {}),
+      };
       extensionsRef.current = opened.extensions;
       setMindMapState(opened.extensions.mindMap);
       bindingsRef.current = currentBindings(scene.elements);
@@ -296,6 +355,34 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
     });
   }, [api, setMindMap]);
 
+  /**
+   * Cuaderno: cada elemento dentro de su página (lo de fuera vuelve dentro) y las páginas en su
+   * sitio. Fuera del historial y fuera del ciclo de onChange, un pase por fotograma como mucho.
+   */
+  const notebookQueued = useRef(false);
+  const scheduleNotebook = useCallback(() => {
+    if (!api || notebookQueued.current) return;
+    notebookQueued.current = true;
+    requestAnimationFrame(() => {
+      notebookQueued.current = false;
+      const layout = notebookRef.current;
+      const state = api.getAppState();
+      if (
+        !layout ||
+        state.newElement ||
+        state.selectedElementsAreBeingDragged ||
+        state.isResizing ||
+        state.isRotating ||
+        state.editingTextElement
+      ) {
+        return;
+      }
+      const projected = projectNotebook(api.getSceneElementsIncludingDeleted(), layout);
+      if (projected)
+        api.updateScene({ elements: projected, captureUpdate: CaptureUpdateAction.NEVER });
+    });
+  }, [api]);
+
   const lastDraftAt = useRef(0);
   const onChange = useCallback<NonNullable<Parameters<typeof Excalidraw>[0]['onChange']>>(
     (elements, appState, files) => {
@@ -316,7 +403,33 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           scrollY: appState.scrollY,
           zoom: appState.zoom.value,
         };
-        if (patternRef.current !== 'plain') paintBackdrop();
+        if (patternRef.current !== 'plain' && !notebookRef.current) paintBackdrop();
+      }
+      // Cuaderno: páginas, página actual, límites del desplazamiento y la capa del fondo.
+      const layout = notebookRef.current;
+      if (layout) {
+        pagesRef.current = notebookPages(elements).map(rectOf);
+        const screen = {
+          ...viewRef.current,
+          width: appState.width,
+          height: appState.height,
+        };
+        const total = pagesRef.current.length;
+        const current = Math.max(0, currentPageIndex(screen, pagesRef.current));
+        setPageInfo((info) =>
+          info.current === current && info.total === total ? info : { current, total },
+        );
+        const limited = clampScroll(screen, columnRect(layout, total));
+        if (
+          Math.abs(limited.scrollX - appState.scrollX) > 0.5 ||
+          Math.abs(limited.scrollY - appState.scrollY) > 0.5
+        ) {
+          queueMicrotask(() =>
+            api?.updateScene({ appState: limited, captureUpdate: CaptureUpdateAction.NEVER }),
+          );
+        }
+        paintBackdrop();
+        if (!session?.readOnly) scheduleNotebook();
       }
       // Selección actual, para ofrecer «Vincular» cuando hay un solo elemento.
       const ids = Object.keys(appState.selectedElementIds).filter(
@@ -381,6 +494,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       documentId,
       applyPendingFocus,
       scheduleProjection,
+      scheduleNotebook,
       paintBackdrop,
       api,
     ],
@@ -408,7 +522,7 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
     const background = backgroundRef.current;
     if (!api || !background) return;
     const painted = displayedCanvasBackground(background.stored, scheme);
-    const shown = pattern === 'plain' ? painted : 'transparent';
+    const shown = pattern === 'plain' && !notebook ? painted : 'transparent';
     backgroundRef.current = { stored: background.stored, shown, painted };
     paintBackdrop();
     const frame = requestAnimationFrame(() => {
@@ -424,7 +538,157 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       });
     }
     return () => cancelAnimationFrame(frame);
-  }, [api, scheme, theme, loaded, pattern, paintBackdrop]);
+  }, [api, scheme, theme, loaded, pattern, notebook, paintBackdrop]);
+
+  // Cuaderno: no se empieza a dibujar fuera de una página (como en GoodNotes), ni se crean marcos
+  // (los marcos son las páginas). El puntero se detiene antes de que llegue al motor.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!api || !host || !notebook) return;
+    const drawing = new Set([
+      'rectangle',
+      'diamond',
+      'ellipse',
+      'arrow',
+      'line',
+      'freedraw',
+      'text',
+      'image',
+      'embeddable',
+    ]);
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof HTMLCanvasElement)) return;
+      const state = api.getAppState();
+      const tool = state.activeTool.type;
+      if (tool === 'frame' || tool === 'magicframe') {
+        event.stopPropagation();
+        event.preventDefault();
+        return;
+      }
+      if (!drawing.has(tool)) return;
+      const at = viewportCoordsToSceneCoords(event, state);
+      if (pageIndexAt(pagesRef.current, at.x, at.y) >= 0) return;
+      event.stopPropagation();
+      event.preventDefault();
+    };
+    host.addEventListener('pointerdown', onPointerDown, true);
+    return () => host.removeEventListener('pointerdown', onPointerDown, true);
+  }, [api, notebook]);
+
+  // Al abrir un cuaderno: la primera página arriba, a lo ancho de la vista (sin pasar de 1:1).
+  const notebookOpened = useRef(false);
+  useEffect(() => {
+    if (!api || !notebook || notebookOpened.current) return;
+    notebookOpened.current = true;
+    requestAnimationFrame(() => {
+      const state = api.getAppState();
+      const { width } = pageSize(notebook);
+      const zoom = Math.max(0.25, Math.min(1, (state.width - 2 * PAGE_GAP) / width));
+      api.updateScene({
+        appState: {
+          zoom: { value: zoom as typeof state.zoom.value },
+          scrollY: PAGE_GAP / zoom,
+        },
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    });
+  }, [api, notebook]);
+
+  /** Lleva la vista a la parte de arriba de una página. */
+  const goToPage = (index: number) => {
+    if (!api) return;
+    const page = pagesRef.current[index];
+    if (!page) return;
+    const { zoom } = api.getAppState();
+    api.updateScene({
+      appState: { scrollY: -page.y + PAGE_GAP / zoom.value },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+  };
+
+  /** Operación sobre las páginas: un paso de deshacer; después, se va a `go` si se indica. */
+  const editPages = (
+    change: (elements: readonly ExcalidrawElement[], layout: NotebookLayout) => ExcalidrawElement[],
+    go?: number,
+  ) => {
+    const layout = notebookRef.current;
+    if (!api || !layout) return;
+    api.updateScene({
+      elements: change(api.getSceneElementsIncludingDeleted(), layout),
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+    if (go !== undefined) requestAnimationFrame(() => goToPage(go));
+    // El foco vuelve al lienzo: así Ctrl/⌘+Z deshace la operación al momento.
+    hostRef.current?.querySelector<HTMLElement>('.excalidraw')?.focus();
+  };
+
+  /**
+   * Convertir (plan 13.7) un lienzo en cuaderno (el contenido, sin escalar, desde la primera
+   * página; lo que no quepa sigue en las siguientes) o un cuaderno en lienzo (se quitan las
+   * páginas). Cambia el sidecar, que el deshacer del motor no conoce: el historial se vacía.
+   */
+  const convert = (layout: NotebookLayout | null) => {
+    const extensions = extensionsRef.current;
+    const background = backgroundRef.current;
+    if (!api || !extensions || !background) return;
+    const all = api.getSceneElementsIncludingDeleted();
+    let elements: ExcalidrawElement[];
+    if (layout) {
+      const live = all.filter((e) => !e.isDeleted && e.type !== 'frame');
+      // El contenido empieza con un margen dentro de la primera página, sin escalar.
+      const dx = PAGE_GAP - (live.length ? Math.min(...live.map((e) => e.x)) : 0);
+      const dy = PAGE_GAP - (live.length ? Math.min(...live.map((e) => e.y)) : 0);
+      const shifted = all.map((e) =>
+        e.isDeleted
+          ? e
+          : e.type === 'frame'
+            ? newElementWith(e, { isDeleted: true })
+            : newElementWith(e, { x: e.x + dx, y: e.y + dy, frameId: null }),
+      );
+      const bottom = Math.max(PAGE_GAP, ...live.map((e) => e.y + dy + e.height));
+      const { height } = pageSize(layout);
+      const count = Math.max(1, Math.ceil(bottom / (height + PAGE_GAP)));
+      const pages = Array.from({ length: count }, (_, i) => newPage(layout, i));
+      elements = projectNotebook([...shifted, ...pages], layout) ?? [...shifted, ...pages];
+    } else {
+      const pageIds = new Set(notebookPages(all).map((p) => p.id));
+      elements = all.map((e) =>
+        pageIds.has(e.id)
+          ? newElementWith(e, { isDeleted: true })
+          : e.frameId && pageIds.has(e.frameId)
+            ? newElementWith(e, { frameId: null })
+            : e,
+      );
+    }
+    const rest = { ...extensions };
+    delete rest.notebook;
+    extensionsRef.current = layout ? { ...rest, notebook: layout } : rest;
+    notebookRef.current = layout;
+    notebookOpened.current = false;
+    setNotebookState(layout);
+    pagesRef.current = layout ? notebookPages(elements).map(rectOf) : [];
+    const shown = patternRef.current === 'plain' && !layout ? background.painted : 'transparent';
+    backgroundRef.current = { ...background, shown };
+    api.updateScene({
+      elements,
+      appState: {
+        viewBackgroundColor: shown,
+        frameRendering: layout
+          ? { enabled: true, name: false, outline: false, clip: true }
+          : { enabled: true, name: true, outline: true, clip: true },
+      },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    api.history.clear();
+    const scene: EngineScene = {
+      elements: api.getSceneElements(),
+      appState: { ...api.getAppState(), viewBackgroundColor: background.stored },
+      files: api.getFiles(),
+    };
+    signatureRef.current = excalidrawCanvasAdapter.contentSignature(scene);
+    autosave.push(scene);
+    paintBackdrop();
+  };
 
   /** Cambia el estilo del fondo: va al sidecar y se guarda en una revisión (plan 10.9). */
   const setPattern = (next: CanvasPattern) => {
@@ -639,9 +903,51 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
         </p>
       )}
       {/* Estilo del fondo (plan 10.9): detrás del canvas del motor, que queda transparente. */}
-      <div ref={backdropRef} className="canvas-backdrop" aria-hidden="true" hidden />
+      <div ref={backdropRef} className="canvas-backdrop" aria-hidden="true" hidden>
+        <canvas ref={backdropCanvasRef} className="canvas-backdrop-pages" hidden />
+      </div>
       {/* Barra propia (DESIGN.md §7); la del motor queda oculta por CSS. */}
-      {api && !loaded.session.readOnly && <ToolTray api={api} theme={theme} />}
+      {api && !loaded.session.readOnly && (
+        <ToolTray api={api} theme={theme} hidden={notebook ? ['frame'] : []} />
+      )}
+      {api && notebook && (
+        <NotebookBar
+          current={pageInfo.current}
+          total={pageInfo.total}
+          readOnly={loaded.session.readOnly !== null}
+          pagesOpen={pagesOpen}
+          onGo={goToPage}
+          onAdd={() =>
+            editPages((els, layout) => addPage(els, layout, pageInfo.current), pageInfo.current + 1)
+          }
+          onPages={() => setPagesOpen((v) => !v)}
+        />
+      )}
+      {api && notebook && pagesOpen && (
+        <NotebookPagesPanel
+          pages={notebookPages(api.getSceneElements())}
+          elements={api.getSceneElements()}
+          files={api.getFiles()}
+          current={pageInfo.current}
+          readOnly={loaded.session.readOnly !== null}
+          onGo={goToPage}
+          onMove={(from, to) => editPages((els, layout) => movePage(els, layout, from, to), to)}
+          onDuplicate={(i) => editPages((els, layout) => duplicatePage(els, layout, i), i + 1)}
+          onDelete={(i) =>
+            editPages((els, layout) => deletePage(els, layout, i), Math.max(0, i - 1))
+          }
+          onClose={() => setPagesOpen(false)}
+        />
+      )}
+      {converting && (
+        <NewNotebookDialog
+          onCreate={(layout) => {
+            setConverting(false);
+            convert(layout);
+          }}
+          onClose={() => setConverting(false)}
+        />
+      )}
       <div className="canvas-tools">
         {/* Plantillas propias en lugar de la biblioteca del motor (que queda oculta). */}
         <button
@@ -686,12 +992,30 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
             }
             label={t('canvas.background.title')}
             testId="canvas-background"
-            items={CANVAS_PATTERNS.map((value) => ({
-              id: `canvas-background-${value}`,
-              label: t(`canvas.background.${value}`),
-              ...(value === pattern ? { icon: 'check' as const } : {}),
-              onSelect: () => setPattern(value),
-            }))}
+            items={[
+              ...CANVAS_PATTERNS.map((value) => ({
+                id: `canvas-background-${value}`,
+                label: t(`canvas.background.${value}`),
+                ...(value === pattern ? { icon: 'check' as const } : {}),
+                onSelect: () => setPattern(value),
+              })),
+              // Convertir (plan 13.7): un lienzo en cuaderno o un cuaderno en lienzo infinito.
+              notebook
+                ? {
+                    id: 'canvas-to-infinite',
+                    label: t('notebook.toCanvas'),
+                    icon: 'lienzo' as const,
+                    separated: true,
+                    onSelect: () => convert(null),
+                  }
+                : {
+                    id: 'canvas-to-notebook',
+                    label: t('notebook.toNotebook'),
+                    icon: 'cuaderno' as const,
+                    separated: true,
+                    onSelect: () => setConverting(true),
+                  },
+            ]}
           />
         )}
         {api && !loaded.session.readOnly && (
@@ -727,6 +1051,11 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
           title={title}
           storedBackground={() => backgroundRef.current?.stored ?? null}
           pattern={pattern}
+          notebook={
+            notebook
+              ? { layout: notebook, pages: () => notebookPages(api.getSceneElements()) }
+              : null
+          }
           hidden={() => hiddenIds(extensionsRef.current?.mindMap)}
           onClose={() => setExportOpen(false)}
         />

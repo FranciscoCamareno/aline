@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import { DomainError } from '../domain/errors.ts';
 import type { ConflictChoice } from '../application/VaultService.ts';
-import { hasConflict, isContentKind, isDocsKind, type DocumentKind } from '../domain/revision.ts';
+import { hasConflict, isContentKind, isDocsKind } from '../domain/revision.ts';
 import { ConflictPanel } from '../features/history/ConflictPanel.tsx';
 import { DetailsPanel } from '../features/knowledge/DetailsPanel.tsx';
 import { HomeView } from '../features/home/HomeView.tsx';
@@ -34,7 +34,9 @@ import { EVENT_COLORS } from '../domain/calendar.ts';
 import { CalendarView } from '../features/calendar/CalendarView.tsx';
 import { DocView } from '../features/docs/DocView.tsx';
 import { MarkdownDocView } from '../features/docs/MarkdownDocView.tsx';
-import type { DocEditorKind } from '../features/library/LibrarySidebar.tsx';
+import type { DocEditorKind, NewKind } from '../features/library/LibrarySidebar.tsx';
+import { NewNotebookDialog } from '../features/canvas/NewNotebookDialog.tsx';
+import type { NotebookLayout } from '../domain/notebook.ts';
 import { useCalendarStore } from '../features/calendar/calendarStore.ts';
 import { useUiStore } from './store.ts';
 import { useTheme } from './theme.ts';
@@ -310,12 +312,32 @@ export function App() {
     [services, runOnDocument, upsertDocument],
   );
 
+  /** «Nuevo → Cuaderno» pide antes el tamaño de página; aquí espera la carpeta de destino. */
+  const [newNotebook, setNewNotebook] = useState<{ folderId: string | null } | null>(null);
   const createDocument = useCallback(
-    async (kind: DocumentKind, folderId: string | null = null) => {
+    async (
+      kind: NewKind,
+      folderId: string | null = null,
+      notebook: NotebookLayout | null = null,
+    ) => {
       if (!services) return;
+      if (kind === 'notebook' && !notebook) {
+        setNewNotebook({ folderId });
+        return;
+      }
       try {
-        const title = kind === 'canvas' ? t('library.untitledCanvas') : t('library.untitledNote');
-        const doc = await services.service.createDocument(kind, title, folderId);
+        const title =
+          kind === 'notebook'
+            ? t('library.untitledNotebook')
+            : kind === 'canvas'
+              ? t('library.untitledCanvas')
+              : t('library.untitledNote');
+        const doc = await services.service.createDocument(
+          kind === 'notebook' ? 'canvas' : kind,
+          title,
+          folderId,
+          notebook,
+        );
         upsertDocument(doc);
         setActive(doc.id);
         setSaveStatus('saved-local');
@@ -705,6 +727,16 @@ export function App() {
         </p>
       )}
 
+      {newNotebook && (
+        <NewNotebookDialog
+          onCreate={(layout) => {
+            const { folderId } = newNotebook;
+            setNewNotebook(null);
+            void createDocument('notebook', folderId, layout);
+          }}
+          onClose={() => setNewNotebook(null)}
+        />
+      )}
       {importReport && (
         <ImportReportDialog report={importReport} onClose={() => setImportReport(null)} />
       )}

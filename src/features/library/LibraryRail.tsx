@@ -3,10 +3,9 @@ import { useUiStore } from '../../app/store.ts';
 import { Icon, type IconName } from '../../app/ui/Icon.tsx';
 import { Menu, type MenuItem } from '../../app/ui/Menu.tsx';
 import { localDate } from '../../domain/calendar.ts';
-import type { DocumentKind } from '../../domain/revision.ts';
 import { useCalendarStore } from '../calendar/calendarStore.ts';
 import type { SettingsSection } from '../status/SettingsDialog.tsx';
-import type { DocEditorKind } from './LibrarySidebar.tsx';
+import type { DocEditorKind, NewKind } from './LibrarySidebar.tsx';
 import { ProfileMenu } from './ProfileMenu.tsx';
 
 const SECTIONS = [
@@ -27,7 +26,7 @@ export function LibraryRail({
   onCreateDoc,
   onOpenSettings,
 }: {
-  onCreate: (kind: DocumentKind) => Promise<void>;
+  onCreate: (kind: NewKind) => Promise<void>;
   onCreateDoc: (editor: DocEditorKind) => Promise<void>;
   onOpenSettings: (section: SettingsSection) => void;
 }) {
@@ -87,6 +86,12 @@ export function LibraryRail({
               label: t('library.kindCanvas'),
               icon: 'lienzo',
               onSelect: () => void onCreate('canvas'),
+            },
+            {
+              id: 'rail-new-notebook',
+              label: t('library.kindNotebook'),
+              icon: 'cuaderno',
+              onSelect: () => void onCreate('notebook'),
             },
             {
               id: 'rail-new-note',

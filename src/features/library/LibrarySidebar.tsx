@@ -19,7 +19,7 @@ import { RenameableTitle } from './RenameableTitle.tsx';
 import { schemeLogo } from '../../app/schemes.ts';
 
 interface Props {
-  onCreate: (kind: DocumentKind, folderId: string | null) => Promise<void>;
+  onCreate: (kind: NewKind, folderId: string | null) => Promise<void>;
   onCreateFolder: (
     title: string,
     parentId: string | null,
@@ -49,6 +49,8 @@ interface Props {
 
 /** Editor de un documento nuevo: Tiptap (formato libre, JSON) o Milkdown (Markdown). */
 export type DocEditorKind = 'tiptap' | 'milkdown';
+/** Lo que se crea desde «Nuevo» en Notas: también un cuaderno (un lienzo con páginas, plan 13). */
+export type NewKind = DocumentKind | 'notebook';
 
 const RECENT_COUNT = 5;
 const SECTION_ICONS = {
@@ -114,7 +116,7 @@ export function LibrarySidebar({
     setActiveDocument(id);
     closeIfNarrow();
   };
-  const create = (kind: DocumentKind) => void onCreate(kind, selected).then(closeIfNarrow);
+  const create = (kind: NewKind) => void onCreate(kind, selected).then(closeIfNarrow);
   const createDoc = (editor: DocEditorKind) =>
     void onCreateDoc(editor, selected).then(closeIfNarrow);
   // «Notas» y «Documentos» comparten este panel; cada una con sus documentos y sus carpetas.
@@ -701,6 +703,12 @@ export function LibrarySidebar({
                         label: t('library.kindCanvas'),
                         icon: 'lienzo',
                         onSelect: () => create('canvas'),
+                      },
+                      {
+                        id: 'new-notebook',
+                        label: t('library.kindNotebook'),
+                        icon: 'cuaderno',
+                        onSelect: () => create('notebook'),
                       },
                       {
                         id: 'new-note',

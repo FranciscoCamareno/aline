@@ -123,6 +123,30 @@
         "pattern"
       ],
       "additionalProperties": false
+    },
+    "notebook": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string",
+          "enum": [
+            "a4",
+            "letter"
+          ]
+        },
+        "orientation": {
+          "type": "string",
+          "enum": [
+            "portrait",
+            "landscape"
+          ]
+        }
+      },
+      "required": [
+        "size",
+        "orientation"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   exportExcalidraw,
+  exportNotebookPdf,
   exportPdf,
   exportPng,
   exportRasterSize,
@@ -20,6 +21,8 @@ import {
 } from '../../application/portability.ts';
 import { describeError } from '../../ports/Diagnostics.ts';
 import type { CanvasPattern } from '../../domain/canvasBackground.ts';
+import type { NotebookLayout } from '../../domain/notebook.ts';
+import type { ExcalidrawFrameElement } from '@excalidraw/excalidraw/element/types';
 
 type Format = 'png' | 'svg' | 'pdf' | 'excalidraw';
 const SCALES = [1, 2, 3] as const;
@@ -34,6 +37,7 @@ export function ExportDialog({
   title,
   storedBackground,
   pattern = 'plain',
+  notebook = null,
   hidden,
   onClose,
 }: {
@@ -43,6 +47,8 @@ export function ExportDialog({
   storedBackground: () => string | null;
   /** Estilo del fondo del lienzo (plan 10.9); se exporta solo si se pide. */
   pattern?: CanvasPattern;
+  /** Cuaderno (plan 13.6): el PDF puede llevar una página por página del cuaderno. */
+  notebook?: { layout: NotebookLayout; pages: () => readonly ExcalidrawFrameElement[] } | null;
   /**
    * Elementos ocultos por ramas plegadas (plan 9.23): la exportación visual usa la proyección
    * visible (diseño §9.3); el .excalidraw los conserva.
@@ -57,7 +63,7 @@ export function ExportDialog({
   const [withPattern, setWithPattern] = useState(false);
   const [scale, setScale] = useState(2);
   const [onlySelected, setOnlySelected] = useState(false);
-  const [pdfMode, setPdfMode] = useState<'fit' | 'paginate'>('fit');
+  const [pdfMode, setPdfMode] = useState<'fit' | 'paginate' | 'pages'>(notebook ? 'pages' : 'fit');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,7 +97,9 @@ export function ExportDialog({
   };
   const raster = exportRasterSize(visual, options);
   const rasterized = format === 'png' || format === 'pdf';
-  const tooBig = rasterized && raster.width * raster.height > EXPORT_PIXEL_BUDGET;
+  // Por páginas del cuaderno, cada una se genera aparte: el tamaño total no cuenta.
+  const byPages = format === 'pdf' && pdfMode === 'pages' && notebook !== null;
+  const tooBig = rasterized && !byPages && raster.width * raster.height > EXPORT_PIXEL_BUDGET;
   const bounds: ExportSize = {
     width: raster.width / scale,
     height: raster.height / scale,
@@ -106,8 +114,17 @@ export function ExportDialog({
       let ext: string = format;
       if (format === 'png') blob = await exportPng(visual, options);
       else if (format === 'svg') blob = await exportSvg(visual, options);
+      else if (format === 'pdf' && pdfMode === 'pages' && notebook)
+        blob = await exportNotebookPdf(visual, notebook.pages(), notebook.layout, {
+          ...options,
+          title,
+        });
       else if (format === 'pdf')
-        blob = await exportPdf(visual, { ...options, mode: pdfMode, title });
+        blob = await exportPdf(visual, {
+          ...options,
+          mode: pdfMode === 'pages' ? 'fit' : pdfMode,
+          title,
+        });
       else {
         blob = exportExcalidraw(scene);
         ext = 'excalidraw';
@@ -210,7 +227,10 @@ export function ExportDialog({
         {format === 'pdf' && (
           <fieldset>
             <legend>{t('export.pdfLayout')}</legend>
-            {(['fit', 'paginate'] as const).map((m) => (
+            {(notebook
+              ? (['pages', 'fit', 'paginate'] as const)
+              : (['fit', 'paginate'] as const)
+            ).map((m) => (
               <label key={m} className="inline-option">
                 <input
                   type="radio"

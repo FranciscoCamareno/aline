@@ -21,6 +21,7 @@ import {
   type CalendarData,
   type EventColor,
 } from '../domain/calendar.ts';
+import { pageRect, type NotebookLayout } from '../domain/notebook.ts';
 import {
   emptyWorkspace,
   mergeWorkspaces,
@@ -210,6 +211,8 @@ export class VaultService {
     kind: DocumentKind,
     title: string,
     folderId: Uuid | null = null,
+    /** Lienzos: crearlo como cuaderno con páginas de este tamaño (plan 13). */
+    notebook: NotebookLayout | null = null,
   ): Promise<DocumentRecord> {
     const cleanTitle = validateTitle(title);
     const documentId = newId();
@@ -223,9 +226,14 @@ export class VaultService {
         MIME.markdown,
       );
     } else {
-      body = await toBlob(utf8Encode(emptySceneJson()), MIME.excalidraw);
+      body = await toBlob(utf8Encode(emptySceneJson(notebook)), MIME.excalidraw);
       extensions = await toBlob(
-        utf8Encode(JSON.stringify(emptyCanvasExtensions(documentId))),
+        utf8Encode(
+          JSON.stringify({
+            ...emptyCanvasExtensions(documentId),
+            ...(notebook ? { notebook } : {}),
+          }),
+        ),
         MIME.extensions,
       );
       blobs.push(extensions);
@@ -1591,12 +1599,18 @@ function assertWritable(session: EditSession): void {
   }
 }
 
-function emptySceneJson(): string {
+/**
+ * Escena vacía. Un cuaderno empieza con su primera página: un marco bloqueado mínimo, que el motor
+ * completa al cargar (`restore`), igual que cualquier escena importada.
+ */
+function emptySceneJson(notebook: NotebookLayout | null = null): string {
   return JSON.stringify({
     type: 'excalidraw',
     version: 2,
     source: 'mindnote',
-    elements: [],
+    elements: notebook
+      ? [{ id: newId(), type: 'frame', ...pageRect(notebook, 0), name: null, locked: true }]
+      : [],
     // Fondo «papel» del sistema de diseño (docs/DESIGN.md §3.2); en oscuro el motor lo invierte.
     appState: { viewBackgroundColor: '#FFFDF4' },
     files: {},

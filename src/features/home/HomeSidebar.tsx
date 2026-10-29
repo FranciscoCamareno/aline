@@ -4,8 +4,7 @@ import { useUiStore } from '../../app/store.ts';
 import { Icon, KindIcon } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
 import { homeRecent } from '../../application/home.ts';
-import type { DocumentKind } from '../../domain/revision.ts';
-import type { DocEditorKind } from '../library/LibrarySidebar.tsx';
+import type { DocEditorKind, NewKind } from '../library/LibrarySidebar.tsx';
 
 const RECENT_COUNT = 8;
 
@@ -17,7 +16,7 @@ export function HomeSidebar({
   onCreate,
   onCreateDoc,
 }: {
-  onCreate: (kind: DocumentKind) => void;
+  onCreate: (kind: NewKind) => void;
   onCreateDoc: (editor: DocEditorKind) => void;
 }) {
   const { t } = useTranslation();
@@ -46,6 +45,12 @@ export function HomeSidebar({
               label: t('library.kindCanvas'),
               icon: 'lienzo',
               onSelect: () => onCreate('canvas'),
+            },
+            {
+              id: 'new-notebook',
+              label: t('library.kindNotebook'),
+              icon: 'cuaderno',
+              onSelect: () => onCreate('notebook'),
             },
             {
               id: 'new-note',

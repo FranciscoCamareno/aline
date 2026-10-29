@@ -5374,3 +5374,128 @@ body.excalidraw-cursor-resize * {
   max-height: 40vh;
   overflow-y: auto;
 }
+
+/*
+ * Cuaderno (plan 13): la mesa y las páginas en la capa de detrás, la barra de páginas abajo y el
+ * panel de páginas a la derecha.
+ */
+.canvas-backdrop-pages {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.notebook-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-popover);
+  transform: translateX(-50%);
+}
+.notebook-count {
+  min-width: 96px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.notebook-panel {
+  position: absolute;
+  /* Debajo de los botones de arriba a la derecha (Plantillas, Fondo, Tarjeta de nota…). */
+  top: 240px;
+  right: 16px;
+  bottom: 72px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 200px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-popover);
+}
+.notebook-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.notebook-panel h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.notebook-page-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.notebook-page {
+  display: grid;
+  gap: 4px;
+}
+.notebook-page-go {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 4px;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 8px;
+  background: transparent;
+}
+.notebook-page.is-current .notebook-page-go {
+  border-color: var(--focus);
+}
+.notebook-thumb {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #fffdf4;
+}
+.notebook-page-number {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--bg-popover);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.notebook-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+.new-notebook-body {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.new-notebook-options {
+  display: grid;
+  gap: 8px;
+}
+.new-notebook-preview {
+  flex: none;
+  border: 1px solid var(--border-ink);
+  border-radius: 3px;
+  background: var(--bg-canvas);
+  box-shadow: 2px 3px 0 var(--border-soft);
+}

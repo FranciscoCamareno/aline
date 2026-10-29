@@ -6,7 +6,11 @@ import {
   restore,
   serializeAsJSON,
 } from '@excalidraw/excalidraw';
-import type { ExcalidrawElement, NonDeleted } from '@excalidraw/excalidraw/element/types';
+import type {
+  ExcalidrawElement,
+  ExcalidrawFrameElement,
+  NonDeleted,
+} from '@excalidraw/excalidraw/element/types';
 import type { AppState, BinaryFileData, BinaryFiles } from '@excalidraw/excalidraw/types';
 import {
   analyzeExcalidraw,
@@ -23,6 +27,7 @@ import {
   patternMarks,
   type CanvasPattern,
 } from '../../domain/canvasBackground.ts';
+import type { NotebookLayout } from '../../domain/notebook.ts';
 import type { CanvasExtensions } from '../../domain/sidecar.ts';
 import type { SerializedCanvas } from '../../ports/CanvasAdapter.ts';
 import { excalidrawCanvasAdapter } from './sceneCodec.ts';
@@ -328,4 +333,75 @@ export async function prepareExcalidrawImport(
     issues: analyzed.issues,
     elementCount: restored.elements.filter((e) => !e.isDeleted).length,
   };
+}
+
+/** Tamaño del papel del PDF (mm) para cada tamaño de página del cuaderno (plan 13.6). */
+const PDF_PAGE_MM: Record<NotebookLayout['size'], [number, number]> = {
+  a4: [210, 297],
+  letter: [215.9, 279.4],
+};
+
+/**
+ * PDF de un cuaderno (plan 13.6): una página del PDF por cada página, a su tamaño real (A4 o
+ * Carta, en su orientación), con lo de cada página recortado a ella. El estilo del fondo, si se
+ * pide, va relativo a cada página, como en la pantalla.
+ */
+export async function exportNotebookPdf(
+  scene: ExportScene,
+  pages: readonly ExcalidrawFrameElement[],
+  layout: NotebookLayout,
+  options: ExportOptions & { title: string },
+): Promise<Blob> {
+  const { jsPDF } = await import('jspdf');
+  const [w, h] = PDF_PAGE_MM[layout.size];
+  const landscape = layout.orientation === 'landscape';
+  const pdf = new jsPDF({
+    orientation: landscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: layout.size,
+    compress: true,
+  });
+  pdf.setProperties({ title: options.title, creator: 'Aline' });
+  const background = scene.appState.viewBackgroundColor ?? '#ffffff';
+  const pattern = withPattern(options);
+  const live = scene.elements.filter((e) => !e.isDeleted) as NonDeleted<ExcalidrawElement>[];
+  for (const [index, page] of pages.entries()) {
+    if (index > 0) pdf.addPage(layout.size, landscape ? 'landscape' : 'portrait');
+    const content = live.filter((e) => e.frameId === page.id);
+    const canvas = await exportToCanvas({
+      elements: [page, ...content],
+      appState: { ...exportAppState(scene, options), exportBackground: false },
+      files: scene.files,
+      exportPadding: 0,
+      exportingFrame: page,
+      getDimensions: scaled(options.scale),
+    });
+    const out = document.createElement('canvas');
+    out.width = canvas.width;
+    out.height = canvas.height;
+    const ctx = out.getContext('2d');
+    if (!ctx) throw new Error('El navegador no pudo preparar la página del PDF');
+    const scale = canvas.width / page.width;
+    if (options.background) {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, out.width, out.height);
+    }
+    if (pattern) {
+      const marks = patternMarks(pattern, { x: 0, y: 0, width: page.width, height: page.height });
+      ctx.fillStyle = patternInk(background);
+      const line = Math.max(1, LINE_WIDTH * scale);
+      for (const y of marks.rows) ctx.fillRect(0, y * scale, out.width, line);
+      for (const x of marks.columns) ctx.fillRect(x * scale, 0, line, out.height);
+      for (const [x, y] of marks.dots) {
+        ctx.beginPath();
+        ctx.arc(x * scale, y * scale, DOT_RADIUS * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.drawImage(canvas, 0, 0);
+    const [pw, ph] = landscape ? [h, w] : [w, h];
+    pdf.addImage(out, 'PNG', 0, 0, pw, ph, undefined, 'FAST');
+    canvas.width = canvas.height = out.width = out.height = 0;
+  }
+  return pdf.output('blob');
 }
