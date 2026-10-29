@@ -35,6 +35,15 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
 - Click a folder to enter it (the path at the top takes you back) and anything else to open it in its section.
 - With "⋯" or by ticking several boxes: **move to a folder**, archive or send to the trash. Items from "Notes" and "Documents" cannot be moved together, because each section has its own folders.
 
+## 2 ter. Workspaces
+
+- A **workspace** groups documents to share them with someone: in Home, "New workspace", then "⋯" → "Add to a workspace" on each document, or tick several and use the button at the top. A document can be in several workspaces; removing it from one does not delete it.
+- Click a workspace to see what it holds. **Share** first shows which links point outside the workspace (the recipient will see them broken), with the option to add their targets, and offers two downloads:
+  - **`.aline` package**, for someone who uses aline: it carries only the current version of each document (tick the box to include the history) and can be **encrypted with a password**, which you must give them through another channel.
+  - **Readable files** (ZIP), for people who do not use aline: notes in Markdown, documents in Word and Markdown, canvases in PNG and `.excalidraw`, and the calendars' upcoming events.
+- aline uploads nothing: you send the file however you like.
+- **Import a workspace** (Home, at the top): choose the `.aline`, enter the password if it has one and see what it brings. If you had imported it before, the documents are updated; if you changed them here, they stay in conflict for you to choose, as between two devices.
+
 ## 3. Notes
 
 - **New note:** "+ New" → "Note". You write Markdown on the left and see the result on the right.

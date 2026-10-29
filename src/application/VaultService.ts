@@ -22,6 +22,13 @@ import {
   type EventColor,
 } from '../domain/calendar.ts';
 import {
+  emptyWorkspace,
+  mergeWorkspaces,
+  parseWorkspace,
+  workspaceSchema,
+  type WorkspaceData,
+} from '../domain/workspace.ts';
+import {
   folderKindFor,
   isMarkdownKind,
   type ContentRefs,
@@ -51,12 +58,16 @@ import type {
   VaultRepository,
 } from '../ports/VaultRepository.ts';
 
+/** Preferencia del dispositivo con lo importado de paquetes de entornos (plan 12.5). */
+const PACKAGE_IMPORTS_KEY = 'packageImports';
+
 export const MIME = {
   markdown: 'text/markdown; charset=utf-8',
   excalidraw: 'application/vnd.excalidraw+json',
   extensions: 'application/json',
   calendar: 'application/json',
   richDoc: 'application/json',
+  workspace: 'application/json',
 } as const;
 
 /** Cabezas conocidas al abrir o al guardar por última vez; se pasan al siguiente commit. */
@@ -368,6 +379,166 @@ export class VaultService {
     } catch {
       return emptyCalendar();
     }
+  }
+
+  /** Entorno de trabajo nuevo y vacío (plan 12.1). No va en carpetas: se ve en Inicio. */
+  async createWorkspace(title: string, color: EventColor): Promise<DocumentRecord> {
+    const cleanTitle = validateTitle(title);
+    const body = await toBlob(utf8Encode(JSON.stringify(emptyWorkspace(color))), MIME.workspace);
+    const result = await this.repo.commit({
+      documentId: newId(),
+      kind: 'workspace',
+      operation: 'save',
+      knownHeads: [],
+      metadata: { kind: 'workspace', title: cleanTitle, folderId: null, tags: [], deleted: false },
+      contentRefs: { body: body.hash, extensions: null, assets: [] },
+      blobs: [body],
+    });
+    for (const listener of this.listeners) listener(result);
+    return result.document;
+  }
+
+  /**
+   * Entorno vigente, sin sesión de edición. Si dos dispositivos lo cambiaron a la vez (varias
+   * cabezas), se muestra la unión de sus miembros (`mergeWorkspaces`): el siguiente cambio la
+   * guarda y deja una sola cabeza.
+   */
+  async readWorkspace(
+    documentId: Uuid,
+  ): Promise<{ workspace: WorkspaceData; readOnly: ReadOnlyReason | null }> {
+    await this.pendingWrites(documentId);
+    return this.mergedWorkspace(documentId);
+  }
+
+  /** Unión de las cabezas de un entorno (sin esperar a la cola: la usa también `updateWorkspace`). */
+  private async mergedWorkspace(
+    documentId: Uuid,
+  ): Promise<{ workspace: WorkspaceData; readOnly: ReadOnlyReason | null }> {
+    const document = await this.requireDocument(documentId);
+    if (document.kind !== 'workspace') throw new DomainError('not-found', 'No es un entorno');
+    const heads = (await this.repo.getHeads(documentId)).sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt),
+    );
+    let merged: WorkspaceData | null = null;
+    let readOnly: ReadOnlyReason | null = null;
+    for (const head of heads.reverse()) {
+      const parsed = parseWorkspace(
+        JSON.parse(head.contentRefs.body ? await this.readText(head.contentRefs.body) : '{}'),
+      );
+      readOnly ??= firstReason(checkRevision(head), parsed.readOnly);
+      merged = merged ? mergeWorkspaces(merged, parsed.workspace) : parsed.workspace;
+    }
+    return { workspace: merged ?? emptyWorkspace(), readOnly };
+  }
+
+  /**
+   * Cambia un entorno (miembros, color, descripción) en una revisión nueva. Parte de la unión de
+   * todas sus cabezas y las da por conocidas, así que un conflicto entre dispositivos se resuelve
+   * aquí uniendo miembros (la regla del formato para los entornos, §2.5.5).
+   */
+  updateWorkspace(
+    documentId: Uuid,
+    change: (workspace: WorkspaceData) => WorkspaceData,
+  ): Promise<CommitResult> {
+    return this.serialized(documentId, async () => {
+      const { workspace, readOnly } = await this.mergedWorkspace(documentId);
+      if (readOnly)
+        throw new DomainError('unsupported-version', 'Entorno de una versión posterior');
+      const heads = (await this.repo.getHeads(documentId)).sort((a, b) =>
+        a.createdAt.localeCompare(b.createdAt),
+      );
+      const latest = heads.at(-1);
+      if (!latest) throw new DomainError('not-found', 'Entorno sin revisiones');
+      const next = workspaceSchema.parse(change(workspace));
+      const body = await toBlob(utf8Encode(JSON.stringify(next)), MIME.workspace);
+      const session = await this.sessionFor(documentId);
+      session.knownHeads = heads.map((h) => h.id);
+      if (heads.length === 1 && body.hash === latest.contentRefs.body) {
+        return this.unchanged(session, latest);
+      }
+      return this.commitAndAdvance(session, {
+        documentId,
+        kind: 'workspace',
+        operation: heads.length > 1 ? 'resolve' : 'save',
+        knownHeads: session.knownHeads,
+        metadata: { ...latest.metadata, kind: 'workspace', deleted: false },
+        contentRefs: { body: body.hash, extensions: null, assets: [] },
+        blobs: [body],
+      });
+    });
+  }
+
+  /**
+   * Importa la versión vigente de cada documento de un paquete sin historial (plan 12.5): cada uno
+   * entra con su identidad como una versión nueva. Si ya se importó antes y nadie lo cambió aquí,
+   * la versión nueva va encima (se actualiza); si se cambió aquí, queda en conflicto con la
+   * interfaz de siempre. Lo que ya está igual no crea nada. Devuelve qué pasó con cada uno.
+   */
+  async importPackageVersions(
+    pkg: Pick<VaultContent, 'documents' | 'revisions' | 'blobs'>,
+  ): Promise<{ created: number; updated: number; conflicts: number; same: number }> {
+    const marks = await this.packageImportMarks();
+    const summary = { created: 0, updated: 0, conflicts: 0, same: 0 };
+    const revisions = new Map(pkg.revisions.map((r) => [r.id, r]));
+    for (const doc of pkg.documents) {
+      const head = doc.headRevisionIds
+        .map((id) => revisions.get(id))
+        .filter((r): r is Revision => !!r)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .at(-1);
+      if (!head) continue;
+      const outcome = await this.serialized(doc.id, async () => {
+        const mark = marks[doc.id];
+        if (mark?.source === head.id) return 'same' as const;
+        const local = await this.repo.getDocument(doc.id);
+        const localHeads = local ? await this.repo.getHeads(doc.id) : [];
+        const identical = localHeads.find(
+          (h) =>
+            h.metadata.title === head.metadata.title &&
+            h.contentRefs.body === head.contentRefs.body &&
+            h.contentRefs.extensions === head.contentRefs.extensions &&
+            h.contentRefs.assets.join() === head.contentRefs.assets.join(),
+        );
+        if (identical) {
+          marks[doc.id] = { source: head.id, local: identical.id };
+          return 'same' as const;
+        }
+        // Encima de lo importado la vez anterior si sigue ahí; si no, como rama aparte.
+        const knownHeads = mark && local?.headRevisionIds.includes(mark.local) ? [mark.local] : [];
+        const refs = [
+          head.contentRefs.body,
+          head.contentRefs.extensions,
+          ...head.contentRefs.assets,
+        ].filter((h): h is string => !!h);
+        const blobs = refs.map((hash) => pkg.blobs.get(hash)).filter((b): b is StoredBlob => !!b);
+        const result = await this.repo.commit({
+          documentId: doc.id,
+          kind: head.metadata.kind,
+          operation: 'save',
+          knownHeads,
+          metadata: head.metadata,
+          contentRefs: head.contentRefs,
+          blobs,
+        });
+        const session = this.sessions.get(doc.id);
+        if (session && result.status === 'committed') session.knownHeads = [result.revision.id];
+        for (const listener of this.listeners) listener(result);
+        marks[doc.id] = { source: head.id, local: result.revision.id };
+        if (!local) return 'created' as const;
+        return result.status === 'conflict' ? ('conflicts' as const) : ('updated' as const);
+      });
+      summary[outcome]++;
+    }
+    await this.repo.setDevicePreference(PACKAGE_IMPORTS_KEY, marks);
+    return summary;
+  }
+
+  /** Por documento: la versión del paquete importada aquí la última vez y la revisión local que creó. */
+  async packageImportMarks(): Promise<Record<string, { source: Uuid; local: Uuid }>> {
+    const value = await this.repo.getDevicePreference(PACKAGE_IMPORTS_KEY);
+    return value && typeof value === 'object'
+      ? { ...(value as Record<string, { source: Uuid; local: Uuid }>) }
+      : {};
   }
 
   /** SaveCalendar: el calendario entero en una revisión nueva (los eventos se validan antes). */

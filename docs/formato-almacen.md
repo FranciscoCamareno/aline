@@ -198,6 +198,23 @@ Desde el 15/10/2026. Un documento `doc` guarda el documento entero en JSON y cad
 
 Desde el 16/10/2026. Igual que una carpeta (`folder`): sin cuerpo, con `metadata.folderId` para anidarse. Cada sección tiene su árbol: notas, lienzos y `folder` solo cuelgan de un `folder`; `doc`, `mddoc` y `docfolder` solo de un `docfolder`. Un documento que apunte a una carpeta de la otra sección o retirada se muestra en «Recuperación».
 
+### 2.5.5 Entornos de trabajo (`workspace`) — [esquema](formato/schemas/v1/workspace.schema.json)
+
+Desde el 28/10/2026 (plan 12). Un entorno agrupa documentos para compartirlos juntos. Es un documento como los demás (`metadata.kind: "workspace"`, sin carpeta), y su cuerpo (`objects/<hash>.json`) es:
+
+```json
+{ "schemaVersion": 1, "color": "agua", "description": "", "members": ["<uuid>", "…"] }
+```
+
+- `color`: uno de los de las notas adhesivas y el calendario (`mantequilla`, `agua`, `rosa`, `brote`, `durazno`, `lavanda`).
+- `members`: ids de documentos, en orden y sin repetir. Un documento puede estar en varios entornos. Quitarlo de un entorno no lo borra; enviar el entorno a la papelera no toca sus documentos (nunca en cascada). Un id que ya no existe se ignora al mostrarlo.
+- **Conflictos:** si dos dispositivos cambian un entorno a la vez, sus versiones se unen: los miembros de las dos (primero los de la más reciente) y el color y la descripción de la más reciente. El siguiente cambio guarda esa unión como una sola versión (operación `resolve`). Quitar un miembro en un lado y no en el otro lo deja dentro.
+- Una versión de la aplicación anterior al 28/10/2026 no reconoce el tipo `workspace`: hay que actualizar todos los dispositivos antes de usarlo.
+
+**Paquete `.aline` (compartir un entorno).** Un ZIP con el formato abierto de este documento (`vault.json`, `revisions/`, `objects/`, `assets/`, índices), pero solo con el entorno, sus miembros y las carpetas que los contienen, y un manifiesto `aline-package.json` (`schemaVersion`, `kind: "workspace"`, `workspaceId`, `title`, `createdAt`, `appVersion`, `history` y la lista de documentos). Por defecto lleva solo la versión vigente de cada documento (`history: false`); con `history: true`, todas. Opcionalmente cifrado con contraseña: el archivo empieza por `ALP1`, sigue el número de iteraciones (4 bytes), la sal (16), el IV (12) y el ZIP cifrado con AES-256-GCM; la clave sale de la contraseña con PBKDF2-SHA256 (600 000 iteraciones; al abrir se rechazan más de 5 000 000) y los datos autenticados son `aline-package|1`.
+
+Al importarlo, cada documento entra con su identidad. Con historial, las revisiones entran tal cual (como al sincronizar). Sin historial, la versión del paquete entra como una revisión nueva encima de la que se importó la vez anterior en ese dispositivo (preferencia `packageImports`); si allí se cambió después, queda en conflicto. Nunca se sobrescribe nada ni se mezclan almacenes.
+
 ### 2.6 `heads/<deviceId>.json` — [esquema](formato/schemas/v1/heads.schema.json)
 
 Guarda las cabezas vigentes por documento según un dispositivo. Es reconstruible: una revisión es cabeza si ninguna otra revisión del mismo documento la incluye en `parentIds` y no ha sido retirada por un control. **Dos cabezas o más indican un conflicto.** Ambas versiones se conservan hasta que el propietario lo resuelve.

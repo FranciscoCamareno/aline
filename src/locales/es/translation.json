@@ -997,7 +997,62 @@
       "template": "Plantilla",
       "doc": "Documento con formato",
       "mddoc": "Documento Markdown",
-      "docfolder": "Carpeta de documentos"
+      "docfolder": "Carpeta de documentos",
+      "workspace": "Entorno"
+    }
+  },
+  "workspaces": {
+    "title": "Entornos de trabajo",
+    "new": "Nuevo entorno",
+    "newPlaceholder": "Nombre del entorno nuevo",
+    "addTo": "Añadir a un entorno",
+    "add": "Añadir",
+    "addOne": "Añadir «{{title}}» a un entorno",
+    "addMany_one": "Añadir {{count}} elemento a un entorno",
+    "addMany_other": "Añadir {{count}} elementos a un entorno",
+    "remove": "Quitar del entorno",
+    "delete": "Enviar el entorno a la papelera",
+    "loading": "Cargando…",
+    "empty": "Este entorno está vacío. Añade documentos desde Inicio con «⋯» → «Añadir a un entorno».",
+    "share": {
+      "button": "Compartir",
+      "title": "Compartir «{{title}}»",
+      "lead": "Solo sale lo que está en el entorno. Se descarga como archivo y tú decides por dónde lo envías: aline no lo sube a ninguna parte.",
+      "count_one": "{{count}} documento en el entorno.",
+      "count_other": "{{count}} documentos en el entorno.",
+      "checking": "Comprobando los enlaces…",
+      "outside_one": "{{count}} enlace lleva fuera del entorno: quien lo reciba lo verá roto.",
+      "outside_other": "{{count}} enlaces llevan fuera del entorno: quien lo reciba los verá rotos.",
+      "addTarget": "Añadir al entorno",
+      "forAline": "Para alguien que usa aline",
+      "history": "Incluir el historial de versiones (puede llevar texto que ya borraste)",
+      "encrypt": "Cifrar con contraseña",
+      "password": "Contraseña",
+      "confirm": "Repite la contraseña",
+      "passwordHint": "Al menos 8 caracteres. Dásela por otro medio: sin ella no se puede abrir, y no se puede recuperar.",
+      "package": "Descargar el paquete (.aline)",
+      "forOthers": "Para quien no usa aline",
+      "readableHint": "Un ZIP con notas en Markdown, documentos en Word y Markdown, lienzos en PNG y .excalidraw y los próximos eventos de los calendarios.",
+      "readable": "Descargar como archivos (.zip)",
+      "upcoming": "Próximos eventos",
+      "donePackage": "Paquete descargado. Quien lo reciba lo abre en Inicio → «Importar un entorno».",
+      "doneReadable": "Archivos descargados.",
+      "failed": "No se pudo preparar la descarga. Inténtalo de nuevo."
+    },
+    "import": {
+      "title": "Importar un entorno",
+      "lead": "Elige un paquete .aline. Sus documentos entran en este almacén; si ya los tenías de un paquete anterior, se actualizan, y si los cambiaste aquí, quedan en conflicto para que elijas.",
+      "wrongPassword": "La contraseña no es correcta.",
+      "unreadable": "No es un paquete de aline o está dañado.",
+      "unlock": "Abrir",
+      "withHistory": "con historial",
+      "plan": "Nuevos: {{created}} · Se actualizan: {{updated}} · Ya están: {{same}}",
+      "problems_one": "{{count}} archivo del paquete no se pudo leer y se omite.",
+      "problems_other": "{{count}} archivos del paquete no se pudieron leer y se omiten.",
+      "confirm": "Importar",
+      "done": "Importado: {{created}} nuevos, {{updated}} actualizados y {{conflicts}} en conflicto.",
+      "failed": "No se pudo importar el paquete.",
+      "open": "Abrir el entorno"
     }
   }
 }

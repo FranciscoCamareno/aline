@@ -1,22 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../app/store.ts';
 import { Icon, KindIcon } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
+import type { AppServices } from '../../app/services.ts';
 import {
+  canJoinWorkspace,
   HOME_FILTERS,
   homeItems,
   homeRecent,
+  homeWorkspaces,
   moveTargets,
+  workspaceItems,
   type HomeFilter,
   type HomeSort,
 } from '../../application/home.ts';
-import type { KnowledgeService } from '../../application/KnowledgeService.ts';
-import type { VaultService } from '../../application/VaultService.ts';
+import { EVENT_COLORS, type EventColor } from '../../domain/calendar.ts';
+import { withoutMembers } from '../../domain/workspace.ts';
 import { folderPath } from '../../domain/folders.ts';
 import { isFolderKind, type DocumentRecord } from '../../domain/revision.ts';
 import { RenameableTitle } from '../library/RenameableTitle.tsx';
 import { HomeThumb } from './HomeThumb.tsx';
+import {
+  AddToWorkspaceDialog,
+  ImportWorkspaceDialog,
+  ShareWorkspaceDialog,
+} from './WorkspaceDialogs.tsx';
 
 const PAGE = 120;
 const RECENT_COUNT = 6;
@@ -56,17 +65,11 @@ export interface HomeActions {
  * Inicio (plan 11): todos los documentos en un solo sitio, como «Mi unidad». Carpetas de las dos
  * secciones con miga de pan, cuadrícula o lista, filtro por tipo, orden, búsqueda por título,
  * miniaturas, «Recientes» y acciones sobre uno o varios. Usa las mismas operaciones que la barra
- * lateral; no crea revisiones por mirar.
+ * lateral; no crea revisiones por mirar. Desde el plan 12, también los entornos de trabajo: su
+ * bloque, su vista (sus miembros), añadir y quitar, compartir e importar.
  */
-export function HomeView({
-  service,
-  knowledge,
-  actions,
-}: {
-  service: VaultService;
-  knowledge: KnowledgeService;
-  actions: HomeActions;
-}) {
+export function HomeView({ services, actions }: { services: AppServices; actions: HomeActions }) {
+  const { service, knowledge } = services;
   const { t, i18n } = useTranslation();
   const documents = useUiStore((s) => s.documents);
   const setActive = useUiStore((s) => s.setActive);
@@ -79,6 +82,13 @@ export function HomeView({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [renaming, setRenaming] = useState<{ id: string; seq: number } | null>(null);
   const [moving, setMoving] = useState<DocumentRecord[] | null>(null);
+  /** Entorno abierto en Inicio (plan 12) y sus miembros (null mientras se leen). */
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [members, setMembers] = useState<string[] | null>(null);
+  const [adding, setAdding] = useState<DocumentRecord[] | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [newWorkspace, setNewWorkspace] = useState<string | null>(null);
 
   const changePrefs = (next: Partial<typeof prefs>) => {
     const merged = { ...prefs, ...next };
@@ -91,21 +101,84 @@ export function HomeView({
     () => new Map(documents.filter((d) => isFolderKind(d.kind)).map((d) => [d.id, d])),
     [documents],
   );
-  const current = folderId && folders.get(folderId)?.deleted === false ? folderId : null;
+  const byId = useMemo(() => new Map(documents.map((d) => [d.id, d])), [documents]);
+  // Un entorno que se borra (o se archiva) también devuelve a la raíz.
+  const workspace = workspaceId ? byId.get(workspaceId) : undefined;
+  const openWorkspace = workspace && !workspace.deleted && !workspace.archived ? workspace : null;
+  const current =
+    !openWorkspace && folderId && folders.get(folderId)?.deleted === false ? folderId : null;
+
+  // Los miembros se leen al entrar y cada vez que el entorno cambia (su fecha de modificación).
+  const workspaceVersion = openWorkspace?.updatedAt;
+  useEffect(() => {
+    if (!openWorkspace) return;
+    let cancelled = false;
+    service.readWorkspace(openWorkspace.id).then(
+      (read) => !cancelled && setMembers(read.workspace.members),
+      () => !cancelled && setMembers([]),
+    );
+    return () => {
+      cancelled = true;
+    };
+    // `openWorkspace` cambia de objeto en cada lista; cuentan su id y su versión.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openWorkspace?.id, workspaceVersion, service]);
+
   const items = useMemo(
-    () => homeItems(documents, { folderId: current, query, filter, sort: prefs.sort }),
-    [documents, current, query, filter, prefs.sort],
+    () =>
+      openWorkspace
+        ? workspaceItems(documents, members ?? [], { query, filter, sort: prefs.sort })
+        : homeItems(documents, { folderId: current, query, filter, sort: prefs.sort }),
+    [documents, openWorkspace, members, current, query, filter, prefs.sort],
   );
   const recent = useMemo(() => homeRecent(documents, RECENT_COUNT), [documents]);
-  const byId = useMemo(() => new Map(documents.map((d) => [d.id, d])), [documents]);
+  const workspaces = useMemo(() => homeWorkspaces(documents), [documents]);
+  // Color de cada tarjeta de entorno: está en su contenido, no en el registro del documento.
+  const [colors, setColors] = useState<Map<string, EventColor>>(new Map());
+  const workspacesKey = workspaces.map((w) => `${w.id}:${w.updatedAt}`).join();
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all(
+      workspaces.map(async (w) => {
+        const read = await service.readWorkspace(w.id).catch(() => null);
+        return [w.id, read?.workspace.color ?? 'agua'] as const;
+      }),
+    ).then((pairs) => !cancelled && setColors(new Map(pairs)));
+    return () => {
+      cancelled = true;
+    };
+    // La clave resume la lista: ids y versiones.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspacesKey, service]);
   const chosen = [...selected].map((id) => byId.get(id)).filter((d): d is DocumentRecord => !!d);
-  const atRoot = !current && !query.trim();
+  const atRoot = !current && !openWorkspace && !query.trim();
   const date = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' });
 
   const enter = (id: string | null) => {
     setFolderId(id);
+    setWorkspaceId(null);
     setQuery('');
     setShown(PAGE);
+    setSelected(new Set());
+  };
+  const enterWorkspace = (id: string) => {
+    setWorkspaceId(id);
+    setMembers(null);
+    setFolderId(null);
+    setQuery('');
+    setShown(PAGE);
+    setSelected(new Set());
+  };
+  const createWorkspace = async (title: string) => {
+    const color = EVENT_COLORS[workspaces.length % EVENT_COLORS.length]!;
+    const created = await service.createWorkspace(title, color);
+    useUiStore.getState().upsertDocument(created);
+    enterWorkspace(created.id);
+  };
+  const removeFromWorkspace = async (ids: string[]) => {
+    if (!openWorkspace) return;
+    const result = await service.updateWorkspace(openWorkspace.id, (w) => withoutMembers(w, ids));
+    useUiStore.getState().upsertDocument(result.document);
     setSelected(new Set());
   };
   const open = (doc: DocumentRecord) => {
@@ -196,6 +269,26 @@ export function HomeView({
                     },
                   ]
                 : []),
+              ...(canJoinWorkspace(doc)
+                ? [
+                    {
+                      id: 'home-add-workspace',
+                      label: t('workspaces.addTo'),
+                      icon: 'entorno' as const,
+                      onSelect: () => setAdding([doc]),
+                    },
+                  ]
+                : []),
+              ...(openWorkspace
+                ? [
+                    {
+                      id: 'home-remove-workspace',
+                      label: t('workspaces.remove'),
+                      icon: 'cerrar' as const,
+                      onSelect: () => void removeFromWorkspace([doc.id]),
+                    },
+                  ]
+                : []),
               {
                 id: 'home-archive',
                 label: t('library.archive'),
@@ -240,6 +333,14 @@ export function HomeView({
             onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
           />
         </label>
+        <button
+          type="button"
+          data-testid="home-import-workspace"
+          onClick={() => setImporting(true)}
+        >
+          <Icon name="subir" size={18} />
+          {t('workspaces.import.title')}
+        </button>
       </header>
 
       <div className="home-toolbar">
@@ -311,6 +412,25 @@ export function HomeView({
           </button>
           <button
             type="button"
+            disabled={!chosen.every(canJoinWorkspace)}
+            data-testid="home-bulk-add-workspace"
+            onClick={() => setAdding(chosen)}
+          >
+            <Icon name="entorno" size={18} />
+            {t('workspaces.addTo')}
+          </button>
+          {openWorkspace && (
+            <button
+              type="button"
+              data-testid="home-bulk-remove-workspace"
+              onClick={() => void removeFromWorkspace(chosen.map((d) => d.id))}
+            >
+              <Icon name="cerrar" size={18} />
+              {t('workspaces.remove')}
+            </button>
+          )}
+          <button
+            type="button"
             data-testid="home-bulk-archive"
             onClick={() => void forAll((id) => actions.onArchive(id, true))}
           >
@@ -353,6 +473,67 @@ export function HomeView({
           </section>
         )}
 
+        {atRoot && filter === 'all' && (
+          <section className="home-section" aria-labelledby="home-workspaces-title">
+            <h2 id="home-workspaces-title" className="section-title">
+              {t('workspaces.title')}
+            </h2>
+            <ul className="home-workspaces" data-testid="home-workspaces">
+              {workspaces.map((w) => (
+                <li key={w.id}>
+                  <button
+                    type="button"
+                    className={`home-workspace event-${colors.get(w.id) ?? 'agua'}`}
+                    data-testid="home-workspace"
+                    onClick={() => enterWorkspace(w.id)}
+                  >
+                    <Icon name="entorno" size={20} />
+                    <span>{w.title}</span>
+                  </button>
+                </li>
+              ))}
+              <li>
+                {newWorkspace === null ? (
+                  <button
+                    type="button"
+                    className="home-workspace home-workspace--new"
+                    data-testid="home-new-workspace"
+                    onClick={() => setNewWorkspace('')}
+                  >
+                    <Icon name="mas" size={20} />
+                    <span>{t('workspaces.new')}</span>
+                  </button>
+                ) : (
+                  <form
+                    className="inline-form home-workspace-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const title = newWorkspace.trim();
+                      setNewWorkspace(null);
+                      if (title) void createWorkspace(title);
+                    }}
+                  >
+                    <input
+                      name="new-workspace"
+                      autoFocus
+                      value={newWorkspace}
+                      maxLength={300}
+                      placeholder={t('workspaces.newPlaceholder')}
+                      aria-label={t('workspaces.newPlaceholder')}
+                      data-testid="home-new-workspace-input"
+                      onChange={(e) => setNewWorkspace(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Escape' && setNewWorkspace(null)}
+                    />
+                    <button type="submit" className="icon-button" aria-label={t('workspaces.new')}>
+                      <Icon name="check" size={18} />
+                    </button>
+                  </form>
+                )}
+              </li>
+            </ul>
+          </section>
+        )}
+
         <section className="home-section" aria-labelledby="home-all-title">
           <nav className="home-crumbs" aria-label={t('home.path')} data-testid="home-crumbs">
             <button
@@ -363,6 +544,13 @@ export function HomeView({
             >
               {query.trim() ? t('home.results') : t('home.all')}
             </button>
+            {openWorkspace && (
+              <span className="home-crumb">
+                <Icon name="chevron-der" size={14} />
+                <Icon name="entorno" size={16} />
+                <strong>{openWorkspace.title}</strong>
+              </span>
+            )}
             {current &&
               pathTo(current, folders).map((folder, i, list) => (
                 <span key={folder.id} className="home-crumb">
@@ -377,9 +565,61 @@ export function HomeView({
                 </span>
               ))}
           </nav>
-          {items.length === 0 ? (
+          {openWorkspace && (
+            <div className="home-workspace-head" data-testid="home-workspace-head">
+              <RenameableTitle
+                title={openWorkspace.title}
+                testId="workspace-title"
+                onRename={(title) => actions.onRename(openWorkspace.id, title)}
+              />
+              <span className="topbar-spacer" />
+              <button
+                type="button"
+                className="primary"
+                data-testid="workspace-share"
+                onClick={() => setSharing(true)}
+              >
+                <Icon name="compartir" size={18} />
+                {t('workspaces.share.button')}
+              </button>
+              <Menu
+                className="row-menu"
+                trigger={<Icon name="mas-opciones" size={16} />}
+                label={`${t('library.actions')}: ${openWorkspace.title}`}
+                triggerClassName="icon-button"
+                testId="workspace-actions"
+                placement="bottom-end"
+                items={[
+                  ...EVENT_COLORS.map((color) => ({
+                    id: `workspace-color-${color}`,
+                    label: t(`calendar.colors.${color}`),
+                    icon: 'color' as const,
+                    onSelect: () =>
+                      void service
+                        .updateWorkspace(openWorkspace.id, (w) => ({ ...w, color }))
+                        .then((r) => useUiStore.getState().upsertDocument(r.document)),
+                  })),
+                  {
+                    id: 'workspace-trash',
+                    label: t('workspaces.delete'),
+                    icon: 'eliminar',
+                    danger: true,
+                    separated: true,
+                    onSelect: () => void actions.onTrash(openWorkspace.id).then(() => enter(null)),
+                  },
+                ]}
+              />
+            </div>
+          )}
+          {openWorkspace && members === null ? (
+            <p className="muted home-empty">{t('workspaces.loading')}</p>
+          ) : items.length === 0 ? (
             <p className="muted home-empty" data-testid="home-empty">
-              {query.trim() ? t('library.noResults') : t('home.emptyFolder')}
+              {query.trim()
+                ? t('library.noResults')
+                : openWorkspace
+                  ? t('workspaces.empty')
+                  : t('home.emptyFolder')}
             </p>
           ) : (
             <ul className={`home-items home-items--${prefs.layout}`} data-testid="home-items">
@@ -399,6 +639,39 @@ export function HomeView({
         </section>
       </div>
 
+      {adding && (
+        <AddToWorkspaceDialog
+          services={services}
+          items={adding}
+          onDone={() => {
+            setAdding(null);
+            setSelected(new Set());
+            void service.listDocuments().then(useUiStore.getState().setDocuments);
+          }}
+          onClose={() => setAdding(null)}
+        />
+      )}
+      {sharing && openWorkspace && (
+        <ShareWorkspaceDialog
+          services={services}
+          workspace={openWorkspace}
+          members={items}
+          onClose={() => {
+            setSharing(false);
+            void service.listDocuments().then(useUiStore.getState().setDocuments);
+          }}
+        />
+      )}
+      {importing && (
+        <ImportWorkspaceDialog
+          services={services}
+          onImported={(id) => {
+            setImporting(false);
+            enterWorkspace(id);
+          }}
+          onClose={() => setImporting(false)}
+        />
+      )}
       {moving && (
         <MoveDialog
           items={moving}

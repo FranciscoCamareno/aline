@@ -795,8 +795,7 @@ export function App() {
         {inCalendar && <CalendarView service={services.service} />}
         {inHome && (
           <HomeView
-            service={services.service}
-            knowledge={services.knowledge}
+            services={services}
             actions={{
               onRename: renameDocument,
               onMove: moveDocument,

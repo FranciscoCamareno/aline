@@ -35,6 +35,15 @@ _English version: [user-guide.md](user-guide.md)._
 - Pulsa una carpeta para entrar (la ruta de arriba lleva de vuelta) y cualquier otra cosa para abrirla en su sección.
 - Con «⋯» o marcando varias casillas: **mover a una carpeta**, archivar o enviar a la papelera. No se pueden mover juntos documentos de «Notas» y de «Documentos», porque cada sección tiene sus carpetas.
 
+## 2 ter. Entornos de trabajo
+
+- Un **entorno** agrupa documentos para compartirlos con alguien: en Inicio, «Nuevo entorno», y después «⋯» → «Añadir a un entorno» en cada documento, o marca varios y usa el botón de arriba. Un documento puede estar en varios entornos; quitarlo de uno no lo borra.
+- Pulsa un entorno para ver lo que tiene. **Compartir** muestra antes qué enlaces llevan fuera del entorno (quien lo reciba los verá rotos), con la opción de añadir sus destinos, y ofrece dos descargas:
+  - **Paquete `.aline`**, para alguien que usa aline: lleva solo la versión vigente de cada documento (marca la casilla para incluir el historial) y se puede **cifrar con una contraseña**, que tendrás que darle por otro medio.
+  - **Archivos legibles** (ZIP), para quien no usa aline: notas en Markdown, documentos en Word y Markdown, lienzos en PNG y `.excalidraw`, y los próximos eventos de los calendarios.
+- aline no sube nada: tú envías el archivo como quieras.
+- **Importar un entorno** (Inicio, arriba): elige el `.aline`, pon la contraseña si la tiene y mira qué trae. Si ya lo habías importado, los documentos se actualizan; si los cambiaste aquí, quedan en conflicto para que elijas, como entre dos dispositivos.
+
 ## 3. Notas
 
 - **Nota nueva:** «+ Nuevo» → «Nota». A la izquierda se escribe en Markdown y a la derecha se ve el resultado.

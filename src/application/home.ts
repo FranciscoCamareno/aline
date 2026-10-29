@@ -20,9 +20,24 @@ export const HOME_FILTERS: readonly HomeFilter[] = [
   'folders',
 ];
 
-/** Lo que Inicio muestra: ni la papelera, ni lo archivado, ni las plantillas (tienen su panel). */
+/**
+ * Lo que Inicio lista: ni la papelera, ni lo archivado, ni las plantillas (tienen su panel), ni los
+ * entornos (tienen su propio bloque, plan 12).
+ */
 export function isHomeItem(doc: DocumentRecord): boolean {
-  return !doc.deleted && !doc.archived && doc.kind !== 'template';
+  return !doc.deleted && !doc.archived && doc.kind !== 'template' && doc.kind !== 'workspace';
+}
+
+/** Entornos de trabajo vivos, por nombre (plan 12). */
+export function homeWorkspaces(documents: readonly DocumentRecord[]): DocumentRecord[] {
+  return documents
+    .filter((d) => d.kind === 'workspace' && !d.deleted && !d.archived)
+    .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+}
+
+/** Documentos que se pueden meter en un entorno: lo que Inicio lista, sin carpetas. */
+export function canJoinWorkspace(doc: DocumentRecord): boolean {
+  return isHomeItem(doc) && !isFolderKind(doc.kind);
 }
 
 function matchesFilter(doc: DocumentRecord, filter: HomeFilter): boolean {
@@ -70,6 +85,29 @@ export function homeItems(
   return listed
     .filter((d) => matchesFilter(d, options.filter))
     .sort((a, b) => Number(isFolderKind(b.kind)) - Number(isFolderKind(a.kind)) || compare(a, b));
+}
+
+/**
+ * Miembros de un entorno (plan 12.2) que siguen vivos, con la misma búsqueda, filtro y orden que
+ * una carpeta (los que se borraron o archivaron no salen).
+ */
+export function workspaceItems(
+  documents: readonly DocumentRecord[],
+  members: readonly string[],
+  options: { query: string; filter: HomeFilter; sort: HomeSort },
+): DocumentRecord[] {
+  const byId = new Map(documents.map((d) => [d.id, d]));
+  const needle = normalizeForSearch(options.query.trim());
+  const list = members
+    .map((id) => byId.get(id))
+    .filter((d): d is DocumentRecord => !!d && isHomeItem(d))
+    .filter((d) => !needle || normalizeForSearch(d.title).includes(needle))
+    .filter((d) => matchesFilter(d, options.filter));
+  return options.sort === 'name'
+    ? list.sort((a, b) =>
+        a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }),
+      )
+    : list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 /** Lo modificado más recientemente (sin carpetas ni calendarios): el bloque «Recientes». */

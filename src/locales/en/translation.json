@@ -997,7 +997,62 @@
       "template": "Template",
       "doc": "Rich document",
       "mddoc": "Markdown document",
-      "docfolder": "Documents folder"
+      "docfolder": "Documents folder",
+      "workspace": "Workspace"
+    }
+  },
+  "workspaces": {
+    "title": "Workspaces",
+    "new": "New workspace",
+    "newPlaceholder": "Name of the new workspace",
+    "addTo": "Add to a workspace",
+    "add": "Add",
+    "addOne": "Add \"{{title}}\" to a workspace",
+    "addMany_one": "Add {{count}} item to a workspace",
+    "addMany_other": "Add {{count}} items to a workspace",
+    "remove": "Remove from the workspace",
+    "delete": "Send the workspace to the trash",
+    "loading": "Loading…",
+    "empty": "This workspace is empty. Add documents from Home with \"⋯\" → \"Add to a workspace\".",
+    "share": {
+      "button": "Share",
+      "title": "Share \"{{title}}\"",
+      "lead": "Only what is in the workspace leaves. It is downloaded as a file and you decide how to send it: aline uploads it nowhere.",
+      "count_one": "{{count}} document in the workspace.",
+      "count_other": "{{count}} documents in the workspace.",
+      "checking": "Checking the links…",
+      "outside_one": "{{count}} link points outside the workspace: whoever receives it will see it broken.",
+      "outside_other": "{{count}} links point outside the workspace: whoever receives it will see them broken.",
+      "addTarget": "Add to the workspace",
+      "forAline": "For someone who uses aline",
+      "history": "Include the version history (it may hold text you already deleted)",
+      "encrypt": "Encrypt with a password",
+      "password": "Password",
+      "confirm": "Repeat the password",
+      "passwordHint": "At least 8 characters. Give it through another channel: without it the package cannot be opened, and it cannot be recovered.",
+      "package": "Download the package (.aline)",
+      "forOthers": "For people who do not use aline",
+      "readableHint": "A ZIP with notes in Markdown, documents in Word and Markdown, canvases in PNG and .excalidraw and the calendars' upcoming events.",
+      "readable": "Download as files (.zip)",
+      "upcoming": "Upcoming events",
+      "donePackage": "Package downloaded. The recipient opens it in Home → \"Import a workspace\".",
+      "doneReadable": "Files downloaded.",
+      "failed": "The download could not be prepared. Try again."
+    },
+    "import": {
+      "title": "Import a workspace",
+      "lead": "Choose an .aline package. Its documents go into this vault; if you already had them from an earlier package they are updated, and if you changed them here they stay in conflict for you to choose.",
+      "wrongPassword": "The password is not correct.",
+      "unreadable": "It is not an aline package or it is damaged.",
+      "unlock": "Open",
+      "withHistory": "with history",
+      "plan": "New: {{created}} · Updated: {{updated}} · Already here: {{same}}",
+      "problems_one": "{{count}} file in the package could not be read and is skipped.",
+      "problems_other": "{{count}} files in the package could not be read and are skipped.",
+      "confirm": "Import",
+      "done": "Imported: {{created}} new, {{updated}} updated and {{conflicts}} in conflict.",
+      "failed": "The package could not be imported.",
+      "open": "Open the workspace"
     }
   }
 }

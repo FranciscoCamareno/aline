@@ -116,14 +116,16 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   'image/webp': 'webp',
 };
 
-type AssetLoader = (hash: string) => Promise<{ mimeType: string; bytes: Uint8Array } | undefined>;
+export type AssetLoader = (
+  hash: string,
+) => Promise<{ mimeType: string; bytes: Uint8Array } | undefined>;
 
 /**
  * Las imágenes que cita un Markdown (`mindnote-asset:<sha256>`) pasan a ser archivos de
  * `<dir>assets/` y el texto las cita con su ruta relativa (plan 9.8). Las que ya no existen se
  * quedan como estaban: nunca se falla por una cita rota.
  */
-async function withAssetFiles(
+export async function withAssetFiles(
   markdown: string,
   loadAsset: AssetLoader,
   files: Map<string, Uint8Array>,
@@ -144,7 +146,7 @@ async function withAssetFiles(
   });
 }
 
-function downloadZip(name: string, files: Map<string, Uint8Array>): Promise<void> {
+export function downloadZip(name: string, files: Map<string, Uint8Array>): Promise<void> {
   return createZipWorkerArchiver()
     .zip(files)
     .then((bytes) =>

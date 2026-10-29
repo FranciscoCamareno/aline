@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { homeItems, homeRecent, moveTargets } from '../../src/application/home.ts';
+import {
+  canJoinWorkspace,
+  homeItems,
+  homeRecent,
+  homeWorkspaces,
+  moveTargets,
+  workspaceItems,
+} from '../../src/application/home.ts';
 import type { DocumentRecord } from '../../src/domain/revision.ts';
 
 let n = 0;
@@ -99,5 +106,22 @@ describe('Inicio (plan 11)', () => {
     expect(moveTargets(all, [canvas, rich])).toBeNull();
     expect(moveTargets(all, [calendar])).toBeNull();
     expect(moveTargets(all, [notes])).toEqual([]);
+  });
+
+  it('entornos: fuera de la lista normal, con su propio bloque y sus miembros vivos', () => {
+    const ws = doc({ kind: 'workspace', title: 'Proyecto' });
+    const docs = [...all, ws];
+    expect(homeItems(docs, options).map((d) => d.title)).not.toContain('Proyecto');
+    expect(homeWorkspaces(docs).map((d) => d.title)).toEqual(['Proyecto']);
+    expect(
+      workspaceItems(docs, [note.id, trashed.id, rich.id, archived.id], {
+        query: '',
+        filter: 'all',
+        sort: 'name',
+      }).map((d) => d.title),
+    ).toEqual(['Apunte', 'Informe']);
+    expect(canJoinWorkspace(note)).toBe(true);
+    expect(canJoinWorkspace(notes)).toBe(false);
+    expect(canJoinWorkspace(ws)).toBe(false);
   });
 });

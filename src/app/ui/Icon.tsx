@@ -59,6 +59,8 @@ export type IconName =
   | 'recortar'
   | 'cuadricula'
   | 'inicio'
+  | 'entorno'
+  | 'compartir'
   | 'ordenar'
   | 'filtrar'
   | 'duplicar'
@@ -147,4 +149,5 @@ const KIND_ICONS: Record<RevisionKind, IconName> = {
   doc: 'documento',
   mddoc: 'documento-md',
   docfolder: 'carpeta',
+  workspace: 'entorno',
 };

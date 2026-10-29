@@ -58,7 +58,8 @@
             "template",
             "doc",
             "mddoc",
-            "docfolder"
+            "docfolder",
+            "workspace"
           ]
         },
         "title": {

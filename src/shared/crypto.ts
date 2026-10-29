@@ -274,3 +274,66 @@ export class VaultCipher {
     return Array.from(mac, (b) => b.toString(16).padStart(2, '0')).join('');
   }
 }
+
+/** Archivo cifrado con contraseña (paquetes de entornos, plan 12.4): `ALP1`. */
+const PASSWORD_MAGIC = utf8Encode('ALP1');
+const SALT_BYTES = 16;
+/** Tope de iteraciones al abrir: un archivo manipulado no puede pedir un cálculo enorme (H06). */
+const MAX_ITERATIONS = 5_000_000;
+
+export function isPasswordSealed(bytes: Uint8Array): boolean {
+  return PASSWORD_MAGIC.every((b, i) => bytes[i] === b);
+}
+
+/**
+ * Cifra con una contraseña: `ALP1` + iteraciones (4 bytes) + sal (16) + IV (12) + AES-256-GCM, con
+ * la clave derivada por PBKDF2-SHA256. `label` va como datos autenticados (qué es el archivo).
+ */
+export async function sealWithPassword(
+  plain: Uint8Array,
+  password: string,
+  label: string,
+  iterations = PBKDF2_ITERATIONS,
+): Promise<Uint8Array> {
+  const salt = random(SALT_BYTES);
+  const iv = random(IV_BYTES);
+  const key = await deriveWrappingKey(password, salt, iterations);
+  const sealed = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: buf(iv), additionalData: buf(utf8Encode(label)) },
+      key,
+      buf(plain),
+    ),
+  );
+  const head = PASSWORD_MAGIC.byteLength + 4;
+  const out = new Uint8Array(head + SALT_BYTES + IV_BYTES + sealed.byteLength);
+  out.set(PASSWORD_MAGIC, 0);
+  new DataView(out.buffer).setUint32(PASSWORD_MAGIC.byteLength, iterations);
+  out.set(salt, head);
+  out.set(iv, head + SALT_BYTES);
+  out.set(sealed, head + SALT_BYTES + IV_BYTES);
+  return out;
+}
+
+/** Descifra lo de `sealWithPassword`; lanza un error con otra contraseña o si se alteró. */
+export async function openWithPassword(
+  sealed: Uint8Array,
+  password: string,
+  label: string,
+): Promise<Uint8Array> {
+  if (!isPasswordSealed(sealed)) throw new Error('Archivo sin cifrar o desconocido');
+  const view = new DataView(sealed.buffer, sealed.byteOffset, sealed.byteLength);
+  const iterations = view.getUint32(PASSWORD_MAGIC.byteLength);
+  if (iterations < 1 || iterations > MAX_ITERATIONS) throw new Error('Cifrado no válido');
+  const head = PASSWORD_MAGIC.byteLength + 4;
+  const salt = sealed.slice(head, head + SALT_BYTES);
+  const iv = sealed.slice(head + SALT_BYTES, head + SALT_BYTES + IV_BYTES);
+  const key = await deriveWrappingKey(password, salt, iterations);
+  return new Uint8Array(
+    await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: buf(iv), additionalData: buf(utf8Encode(label)) },
+      key,
+      buf(sealed.slice(head + SALT_BYTES + IV_BYTES)),
+    ),
+  );
+}

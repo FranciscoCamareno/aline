@@ -24,6 +24,8 @@ export const revisionKindSchema = z.enum([
   'doc',
   'mddoc',
   'docfolder',
+  // Entorno de trabajo (plan 12, desde el 28/10/2026): agrupa documentos para compartirlos.
+  'workspace',
 ]);
 export type RevisionKind = z.infer<typeof revisionKindSchema>;
 

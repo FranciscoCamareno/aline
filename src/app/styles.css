@@ -5299,3 +5299,78 @@ body.excalidraw-cursor-resize * {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 }
+
+/* Entornos de trabajo en Inicio (plan 12): tarjetas con su color, cabecera y diálogos. */
+.home-workspaces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.home-workspace {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-soft);
+  border-left: 6px solid var(--event-bg, var(--border-soft));
+  border-radius: 10px;
+  background: var(--bg-panel);
+  text-align: left;
+  font-weight: 600;
+}
+.home-workspace:hover {
+  border-color: var(--focus);
+  border-left-color: var(--event-bg, var(--focus));
+}
+.home-workspace span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-workspace--new {
+  border-style: dashed;
+  border-left-width: 1px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.home-workspace-form {
+  min-height: 52px;
+}
+.home-workspace-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.home-workspace-head .renameable-text {
+  font-size: 18px;
+  font-weight: 700;
+}
+.dialog.share-dialog {
+  width: min(620px, 100%);
+}
+.share-dialog fieldset {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.share-outside-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.share-password {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+.workspace-pick {
+  max-height: 40vh;
+  overflow-y: auto;
+}
