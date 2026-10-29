@@ -949,5 +949,55 @@
   },
   "rail": {
     "search": "Search"
+  },
+  "home": {
+    "title": "Home",
+    "searchPlaceholder": "Search everything…",
+    "filter": "Filter by type",
+    "filters": {
+      "all": "All",
+      "notes": "Notes",
+      "canvases": "Canvases",
+      "docs": "Documents",
+      "calendars": "Calendars",
+      "folders": "Folders"
+    },
+    "sortLabel": "Sort",
+    "sort": {
+      "modified": "Modified",
+      "name": "Name"
+    },
+    "layout": "View",
+    "layouts": {
+      "grid": "Grid",
+      "list": "List"
+    },
+    "all": "All",
+    "results": "Results",
+    "path": "Location",
+    "emptyFolder": "This folder is empty.",
+    "open": "Open",
+    "move": "Move to…",
+    "moveMixed": "Items from \"Notes\" and \"Documents\", or calendars, cannot be moved together.",
+    "moveOne": "Move \"{{title}}\"",
+    "moveMany_one": "Move {{count}} item",
+    "moveMany_other": "Move {{count}} items",
+    "select": "Select \"{{title}}\"",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "clearSelection": "Clear selection",
+    "noUpcoming": "No upcoming events",
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items",
+    "kinds": {
+      "note": "Note",
+      "canvas": "Canvas",
+      "folder": "Folder",
+      "calendar": "Calendar",
+      "template": "Template",
+      "doc": "Rich document",
+      "mddoc": "Markdown document",
+      "docfolder": "Documents folder"
+    }
   }
 }

@@ -28,6 +28,13 @@ _English version: [user-guide.md](user-guide.md)._
   - **.excalidraw**, para abrir el lienzo en Excalidraw. El diálogo avisa de lo que no viaja: enlaces internos, backlinks, historial, carpetas y etiquetas.
   - Se puede exportar solo la selección. Si la imagen no cabe en la memoria del navegador, el diálogo lo dice y propone una escala menor; nunca recorta nada en silencio.
 
+## 2 bis. Inicio
+
+- La pestaña **Inicio**, la primera de la barra lateral, muestra todo junto, como «Mi unidad» de Google Drive: notas, lienzos, documentos, calendarios y las carpetas de «Notas» y de «Documentos». Arriba, lo último modificado.
+- **Cuadrícula o lista**, **orden** por fecha de modificación o por nombre, **filtro** por tipo y **búsqueda** por título en todo. Las miniaturas enseñan el dibujo de un lienzo, las primeras líneas de una nota o un documento y los próximos eventos de un calendario.
+- Pulsa una carpeta para entrar (la ruta de arriba lleva de vuelta) y cualquier otra cosa para abrirla en su sección.
+- Con «⋯» o marcando varias casillas: **mover a una carpeta**, archivar o enviar a la papelera. No se pueden mover juntos documentos de «Notas» y de «Documentos», porque cada sección tiene sus carpetas.
+
 ## 3. Notas
 
 - **Nota nueva:** «+ Nuevo» → «Nota». A la izquierda se escribe en Markdown y a la derecha se ve el resultado.

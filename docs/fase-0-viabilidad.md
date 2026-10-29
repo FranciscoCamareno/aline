@@ -1,6 +1,6 @@
 # Fase 0 — Viabilidad del motor de lienzo
 
-Versión 1.0 | 12 de octubre de 2026 | Plan: [Plan-de-fases.md](Plan-de-fases.md) §3, fase 0 | Diseño: §9, §11, §17
+Versión 1.0 | 12 de octubre de 2026 | Plan: [Plan-de-fases-1.0.md](historial/Plan-de-fases-1.0.md) §3, fase 0 | Diseño: §9, §11, §17
 
 Este informe registra las pruebas de viabilidad de Excalidraw como motor (R-19, D-14, DP-11). Distingue lo **medido en el PC**, lo **indicativo** (eventos emulados) y lo **pendiente en el iPad**. Las pruebas del iPad no se han ejecutado y no se dan por superadas.
 

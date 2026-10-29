@@ -949,5 +949,55 @@
   },
   "rail": {
     "search": "Buscar"
+  },
+  "home": {
+    "title": "Inicio",
+    "searchPlaceholder": "Buscar en todo…",
+    "filter": "Filtrar por tipo",
+    "filters": {
+      "all": "Todo",
+      "notes": "Notas",
+      "canvases": "Lienzos",
+      "docs": "Documentos",
+      "calendars": "Calendarios",
+      "folders": "Carpetas"
+    },
+    "sortLabel": "Ordenar",
+    "sort": {
+      "modified": "Modificado",
+      "name": "Nombre"
+    },
+    "layout": "Vista",
+    "layouts": {
+      "grid": "Cuadrícula",
+      "list": "Lista"
+    },
+    "all": "Todo",
+    "results": "Resultados",
+    "path": "Ubicación",
+    "emptyFolder": "Esta carpeta está vacía.",
+    "open": "Abrir",
+    "move": "Mover a…",
+    "moveMixed": "No se pueden mover juntos documentos de «Notas» y de «Documentos», ni calendarios.",
+    "moveOne": "Mover «{{title}}»",
+    "moveMany_one": "Mover {{count}} elemento",
+    "moveMany_other": "Mover {{count}} elementos",
+    "select": "Seleccionar «{{title}}»",
+    "selected_one": "{{count}} seleccionado",
+    "selected_other": "{{count}} seleccionados",
+    "clearSelection": "Quitar la selección",
+    "noUpcoming": "Sin próximos eventos",
+    "items_one": "{{count}} elemento",
+    "items_other": "{{count}} elementos",
+    "kinds": {
+      "note": "Nota",
+      "canvas": "Lienzo",
+      "folder": "Carpeta",
+      "calendar": "Calendario",
+      "template": "Plantilla",
+      "doc": "Documento con formato",
+      "mddoc": "Documento Markdown",
+      "docfolder": "Carpeta de documentos"
+    }
   }
 }

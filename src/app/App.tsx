@@ -6,6 +6,7 @@ import type { ConflictChoice } from '../application/VaultService.ts';
 import { hasConflict, isContentKind, isDocsKind, type DocumentKind } from '../domain/revision.ts';
 import { ConflictPanel } from '../features/history/ConflictPanel.tsx';
 import { DetailsPanel } from '../features/knowledge/DetailsPanel.tsx';
+import { HomeView } from '../features/home/HomeView.tsx';
 import { SearchPalette } from '../features/knowledge/SearchPalette.tsx';
 import { KnowledgeRuntime } from './knowledgeRuntime.ts';
 import { RemoteChip } from './RemoteChip.tsx';
@@ -252,7 +253,10 @@ export function App() {
           const next = useUiStore
             .getState()
             .documents.find((d) => !d.deleted && d.id !== documentId);
-          setActive(next?.id ?? null);
+          // Desde Inicio no se cambia de sección: solo cambia el documento al que se volvería.
+          if (useUiStore.getState().section === 'home') {
+            useUiStore.setState({ activeId: next?.id ?? null });
+          } else setActive(next?.id ?? null);
         }
       }),
     [services, runOnDocument, upsertDocument, setActive],
@@ -494,9 +498,11 @@ export function App() {
 
   const inCalendar = section === 'calendar';
   const inDocs = section === 'documents';
+  const inHome = section === 'home';
   // En el calendario no hay documento abierto: la cabecera solo deja lo general. Cada sección
   // muestra solo lo suyo: los `doc` en «Documentos» y lienzos y notas en la biblioteca.
-  const activeDoc = inCalendar ? null : (documents.find((d) => d.id === activeId) ?? null);
+  const activeDoc =
+    inCalendar || inHome ? null : (documents.find((d) => d.id === activeId) ?? null);
   const active = activeDoc && isDocsKind(activeDoc.kind) === inDocs ? activeDoc : null;
   // Zen solo cuenta con un lienzo abierto (lo fija su vista).
   const zen = zenMode && active?.kind === 'canvas';
@@ -539,6 +545,7 @@ export function App() {
             </>
           )}
           {inCalendar && <span className="doc-title">{t('calendar.title')}</span>}
+          {inHome && <span className="doc-title">{t('home.title')}</span>}
           {active && (
             <RenameableTitle
               key={active.id}
@@ -786,6 +793,18 @@ export function App() {
           )}
         </div>
         {inCalendar && <CalendarView service={services.service} />}
+        {inHome && (
+          <HomeView
+            service={services.service}
+            knowledge={services.knowledge}
+            actions={{
+              onRename: renameDocument,
+              onMove: moveDocument,
+              onArchive: setArchived,
+              onTrash: trashDocument,
+            }}
+          />
+        )}
         {!active && inDocs && (
           <div className="empty-state" data-testid="docs-empty-state">
             <img className="sticker" src={stickerA} alt="" width={120} height={120} />
@@ -831,7 +850,7 @@ export function App() {
             onCreateNote={createNoteForLink}
           />
         )}
-        {!active && !inCalendar && !inDocs && (
+        {!active && !inCalendar && !inDocs && !inHome && (
           // Estado vacío (DESIGN.md §6): una invitación con el personaje de la marca.
           <div className="empty-state" data-testid="empty-state">
             <img className="sticker" src={stickerA} alt="" width={120} height={120} />

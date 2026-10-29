@@ -1,6 +1,6 @@
 # Plan de fases: del núcleo local a la versión beta
 
-Versión 1.8 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](Diseno-tecnico-sistema.md)
+Versión 1.8 | 12 de octubre de 2026 | Base: [Documento de Requerimientos](../Documento%20de%20Requerimientos%20Sistema%20personal%20de%20mapas%20mentales%20y%20notas%20conectadas.md) y [Diseño técnico](../Diseno-tecnico-sistema.md)
 
 Este plan parte de lo que ya está construido y llega hasta una **beta utilizable** y después a la **versión 1.0**. Conserva la numeración de fases del diseño técnico (§17) para no crear dos mapas distintos. No incluye fechas: el diseño exige no darlas sin conocer la dedicación disponible (D-09). Los tamaños S, M y L indican complejidad relativa, no tiempo.
 
@@ -21,7 +21,7 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 **Lo que falta en la base** y condiciona varias fases:
 
-1. **La fase 0 está ejecutada** ([informe](fase-0-viabilidad.md)): se avanza con Excalidraw. El propietario confirma que el Apple Pencil funciona en el iPad; faltan los datos detallados del protocolo (palma, presión, rendimiento).
+1. **La fase 0 está ejecutada** ([informe](../fase-0-viabilidad.md)): se avanza con Excalidraw. El propietario confirma que el Apple Pencil funciona en el iPad; faltan los datos detallados del protocolo (palma, presión, rendimiento).
 2. **No existe el serializador del formato abierto** (`vault/` del diseño §6). IndexedDB guarda los bytes, pero nada los escribe como `revisions/`, `objects/`, `readable/` y `catalog.json`. La copia ZIP, la carpeta local y Drive dependen de esta pieza.
 3. **Hay un solo almacén por navegador**: el nombre de la base IndexedDB es fijo. Restaurar una copia «en un almacén nuevo, nunca encima del activo» (§12.2) y FA-01b exigen poder tener varios.
 4. ~~Al abrir se muestra el documento modificado más recientemente~~: resuelto en la fase 1 (se abre el último abierto).
@@ -45,7 +45,7 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 ### Fase 0 — Viabilidad del motor (ejecutada en el PC; iPad pendiente)
 
-**Estado (12/10/2026):** ver [fase-0-viabilidad.md](fase-0-viabilidad.md).
+**Estado (12/10/2026):** ver [fase-0-viabilidad.md](../fase-0-viabilidad.md).
 
 - Pasan en Chromium 0.1, 0.2, 0.3, 0.5, 0.6b y 0.7.
 - 0.6 falla con la estrategia ingenua y pasa con la alternativa (ocultos en la escena con opacidad 0 y bloqueados).
@@ -79,7 +79,7 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 **Lo que queda fuera de la fase:**
 
 - **«Abrir otro almacén» (FA-01b)** llega con varios almacenes (2.2).
-- **Licencias de las fuentes del lienzo:** comprobadas (ver [licencias.md](licencias.md)). Liberation Sans 1.05 (GPLv2 con excepción) no se distribuye.
+- **Licencias de las fuentes del lienzo:** comprobadas (ver [licencias.md](../licencias.md)). Liberation Sans 1.05 (GPLv2 con excepción) no se distribuye.
 - **Exportación de emergencia:** es un JSON provisional, hasta la copia ZIP (2.3).
 
 | # | Tarea | Requisitos | Tamaño |
@@ -273,7 +273,7 @@ La primera entrega cubre la mayor parte de la fase 1 y una parte de las fases 2 
 
 - **Hechas y probadas en Chromium y Edge:** 5.1, 5.2, 5.3, 5.4 (emulación táctil), 5.5, 5.6 (en el PC) y 5.7.
 - **Las hace el propietario:**
-  - la matriz del iPad ([pruebas-ipad.md](pruebas-ipad.md)), que es parte del criterio de salida;
+  - la matriz del iPad ([pruebas-ipad.md](../pruebas-ipad.md)), que es parte del criterio de salida;
   - 5.8: desplegar y usar la aplicación dos semanas con copias.
 
 **Decisiones de esta fase:**

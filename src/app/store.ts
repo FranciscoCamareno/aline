@@ -59,10 +59,10 @@ export interface ViewCommand {
 }
 
 /**
- * Sección de la barra lateral: «Notas» (`library`: lienzos y notas), calendario o «Documentos»
- * (documentos con formato `doc` y Markdown `mddoc`).
+ * Sección de la barra lateral: «Inicio» (`home`, todo junto, plan 11), «Notas» (`library`:
+ * lienzos y notas), calendario o «Documentos» (documentos con formato `doc` y Markdown `mddoc`).
  */
-export type Section = 'library' | 'calendar' | 'documents';
+export type Section = 'home' | 'library' | 'calendar' | 'documents';
 
 /**
  * Sección en la que se abre un documento: los documentos (Tiptap y Milkdown) en «Documentos»;
@@ -123,7 +123,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   // Al entrar en una sección, si el documento abierto es de otra, se abre su más reciente.
   setSection: (section) =>
     set((state) => {
-      if (section === 'calendar') return { section };
+      // El calendario y el inicio no abren ningún documento (el abierto se conserva para volver).
+      if (section === 'calendar' || section === 'home') return { section };
       const active = state.documents.find((d) => d.id === state.activeId);
       if (active && sectionFor(state.documents, active.id) === section) return { section };
       const recent = state.documents.find(

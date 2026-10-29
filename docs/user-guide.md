@@ -28,6 +28,13 @@ _Versión en español: [guia-de-uso.md](guia-de-uso.md)._
   - **.excalidraw**, to open the canvas in Excalidraw. The dialog lists what is not carried over: internal links, backlinks, history, folders and tags.
   - You can export only the selection. If the image does not fit in the browser memory, the dialog says so and suggests a lower scale; nothing is ever cropped silently.
 
+## 2 bis. Home
+
+- The **Home** tab, the first one in the sidebar, shows everything together, like Google Drive's "My Drive": notes, canvases, documents, calendars and the folders of "Notes" and "Documents". At the top, what changed last.
+- **Grid or list**, **sort** by modified date or by name, **filter** by type and **search** by title across everything. Thumbnails show a canvas drawing, the first lines of a note or document and a calendar's upcoming events.
+- Click a folder to enter it (the path at the top takes you back) and anything else to open it in its section.
+- With "⋯" or by ticking several boxes: **move to a folder**, archive or send to the trash. Items from "Notes" and "Documents" cannot be moved together, because each section has its own folders.
+
 ## 3. Notes
 
 - **New note:** "+ New" → "Note". You write Markdown on the left and see the result on the right.

@@ -10,6 +10,7 @@ import type { DocEditorKind } from './LibrarySidebar.tsx';
 import { ProfileMenu } from './ProfileMenu.tsx';
 
 const SECTIONS = [
+  ['home', 'inicio', 'home.title'],
   ['library', 'biblioteca', 'library.sectionNotes'],
   ['documents', 'documento', 'docs.title'],
   ['calendar', 'calendario', 'calendar.title'],
@@ -42,7 +43,7 @@ export function LibraryRail({
       requestAnimationFrame(() =>
         document
           .querySelector<HTMLInputElement>(
-            '[data-testid="library-search"], [data-testid="calendar-search"]',
+            '[data-testid="library-search"], [data-testid="calendar-search"], [data-testid="home-search"]',
           )
           ?.focus(),
       ),
@@ -93,6 +94,23 @@ export function LibraryRail({
               icon: 'nota',
               onSelect: () => void onCreate('note'),
             },
+            // En Inicio, también los documentos (plan 11).
+            ...(section === 'home'
+              ? [
+                  {
+                    id: 'rail-new-doc-rich',
+                    label: t('docs.kindRich'),
+                    icon: 'documento' as const,
+                    onSelect: () => void onCreateDoc('tiptap'),
+                  },
+                  {
+                    id: 'rail-new-doc-markdown',
+                    label: t('docs.kindMarkdown'),
+                    icon: 'documento-md' as const,
+                    onSelect: () => void onCreateDoc('milkdown'),
+                  },
+                ]
+              : []),
           ];
 
   return (

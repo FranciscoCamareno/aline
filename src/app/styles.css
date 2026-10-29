@@ -5040,3 +5040,262 @@ body.excalidraw-cursor-resize * {
   min-height: 28px;
   font-size: 13px;
 }
+
+/*
+ * Inicio (plan 11): todos los documentos como «Mi unidad». Cabecera con búsqueda, filtros por
+ * tipo, orden y vista (cuadrícula o lista), «Recientes» y los elementos de la carpeta actual.
+ */
+.home-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+}
+.home-head,
+.home-toolbar,
+.home-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 0 24px;
+}
+.home-head {
+  padding-top: 20px;
+}
+.home-head h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.home-search {
+  flex: 1;
+  max-width: 480px;
+  margin: 0;
+}
+.home-toolbar {
+  padding-top: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.home-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.home-bulk {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: var(--selection-soft);
+}
+.home-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 24px 32px;
+}
+.home-section + .home-section {
+  margin-top: 16px;
+}
+.home-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0;
+  font-weight: 600;
+}
+.home-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.home-recent {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.home-recent-item {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  text-align: left;
+  font-weight: 400;
+}
+.home-recent-item:hover {
+  border-color: var(--focus);
+}
+.home-recent-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.home-items--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+.home-item {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-panel);
+}
+.home-item:hover,
+.home-item:focus-within,
+.home-item.is-selected {
+  border-color: var(--focus);
+}
+.home-item.is-selected {
+  background: var(--selection-soft);
+}
+.home-select {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  opacity: 0;
+}
+.home-item:hover .home-select,
+.home-item:focus-within .home-select,
+.home-item.is-selected .home-select,
+.home-items--list .home-select {
+  opacity: 1;
+}
+.home-open {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.home-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.home-item-meta .renameable {
+  flex: 1;
+  min-width: 0;
+}
+.home-item-meta .renameable-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-item-detail {
+  padding-left: 22px;
+}
+/* Lista: una fila por elemento, sin miniatura. */
+.home-items--list {
+  display: grid;
+  gap: 2px;
+}
+.home-items--list .home-item {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 2px 8px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+}
+.home-items--list .home-item:hover,
+.home-items--list .home-item.is-selected {
+  border-color: var(--border-soft);
+}
+.home-items--list .home-select {
+  position: static;
+}
+.home-items--list .home-open {
+  display: none;
+}
+.home-items--list .home-item-detail {
+  padding-left: 0;
+}
+/* Miniaturas: dibujo, primeras líneas, próximos eventos o contenido de la carpeta. */
+.home-thumb {
+  display: flex;
+  height: 120px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--bg-canvas);
+}
+.home-thumb-body {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.home-thumb .canvas-shot.home-thumb-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: none;
+}
+.home-thumb-text {
+  align-self: stretch;
+  margin: 0;
+  padding: 10px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+}
+.home-thumb-events {
+  align-self: stretch;
+  margin: 0;
+  padding: 10px 12px;
+  list-style: none;
+  font-size: 12px;
+  text-align: left;
+}
+.home-thumb-events li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-thumb-folder {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.home-empty {
+  padding: 24px 0;
+}
+.home-more {
+  margin-top: 12px;
+}
+@media (max-width: 720px) {
+  .home-head,
+  .home-toolbar,
+  .home-bulk,
+  .home-scroll {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .home-items--grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}

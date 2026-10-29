@@ -11,6 +11,7 @@ import { hasConflict, isContentKind, isDocsKind, isFolderKind } from '../../doma
 import { tagKey } from '../../domain/tags.ts';
 import type { EventColor } from '../../domain/calendar.ts';
 import { CalendarSidebar } from '../calendar/CalendarSidebar.tsx';
+import { HomeSidebar } from '../home/HomeSidebar.tsx';
 import type { SettingsSection } from '../status/SettingsDialog.tsx';
 import { LIBRARY_PAGE, LoadMore } from './LoadMore.tsx';
 import { ProfileMenu } from './ProfileMenu.tsx';
@@ -51,6 +52,7 @@ export type DocEditorKind = 'tiptap' | 'milkdown';
 
 const RECENT_COUNT = 5;
 const SECTION_ICONS = {
+  home: 'inicio',
   library: 'biblioteca',
   calendar: 'calendario',
   documents: 'documento',
@@ -621,9 +623,9 @@ export function LibrarySidebar({
         </button>
       </div>
 
-      {/* Secciones: notas (lienzos y notas), documentos y calendario. */}
+      {/* Secciones: inicio (todo junto), notas (lienzos y notas), documentos y calendario. */}
       <div className="library-sections" role="tablist" aria-label={t('library.sections')}>
-        {(['library', 'documents', 'calendar'] as const).map((key) => (
+        {(['home', 'library', 'documents', 'calendar'] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -634,16 +636,20 @@ export function LibrarySidebar({
             onClick={() => setSection(key)}
           >
             <Icon name={SECTION_ICONS[key]} size={18} on={section === key} />
-            {key === 'library'
-              ? t('library.sectionNotes')
-              : key === 'calendar'
-                ? t('calendar.title')
-                : t('docs.title')}
+            {key === 'home'
+              ? t('home.title')
+              : key === 'library'
+                ? t('library.sectionNotes')
+                : key === 'calendar'
+                  ? t('calendar.title')
+                  : t('docs.title')}
           </button>
         ))}
       </div>
 
-      {section === 'calendar' ? (
+      {section === 'home' ? (
+        <HomeSidebar onCreate={create} onCreateDoc={createDoc} />
+      ) : section === 'calendar' ? (
         <CalendarSidebar
           onCreateCalendar={onCreateCalendar}
           onSetColor={onSetCalendarColor}

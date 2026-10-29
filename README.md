@@ -6,8 +6,9 @@ estricto y Vite que guarda todo en el navegador (IndexedDB con Dexie), en un for
 con historial de versiones. No necesita cuenta ni servidor; la carpeta local y Google Drive
 (opcionalmente cifrado de extremo a extremo) son destinos de sincronización opcionales.
 
-El diseño técnico es [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md) y el plan
-de trabajo, [docs/Plan-de-fases.md](docs/Plan-de-fases.md). Están implementadas las fases 0 a 5
+El diseño técnico es [docs/Diseno-tecnico-sistema.md](docs/Diseno-tecnico-sistema.md). El plan
+de trabajo de la 2.0 está en [docs/fases/plan-2.0.md](docs/fases/plan-2.0.md); el de la beta a la
+1.0, archivado, en [docs/historial/Plan-de-fases-1.0.md](docs/historial/Plan-de-fases-1.0.md). Están implementadas las fases 0 a 5
 y 7 a 10 (la 9 es la versión 0.2.0, que trajo también el núcleo de mapa mental de la fase 6:
 hijos con Tab, ramas plegables y tarjetas de nota; la 10 es la 1.0.0). Quedan las pruebas en el
 iPad y el uso real que el plan pide al propietario, y de la fase 6 el modo «Solo lápiz» propio,
@@ -15,7 +16,7 @@ que no entra en la 1.0.
 
 **Versión actual: 1.0.0** (etiqueta `v1.0.0`, 28/10/2026; se muestra en «Estado y diagnóstico»).
 Publicada en https://aline.projeck.workers.dev (Cloudflare Workers, recursos estáticos de
-`dist/`). Qué trae está en la fase 10 de [docs/Plan-de-fases.md](docs/Plan-de-fases.md):
+`dist/`). Qué trae está en la fase 10 de [docs/historial/Plan-de-fases-1.0.md](docs/historial/Plan-de-fases-1.0.md):
 «Preferencias e idioma», enlaces a elementos concretos de un lienzo, panel de enlaces de los
 documentos, Arimo/Tinos/Gelasio (equivalentes libres de Arial, Times New Roman y Georgia),
 imágenes que se agrandan, giran y recortan, y estilos de fondo del lienzo.
@@ -473,7 +474,7 @@ Ejecución anterior: 17/10/2026, Windows 11, Node 24.21.
 
 Los contratos ya están definidos en `src/ports/` y los adaptadores pendientes devuelven el
 error `not-implemented` en vez de simular un éxito.
-El orden de trabajo hasta la beta está en [docs/Plan-de-fases.md](docs/Plan-de-fases.md).
+Lo que sigue pendiente de la 1.0 y el trabajo de la 2.0 están en [docs/fases/plan-2.0.md](docs/fases/plan-2.0.md).
 
 | Área                                                                     | Estado                                                                                                                                                                                                                                                                                                                                                                                         | Dónde                                     |
 | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
