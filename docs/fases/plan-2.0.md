@@ -26,8 +26,9 @@ Se trae aquí lo del plan archivado que todavía cuenta; el resto ya está hecho
 ## 2. Fases de la 2.0
 
 Cada fase se cierra con `pnpm verify` y sus recorridos e2e y se puede terminar sola. Orden
-propuesto: **11 → 12 → 13**. La 11 es la base de la 12 (el inicio es donde viven los entornos);
-la 13 es independiente y podría ir antes si el propietario lo prefiere.
+propuesto: **11 → 12 → 13 → 14**. La 11 es la base de la 12 (el inicio es donde viven los
+entornos); la 13 es independiente y podría ir antes si el propietario lo prefiere. La 14
+(pomodoro) también es independiente y no toca el formato.
 
 ### Fase 11 — Inicio: todos los documentos en un solo sitio
 
@@ -119,6 +120,63 @@ GoodNotes (D-13c, distinto de lo recomendado); sin plantillas de página por aho
 «Cuaderno» es una opción propia de «Nuevo», debajo de «Lienzo». Recorridos en
 `tests/e2e/cuaderno.spec.ts`; geometría en `tests/unit/cuaderno.test.ts`.
 
+### Fase 14 — Pomodoro con mascota en la cabecera
+
+**Qué pide el propietario:** una opción «Pomodoro» en el menú de Perfil que abra un modal para
+elegir cuántos minutos u horas de enfoque. Al aceptar, en la cabecera aparece el temporizador con
+una mascota pequeña. Al pulsarlo se despliega como una muesca (referencia: Coucou, la mascota que
+vive en la muesca del Mac), con la hora en grande y la mascota con la que se puede interactuar.
+
+**Diseño (31/10/2026).** Lienzo de diseño privado del propietario:
+<https://claude.ai/artifact/7Kyf5ZDazx36dp3c64XADF>. Tiene el prototipo de la cabecera con la
+muesca, el modal, las tres mascotas en cinco estados y la anatomía del chip y la muesca. Las
+mascotas son **Tomi** (tomate coral), **Tofu** (cuadrado blandito crema, con cinta agua en el
+enfoque) y **Pico** (triángulo agua con gafas). Siguen la construcción de los stickers (DESIGN.md
+§2.3) con el estilo de figuras geométricas de Dots y Coucou. Sus estados son enfoque, descanso,
+en pausa, último minuto y terminado.
+
+**Análisis.** No toca el formato ni el almacén: un temporizador no es contenido. No crea
+revisiones, no se sincroniza y no sale del dispositivo, así que no hay cambio de arquitectura. Lo
+que sí cambia es el sistema de diseño. Hoy los stickers van «nunca en toolbars» y como mucho tres
+por pantalla (§2.3), y la mascota vive en la cabecera. Hace falta registrar la excepción, como las
+de la «G» de Google o el esquema Negro.
+
+- **El tiempo se calcula, no se cuenta.** Se guarda la hora de fin (`endsAt`), o lo que quedaba
+  si está en pausa, y lo restante es `endsAt − Date.now()`. Así sobrevive a recargas, a pestañas
+  en segundo plano y a que el equipo se duerma, y no se desvía.
+- **Las pestañas en segundo plano** limitan los temporizadores. Chrome llega a uno por minuto
+  tras 5 minutos oculta. El aviso de fin usa un temporizador en un worker dedicado, que no sufre
+  esa limitación, y al volver a la pestaña se recalcula todo.
+- **Varias pestañas** comparten el mismo pomodoro (evento `storage`). Solo una suena y avisa al
+  terminar cada fase: la primera que marca esa fase como avisada.
+- **El sonido se sintetiza** con Web Audio (dos notas suaves). Así no hay archivo, ni licencia,
+  ni red, y la CSP no cambia. El aviso del sistema (`Notification`) es opcional: el permiso se
+  pide solo al marcar su casilla y, con la PWA instalada, se muestra desde el service worker.
+
+| # | Tarea | Notas | Tamaño |
+| --- | --- | --- | --- |
+| 14.1 | Registrar el diseño. En DESIGN.md: la excepción de §2.3 (mascota en la cabecera: una sola, entre 40 y 104 px), el componente «Pomodoro: chip y muesca» (§6), los iconos nuevos `reproducir`, `pausa`, `saltar` y `detener` (§7.4) y las reglas de movimiento | **Hecha (31/10/2026).** DESIGN.md §2.3 (excepción), §2.3.1 (mascotas), §6 y §7.4; `brand/mascotas/` declarada en TRADEMARKS_AND_ASSETS.md. Falta actualizar `ui-icons-preview.png`. Las 15 ilustraciones van a `brand/mascotas/<mascota>-<estado>.svg` (nivel 3: todos los derechos reservados), con su `mascotas-preview.png`. Los iconos nuevos van a `brand/icons/ui/` y a `IconName`. Cuidado con el contraste: el resaltador del chip en oscuro es `#6B5520`, como el del logotipo | S |
+| 14.2 | Dominio puro `domain/pomodoro.ts`: configuración (zod desde `domain/zod.ts`), fases (enfoque, descanso, descanso largo), y las transiciones empezar, pausar, reanudar, +5 min, saltar, detener y siguiente fase, todas con el instante como argumento | **Hecha (31/10/2026).** Además, «Saltar» y «+5 min» sobre una fase terminada, la clave de cada fase (`phaseKey`) para avisar una vez y la lectura tolerante (`readSession`, `readConfig`). Sin reloj propio: `derive(state, now)` devuelve fase, restante, ciclo, si terminó y el estado de ánimo de la mascota (`enfoque`, `descanso`, `pausa`, `ultimo` en el último minuto, `fin`). Límites: de 5 min a 4 h de enfoque y de 1 a 8 ciclos. Pruebas en `tests/unit/pomodoro.test.ts` | M |
+| 14.3 | Estado de la aplicación `app/pomodoro.ts`: tienda propia (zustand), guardada en `localStorage` `mindnote.pomodoro` (sesión en curso y última configuración), sincronizada entre pestañas, con un tic de 1 s solo mientras corre y la pestaña se ve | **Hecha (31/10/2026).** `usePomodoro` y `startPomodoroRuntime` (tic de 1 s mientras corre, recálculo al volver a la pestaña, evento `storage`). Fuera del almacén, como las demás preferencias de este navegador (`mindnote.home`, `mindnote.docLayout.*`). Lectura tolerante: un valor corrupto o de otra versión se descarta, nunca rompe el arranque | S |
+| 14.4 | Modal `features/pomodoro/PomodoroDialog.tsx`, abierto desde «Pomodoro», el primer elemento del menú de Perfil (también en la barra plegada, `LibraryRail`). Ofrece enfoque (25, 50, 1 h 30 u «Otro…» con horas y minutos), descanso (5, 10, 15 o sin descanso), ciclos, mascota, sonido y aviso del sistema, con el total y la hora de fin | **Hecha (31/10/2026).** `features/pomodoro/PomodoroDialog.tsx`; las casillas de sonido y aviso se guardan, pero no hacen nada hasta la 14.7. Con un pomodoro en marcha, el elemento del menú muestra lo que queda y abre la muesca en vez del modal. Recuerda la última configuración. Las claves van en es y en en (`accesibilidad.test.ts`) | M |
+| 14.5 | Chip y muesca en la cabecera: `PomodoroChip.tsx` centrado entre los dos espaciadores de `.topbar`, y `PomodoroNotch.tsx`, que cuelga del borde inferior de la cabecera (mismo panel y sin borde arriba) | **Hecha (31/10/2026)**, con parte de la 14.6: balanceo, saltito, bocadillo al pulsar la mascota y «reducir movimiento». Token nuevo `--highlighter`. A 375 px la cabecera ya se desbordaba sin el chip; a 768 px cabe. El chip lleva un resaltador que avanza bajo la hora, muestra «¡Hecho!» en mantequilla y la hora en grafito en pausa. La muesca se cierra con Escape, con un clic fuera o con el chip, y devuelve el foco. El chip es `role="timer"` sin anuncios por segundo; los cambios de fase se anuncian en una región `polite`. En pantalla estrecha, chip compacto («18′») y muesca a todo el ancho. En modo Zen, un chip flotante atenuado (App lo pinta cuando `zen`) | L |
+| 14.6 | Mascota viva: las ilustraciones según el estado, el balanceo en el enfoque, el salto y las chispas al terminar, y la reacción al pulsarla (cara feliz y una frase corta 1,8 s, de una lista traducida) | **Hecha (31/10/2026)** junto con la 14.5. Con `prefers-reduced-motion`, todo pasa a cambios de estado sin animación. La mascota es un `<button>` con nombre accesible | S |
+| 14.7 | Avisos al terminar cada fase: sonido con Web Audio, `Notification` opcional y el temporizador en un worker para las pestañas ocultas | **Hecha (31/10/2026).** `app/pomodoroAlerts.ts` (sonido de dos notas, aviso con `Notification` o, en el iPad, desde el service worker; una sola pestaña avisa, con Web Locks), `workers/pomodoroTimer.worker.ts` y el título de la pestaña (D-14d). El permiso se pide al marcar la casilla del modal. Una fase que terminó con la aplicación cerrada hace más de 2 min no se avisa. Sin peticiones de red: lo comprueba la prueba de privacidad e2e, y `csp.spec.ts` sigue pasando sin tocar `_headers`. Al terminar no empieza solo el descanso (D-14b): el chip queda en «¡Hecho!» hasta que se pulse | M |
+| 14.8 | Recorrido e2e `tests/e2e/pomodoro.spec.ts` con el reloj de Playwright (`page.clock`): configurar, empezar, pausar, recargar y seguir, terminar, empezar el descanso, dos pestañas y modo Zen | **Hecha en Chromium (31/10/2026)**, con la comprobación de que no hay peticiones fuera del origen; los puntos 21 a 23 de [pruebas-ipad.md](../pruebas-ipad.md) son del propietario. Lo que no prueba Chromium (avisos en el iPad con la PWA instalada, sonido con el iPad en silencio) va a [pruebas-ipad.md](../pruebas-ipad.md) para el propietario | M |
+
+**Decidido (31/10/2026):**
+
+- **D-14a. Mascotas.** Entran las tres, elegibles en el modal; **Tofu** es la de por defecto
+  (decisión del propietario, distinta de lo recomendado, que era Tomi).
+- **D-14b. Al terminar una fase.** No empieza sola la siguiente: el chip queda en «¡Hecho!» hasta
+  que el usuario la empiece.
+- **D-14c. Descanso largo.** 15 min tras el último ciclo, configurable.
+- **D-14d. Título de la pestaña.** Mientras está oculta, muestra lo que queda («18:20 · aline»).
+- **D-14e. Dónde va el chip.** Centrado en la cabecera.
+
+Orden de trabajo: 14.1 y 14.2 primero (no dependen de nada), luego 14.3, y después 14.4 a 14.7
+sobre la tienda. La 14.8 se escribe con cada tarea y se cierra al final.
+
 ## 3. Riesgos de la 2.0
 
 | Riesgo | Efecto | Mitigación |
@@ -127,4 +185,6 @@ GoodNotes (D-13c, distinto de lo recomendado); sin plantillas de página por aho
 | Una actualización del motor cambia cómo funcionan los marcos o el recorte | El cuaderno se rompe | Recorridos e2e de la fase 13 que lo comprueben, como `stickers.spec.ts` |
 | Paquetes de entornos con datos que no se querían compartir | Fuga de información | Informe previo (12.3), solo versión vigente por defecto, cifrado opcional |
 | Identidades importadas que chocan con las propias | Datos mezclados | Los UUID no chocan en la práctica; la importación comprueba hashes y nunca sobrescribe (crea cabezas en conflicto) |
+| El navegador retrasa o no muestra el aviso de fin del pomodoro (pestaña oculta, iPad, permiso denegado) | El usuario no se entera de que terminó | Tiempo calculado desde `endsAt`, temporizador en un worker, título de la pestaña y chip en «¡Hecho!» al volver; el iPad lo prueba el propietario |
+| La cabecera se llena en pantallas estrechas con el chip del pomodoro | Se tapan el título o las acciones | Chip compacto bajo cierto ancho y muesca a todo el ancho (14.5) |
 | El alcance crece (R-02) | La 2.0 se alarga | Cada punto nuevo entra por decisión explícita y con su fase |

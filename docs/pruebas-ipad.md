@@ -32,6 +32,9 @@ Las pruebas automáticas usan Chromium y Edge en Windows, más una emulación t�
 | 18 | Tras cerrar la PWA y volver a abrirla: «Autorizar de nuevo» funciona y no vuelve a pedir la contraseña del cifrado | | |
 | 19 | Editar la misma nota sin conexión en el iPad y en el PC; al reconectar aparece el conflicto con las dos versiones | | |
 | 20 | «Estado y diagnóstico»: el almacenamiento aparece como persistente (PWA) | | |
+| 21 | Pomodoro (plan 14): empezar uno de 5 min con «Aviso del sistema» marcado (aceptar el permiso), salir a otra app y esperar: llega el aviso al terminar | | |
+| 22 | Pomodoro: al terminar suena el sonido suave con el iPad sin silenciar; anotar si suena con el interruptor de silencio activado: ____ | | |
+| 23 | Pomodoro: el chip y la muesca se pulsan bien con el dedo en vertical y en horizontal; la mascota no tapa el título | | |
 
 **Notas y fallos:**
 

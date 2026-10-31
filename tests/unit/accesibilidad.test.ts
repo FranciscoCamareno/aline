@@ -56,6 +56,7 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['link', 'bg-popover'],
   ['on-brand', 'brand'],
   ['on-brand', 'brand-hover'],
+  ['text-primary', 'highlighter'],
   ['on-selection-soft', 'selection-soft'],
   ['on-secondary', 'secondary-soft'],
   ['on-secondary', 'secondary'],

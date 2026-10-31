@@ -31,6 +31,8 @@
   --danger-bg: #fbe4df;
   /* Acento de los iconos activos (§7.4). */
   --icon-accent-on: #ffe380;
+  /* Resaltador bajo un texto (§6; pomodoro, plan 14): mantequilla; en oscuro, el ocre del logo. */
+  --highlighter: #ffe380;
   /* Elevación (§5): en oscuro no hay sombras salvo en los popovers. */
   --shadow-panel: 0 2px 20px rgb(38 33 24 / 0.06);
   --shadow-button: 0 1px 2px rgb(38 33 24 / 0.25);
@@ -75,6 +77,7 @@
   --danger: #f08a78;
   --danger-bg: #3c211c;
   --icon-accent-on: #5c4e1e;
+  --highlighter: #6b5520;
   --shadow-panel: none;
   --shadow-button: none;
   --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
@@ -5498,4 +5501,454 @@ body.excalidraw-cursor-resize * {
   border-radius: 3px;
   background: var(--bg-canvas);
   box-shadow: 2px 3px 0 var(--border-soft);
+}
+
+/*
+ * Pomodoro (plan 14, DESIGN.md §6 «Pomodoro: chip y muesca»): el chip va centrado en la cabecera
+ * y la muesca cuelga de su borde inferior con el mismo panel, así que parece que la cabecera crece.
+ */
+.pomo-anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+.pomo-chip {
+  min-height: 34px;
+  gap: 6px;
+  padding: 0 14px 0 4px;
+  background: var(--bg-canvas);
+  font-variant-numeric: tabular-nums;
+}
+.pomo-chip[aria-expanded='true'] {
+  background: var(--selection-soft);
+}
+.pomo-chip.is-done,
+.pomo-chip.is-done:hover:not(:disabled) {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--primary-border);
+}
+.pomo-chip-mascot {
+  position: relative;
+  width: 38px;
+  height: 30px;
+  flex: none;
+}
+.pomo-chip-mascot img {
+  position: absolute;
+  left: 0;
+  top: -10px;
+  width: 40px;
+  height: auto;
+}
+.pomo-chip-time {
+  position: relative;
+  font-size: 15px;
+  font-weight: 800;
+}
+.pomo-chip.is-paused .pomo-chip-time {
+  color: var(--text-secondary);
+}
+.pomo-chip-time > span:not(.pomo-highlight) {
+  position: relative;
+}
+/* Resaltador (§6): la mitad inferior del texto, avanzando con el progreso. */
+.pomo-highlight {
+  position: absolute;
+  left: -2px;
+  bottom: 1px;
+  height: 45%;
+  max-width: calc(100% + 4px);
+  border-radius: 3px;
+  background: var(--highlighter);
+}
+.pomo-chip-short {
+  display: none;
+}
+.pomo-chip-paused {
+  color: var(--text-secondary);
+}
+
+.pomo-notch {
+  position: absolute;
+  /*
+   * El chip está centrado en la cabecera, así que su borde inferior queda a media cabecera de su
+   * centro: la muesca empieza ahí y tapa el borde inferior de la cabecera.
+   */
+  top: calc(50% + (var(--topbar-height) - 1px) / 2);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 19;
+  width: min(420px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 18px 20px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-top: 0;
+  border-radius: 0 0 28px 28px;
+  box-shadow: var(--shadow-popover);
+  transform-origin: 50% 0;
+  animation: pomo-drop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.pomo-notch-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.pomo-notch-mascot {
+  flex: none;
+  width: 104px;
+  height: 96px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+}
+.pomo-notch-mascot:hover:not(:disabled) {
+  background: transparent;
+}
+.pomo-notch-mascot img {
+  width: 104px;
+  height: auto;
+}
+.pomo-bubble {
+  position: absolute;
+  left: 104px;
+  top: 8px;
+  max-width: 200px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border-ink);
+  border-radius: 12px;
+  background: var(--bg-popover);
+  box-shadow: var(--shadow-popover);
+  font-size: 13px;
+  font-weight: 600;
+  animation: pomo-pop 250ms ease-out;
+}
+.pomo-notch-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pomo-notch-phase {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.pomo-notch-time {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+/* Barra inclinada como la punta biselada del logotipo (§4). */
+.pomo-progress {
+  position: relative;
+  height: 10px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--border-soft);
+  transform: skewX(-18deg);
+}
+.pomo-progress > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--highlighter);
+}
+.pomo-notch-caption {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.pomo-notch-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.pomo-notch-actions > button:not(.icon-button) {
+  padding: 0 14px;
+}
+.pomo-stop {
+  color: var(--danger);
+}
+.pomo-cycles {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+.pomo-cycles > span {
+  width: 22px;
+  height: 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+}
+.pomo-cycles > .is-current {
+  background: var(--selection-soft);
+}
+.pomo-cycles > .is-done {
+  background: var(--brand);
+}
+
+/* Modo Zen: sin cabecera, el chip flota arriba en el centro, atenuado. */
+.pomo-anchor.is-floating {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 19;
+  opacity: 0.85;
+  transition: opacity 120ms ease-out;
+}
+.pomo-anchor.is-floating:hover,
+.pomo-anchor.is-floating:focus-within {
+  opacity: 1;
+}
+.pomo-anchor.is-floating .pomo-chip {
+  box-shadow: var(--shadow-popover);
+}
+.pomo-anchor.is-floating .pomo-notch {
+  top: calc(100% + 8px);
+  border-top: 1px solid var(--border-soft);
+  border-radius: 20px;
+}
+
+@media (max-width: 720px) {
+  .pomo-chip {
+    min-height: 30px;
+    padding: 0 10px 0 2px;
+  }
+  .pomo-chip-mascot {
+    width: 32px;
+  }
+  .pomo-chip-mascot img {
+    width: 34px;
+    top: -8px;
+  }
+  .pomo-chip-time {
+    font-size: 13px;
+  }
+  .pomo-chip-full {
+    display: none;
+  }
+  .pomo-chip-short {
+    display: inline;
+  }
+  .pomo-anchor:not(.is-floating) {
+    position: static;
+  }
+  .topbar:has(.pomo-notch) {
+    position: relative;
+  }
+  .pomo-notch {
+    left: 0;
+    right: 0;
+    width: auto;
+    transform: none;
+    top: 100%;
+    border-radius: 0 0 24px 24px;
+    border-left: 0;
+    border-right: 0;
+    animation: none;
+  }
+  .pomo-notch-mascot,
+  .pomo-notch-mascot img {
+    width: 72px;
+    height: auto;
+  }
+  .pomo-bubble {
+    left: 72px;
+  }
+  .pomo-notch-time {
+    font-size: 36px;
+  }
+}
+
+.pomo-bob {
+  transform-origin: 50% 90%;
+  animation: pomo-bob 2.4s ease-in-out infinite;
+}
+.pomo-hop {
+  animation: pomo-hop 600ms ease-out 2;
+}
+@keyframes pomo-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(4deg);
+  }
+}
+@keyframes pomo-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes pomo-drop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px) scaleY(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scaleY(1);
+  }
+}
+@keyframes pomo-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pomo-bob,
+  .pomo-hop,
+  .pomo-notch,
+  .pomo-bubble {
+    animation: none;
+  }
+}
+
+/* Modal del pomodoro (plan 14.4). */
+.dialog.pomodoro-dialog {
+  width: min(760px, 100%);
+}
+.pomodoro-lead,
+.pomodoro-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pomodoro-dialog-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 8px;
+}
+.pomodoro-dialog-options {
+  flex: 999 1 360px;
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.pomodoro-dialog fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.pomodoro-dialog legend,
+.pomodoro-cycles > span:first-child {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.pomodoro-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pomodoro-pill[aria-pressed='true'],
+.pomodoro-pill[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-color: var(--primary-border);
+  font-weight: 700;
+}
+.pomodoro-custom {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+.pomodoro-custom label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.pomodoro-custom input,
+.pomodoro-cycles input {
+  width: 72px;
+  font-variant-numeric: tabular-nums;
+}
+.pomodoro-custom .pomodoro-hint {
+  padding-bottom: 10px;
+}
+.pomodoro-cycles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pomodoro-cycles > span:first-child {
+  margin: 0;
+  min-width: 96px;
+}
+.pomodoro-checks {
+  display: grid;
+  gap: 6px;
+}
+.pomodoro-mascots {
+  flex: 1 1 240px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.pomodoro-mascot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.pomodoro-mascot-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-canvas);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: var(--cursor-pointer, pointer);
+}
+.pomodoro-mascot-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.pomodoro-mascot-option:has(input:checked) {
+  border: 2px solid var(--border-ink);
+  background: var(--selection-soft);
+  padding: 7px 3px;
+}
+.pomodoro-mascot-option:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.pomodoro-mascot-option img {
+  width: 64px;
+  height: auto;
+}
+.pomodoro-total {
+  font-size: 14px;
 }

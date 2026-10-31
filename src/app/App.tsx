@@ -38,6 +38,9 @@ import type { DocEditorKind, NewKind } from '../features/library/LibrarySidebar.
 import { NewNotebookDialog } from '../features/canvas/NewNotebookDialog.tsx';
 import type { NotebookLayout } from '../domain/notebook.ts';
 import { useCalendarStore } from '../features/calendar/calendarStore.ts';
+import { startPomodoroRuntime, usePomodoro } from './pomodoro.ts';
+import { PomodoroChip } from '../features/pomodoro/PomodoroChip.tsx';
+import { PomodoroDialog } from '../features/pomodoro/PomodoroDialog.tsx';
 import { useUiStore } from './store.ts';
 import { useTheme } from './theme.ts';
 import { Icon } from './ui/Icon.tsx';
@@ -86,6 +89,8 @@ export function App() {
   /** Bienvenida de la primera apertura: idioma y tema (se recuerda en este navegador). */
   const [welcomeOpen, setWelcomeOpen] = useState(shouldShowWelcome);
   const zenMode = useUiStore((s) => s.zen);
+  const pomodoroOn = usePomodoro((s) => s.session !== null);
+  const pomodoroDialog = usePomodoro((s) => s.dialogOpen);
   const sidebarCollapse = useSidebarCollapse();
   const { documents, activeId, saveStatus, libraryOpen, selectedFolder, section } = useUiStore(
     useShallow((s) => ({
@@ -187,6 +192,7 @@ export function App() {
   }, [start]);
 
   useEffect(() => () => runtime?.stop(), [runtime]);
+  useEffect(() => startPomodoroRuntime(), []);
   useEffect(() => () => sync?.stop(), [sync]);
   const runSearch = useCallback(
     (query: string) => runtime?.search(query) ?? Promise.resolve({ hits: [], ms: 0 }),
@@ -579,6 +585,9 @@ export function App() {
           )}
           <RemoteChip onOpen={() => openSettings('storage')} />
           <span className="topbar-spacer" />
+          {/* Pomodoro (plan 14.5): centrado entre los dos espaciadores. */}
+          <PomodoroChip />
+          {pomodoroOn && <span className="topbar-spacer" />}
           {/* El estado de guardado va junto a Historial: es el estado de la versión. */}
           <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
             {t(`status.${saveStatus}`)}
@@ -920,6 +929,8 @@ export function App() {
       {statusOpen && (
         <StatusPanel services={services} onClose={() => setPanel(null)} onError={reportError} />
       )}
+      {zen && <PomodoroChip floating />}
+      {pomodoroDialog && <PomodoroDialog />}
       {panel === 'settings' && (
         <SettingsDialog
           section={settingsSection}

@@ -23,6 +23,7 @@ Se consideran «Recursos de la marca» y quedan fuera de la licencia AGPLv3 del 
      (`brand/icons/theme/`) y objetos de la barra de herramientas del lienzo (`brand/icons/tools/`,
      `brand/icons/tools-dark/`);
    - los **stickers** que se colocan sobre el lienzo (`brand/stickers/`, SVG y PNG);
+   - las **mascotas** del pomodoro (`brand/mascotas/`): Tomi, Tofu y Pico en todos sus estados;
    - las notas adhesivas y su biblioteca (`brand/notes/`), las ilustraciones del calendario
      (`brand/calendar/`) y los esquemas de color con sus recursos (`brand/themes/`);
    - las imágenes de vista previa (`*-preview.png`).
@@ -91,6 +92,7 @@ The following are "Brand Assets" and are excluded from the AGPLv3 license of the
      (`brand/icons/theme/`) and canvas toolbar objects (`brand/icons/tools/`,
      `brand/icons/tools-dark/`);
    - the **stickers** placed on the canvas (`brand/stickers/`, SVG and PNG);
+   - the pomodoro **mascots** (`brand/mascotas/`): Tomi, Tofu and Pico in all their states;
    - sticky notes and their library (`brand/notes/`), calendar artwork (`brand/calendar/`) and colour
      schemes with their assets (`brand/themes/`);
    - preview images (`*-preview.png`).

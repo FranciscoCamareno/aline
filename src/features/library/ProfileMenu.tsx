@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
+import { usePomodoro } from '../../app/pomodoro.ts';
 import { useUiStore } from '../../app/store.ts';
+import { derive, formatClock } from '../../domain/pomodoro.ts';
 import { Icon } from '../../app/ui/Icon.tsx';
 import { Menu } from '../../app/ui/Menu.tsx';
 import type { SettingsSection } from '../status/SettingsDialog.tsx';
@@ -19,6 +21,8 @@ export function ProfileMenu({
   const documents = useUiStore((s) => s.documents);
   const trashed = documents.filter((d) => d.deleted).length;
   const archived = documents.filter((d) => !d.deleted && d.archived).length;
+  const pomodoro = usePomodoro((s) => s.session);
+  const now = usePomodoro((s) => s.now);
   return (
     <Menu
       className="profile-menu"
@@ -39,9 +43,21 @@ export function ProfileMenu({
       placement="top-start"
       items={[
         {
+          // Con un pomodoro en marcha, abre la muesca de la cabecera en vez del modal (plan 14.4).
+          id: 'open-pomodoro',
+          label: t('pomodoro.menu'),
+          icon: 'reloj',
+          ...(pomodoro ? { hint: formatClock(derive(pomodoro, now).remainingMs) } : {}),
+          onSelect: () =>
+            pomodoro
+              ? usePomodoro.getState().setNotchOpen(true)
+              : usePomodoro.getState().openDialog(),
+        },
+        {
           id: 'settings-storage',
           label: t('settings.menu.storage'),
           icon: 'nube',
+          separated: true,
           onSelect: () => onOpenSettings('storage'),
         },
         {

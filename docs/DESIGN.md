@@ -74,6 +74,29 @@ Colores: `#FF9B7A` coral · `#F7AFCB` rosa · `#A8D5A2` brote · `#BFDFE2` agua,
 - Solo en estados vacíos, onboarding, bienvenida, celebraciones (por ejemplo, la primera nota creada) y "acerca de". Nunca en toolbars, listas ni dentro del lienzo.
 - Máximo tres por pantalla. Tamaño entre 48 y 160px.
 - Los colores de sticker no se usan para estados, enlaces ni acciones.
+- **Excepción registrada (31/10/2026, plan 14):** la mascota del pomodoro (§2.3.1) vive en la cabecera mientras hay un pomodoro en marcha. Es una sola, entre 40 px (en el chip) y 104 px (en la muesca), y no cuenta para el máximo de tres.
+
+### 2.3.1 Mascotas del pomodoro
+
+Tres personajes que acompañan al temporizador (§6, «Pomodoro: chip y muesca»). Se construyen como los stickers (sombra tinta, troquel papel, contorno tinta y brillo en los ojos), pero con el estilo de **figuras geométricas adorables**: cuerpo simple, ojos grandes y casi sin boca. La emoción la llevan los ojos y los accesorios. Archivos: `brand/mascotas/<mascota>-<estado>.svg`, sobre un lienzo de 68×62 u.; vista previa `mascotas-preview.png`.
+
+| Mascota | Forma | Color | Rasgo |
+|---|---|---|---|
+| **Tofu** (por defecto) | Cuadrado blandito, como un mochi | Crema limón `#FFF6CC` | Ojos ovalados verticales; en el enfoque se ata una cinta agua |
+| **Tomi** | Tomate | Coral con hojas brote | Cejas y boca: el más expresivo, guiño directo a «pomodoro» |
+| **Pico** | Triángulo de esquinas redondas | Agua | Gafas redondas; los ojos cambian detrás de los cristales |
+
+| Estado | Cuándo | Cara | Extra |
+|---|---|---|---|
+| `enfoque` | Corre el enfoque | Ojos abiertos | Tofu: cinta. Pico: brillo en las gafas. Tomi: cejas firmes |
+| `descanso` | Corre el descanso, o al acariciarla | Ojos sonrientes y rubor | — |
+| `pausa` | Pausado | Ojos cerrados y rubor | Zetas |
+| `ultimo` | Último minuto del enfoque | Ojos muy abiertos | Gota agua |
+| `fin` | Fase terminada | Ojos sonrientes y boquita abierta | Chispas mantequilla |
+
+- Las zetas, la gota y las chispas llevan su propio troquel papel para verse sobre fondos oscuros. Las mascotas son iguales en los dos temas.
+- No se rotan (a diferencia de los stickers): el balanceo del enfoque es la única inclinación.
+- Los colores de las mascotas son decoración, como los de los stickers.
 
 ### 2.4 Contraste verificado
 
@@ -359,6 +382,16 @@ Nunito 12px 600, color `--text-secondary`, margen superior de 16px.
 ### Chip de estado
 Pill de radio 20px, padding 3px 10px, 12px 600, con el par texto/fondo semántico correspondiente (por ejemplo, "Guardado" con `--success`).
 
+### Pomodoro: chip y muesca
+Desde el 31/10/2026 (plan 14). Se empieza desde **Perfil → Pomodoro**, el primer elemento del menú, que abre un modal con el enfoque (25 min, 50 min, 1 h 30 u «Otro…» con horas y minutos, de 5 min a 4 h), el descanso (5, 10, 15 min o sin descanso), los ciclos (1 a 8), la mascota (§2.3.1), el sonido y el aviso del sistema, con el total y la hora de fin. Botón primario «Empezar».
+
+- **Chip:** centrado en la cabecera. Pill de 34 px de alto, borde de 1.5 px `--border-ink`, fondo `--bg-canvas`. La mascota a 40 px asoma 9 px por encima del chip, y la hora va en Nunito 15 px 800 con cifras tabulares. Bajo la hora, un **resaltador** (§6) avanza con el progreso: mantequilla en claro y `#6B5520` en oscuro, como el del logotipo. Estados: abierto con `--selection-soft`; en pausa, la hora en `--text-secondary` con un glifo de pausa; terminado, «¡Hecho!» sobre mantequilla hasta que se abra. Último minuto **sin colores de alerta**: lo dice la mascota.
+- **Muesca:** cuelga del borde inferior de la cabecera con su mismo panel (`--bg-panel`), borde de 1px `--border-soft` sin el de arriba y radio inferior de 28 px, así que parece que la cabecera crece. Mide 400–420 px de ancho y lleva `--shadow-popover`. Dentro van la mascota a 96–104 px (un botón: al pulsarla pone cara feliz y dice una frase corta en un bocadillo durante 1,8 s), la fase y el ciclo en 13 px 600 `--text-secondary`, la hora a 44–48 px 800, una barra de progreso inclinada como la punta biselada del logotipo, y «Termina a las…» en caption. Debajo, botones secundarios **Pausar/Reanudar**, **+5 min** y **Saltar**, y **Detener** como icono en `--danger`. Al terminar una fase, «Empezar descanso» (o «Siguiente enfoque») pasa a ser el botón mantequilla de la muesca: no empieza sola. Al pie, un punto por ciclo.
+- **Pantalla estrecha:** chip compacto (mascota a 34 px y los minutos, «18′») y muesca a todo el ancho, con radio inferior de 24 px.
+- **Modo Zen:** sin cabecera, el chip flota arriba en el centro, atenuado al 85 %, y vuelve al 100 % con el puntero encima.
+- **Movimiento:** la muesca baja en 220 ms con un ligero rebote; en el enfoque la mascota se balancea ±4° cada 2,4 s; al terminar da un saltito con chispas. Con «reducir movimiento», solo cambios de estado.
+- **Accesibilidad:** el chip es un botón con `aria-expanded` y la muesca se cierra con Escape, con un clic fuera o con el chip, devolviendo el foco. El tiempo es `role="timer"` sin anuncios por segundo; los cambios de fase se anuncian en una región `polite`.
+
 ### Input
 Altura 36px, radio 8px, fondo `--bg-canvas`, borde de 1px `--border-soft`; en foco, borde `--focus` y anillo de 2px `--focus` al 30%. Placeholder en `--text-secondary`.
 
@@ -469,6 +502,7 @@ Son los iconos del resto del sistema: sidebar, encabezado, menús, diálogos y e
 Usos típicos del acento: ítem activo de la sidebar (carpeta, nota, lienzo), favorito marcado, nota fijada, filtro aplicado, vista seleccionada (cuadrícula o lista).
 
 - Los iconos de estado (`info`, `aviso`, `error`, `exito`) toman el color semántico por `color` y, como acento, su fondo semántico (por ejemplo, `--icon-accent: var(--danger-bg)`).
+- Los controles del pomodoro (31/10/2026) son `reproducir`, `pausa`, `saltar` y `detener`, con acento en el triángulo, las barras o el cuadrado. El menú de Perfil usa `reloj`.
 - No se mezclan con iconos de otras librerías; si falta uno, se dibuja siguiendo estas reglas.
 
 ### 7.5 Interruptor de tema
@@ -597,3 +631,5 @@ Sustituyen a la biblioteca de Excalidraw, que no admite imágenes ni se guardaba
 - [x] Calendario: vista de día y resolución de conflictos (§8.6).
 - [x] Plantillas: miniaturas en el panel.
 - [ ] Calendario: selector de fechas propio, hoja de «hoy» y eventos repetidos (§8.6).
+- [x] Pomodoro (plan 14.1): mascotas en `brand/mascotas/`, iconos de sus controles y el componente chip y muesca (§2.3.1, §6).
+- [ ] Pomodoro: añadir los iconos nuevos (`reproducir`, `pausa`, `saltar`, `detener`) a `ui-icons-preview.png`.

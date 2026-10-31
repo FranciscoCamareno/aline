@@ -102,7 +102,12 @@ export type IconName =
   | 'subir'
   | 'tema-claro'
   | 'tema-oscuro'
-  | 'candado';
+  | 'candado'
+  | 'reloj'
+  | 'reproducir'
+  | 'pausa'
+  | 'saltar'
+  | 'detener';
 
 interface Props {
   name: IconName;
