@@ -95,6 +95,17 @@ test('cuaderno: crear, dibujar solo dentro, páginas, PDF por páginas y convert
       size: 'a4',
       orientation: 'portrait',
     });
+  // La barra de páginas no tapa la barra de herramientas ni los botones de arriba a la derecha.
+  const bar = (await page.locator('.notebook-bar').boundingBox())!;
+  for (const other of [page.getByTestId('tool-tray'), page.locator('.canvas-tools')]) {
+    const box = (await other.boundingBox())!;
+    const apart =
+      bar.x + bar.width <= box.x ||
+      box.x + box.width <= bar.x ||
+      bar.y + bar.height <= box.y ||
+      box.y + box.height <= bar.y;
+    expect(apart).toBe(true);
+  }
   // Sin herramienta de marco: los marcos son las páginas.
   await expect(page.getByTestId('tool-frame')).toHaveCount(0);
 

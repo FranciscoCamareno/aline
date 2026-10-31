@@ -5390,9 +5390,11 @@ body.excalidraw-cursor-resize * {
 }
 .notebook-bar {
   position: absolute;
-  bottom: 16px;
+  /* Arriba al centro: abajo está la barra de herramientas y a los lados los paneles. */
+  top: 16px;
   left: 50%;
-  z-index: 4;
+  /* Por encima de la fila de arriba del motor (su barra oculta sigue ahí y se quedaría los clics). */
+  z-index: 5;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -5409,6 +5411,22 @@ body.excalidraw-cursor-resize * {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+/* Lienzo estrecho: arriba a la izquierda y con el contador corto, sin llegar a los botones de la
+   derecha (Plantillas, Fondo…). */
+@container (max-width: 560px) {
+  .notebook-bar {
+    left: 16px;
+    transform: none;
+  }
+  .notebook-count {
+    min-width: 36px;
+    font-size: 0;
+  }
+  .notebook-count::after {
+    content: attr(data-short);
+    font-size: 13px;
+  }
 }
 .notebook-panel {
   position: absolute;

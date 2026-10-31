@@ -44,7 +44,11 @@ export function NotebookBar({
       >
         <Icon name="chevron-izq" size={18} />
       </button>
-      <span className="notebook-count" data-testid="notebook-count">
+      <span
+        className="notebook-count"
+        data-testid="notebook-count"
+        data-short={`${current + 1}/${total}`}
+      >
         {t('notebook.pageOf', { page: current + 1, total })}
       </span>
       <button

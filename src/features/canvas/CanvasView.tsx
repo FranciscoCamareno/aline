@@ -457,10 +457,11 @@ export function CanvasView({ documentId, title, service, theme, onCreateNote }: 
       // Un fondo distinto del que pintamos lo eligió el usuario en el motor: pasa a ser el guardado.
       if (backgroundRef.current && appState.viewBackgroundColor !== backgroundRef.current.shown) {
         const chosen = appState.viewBackgroundColor;
-        if (patternRef.current === 'plain') {
+        if (patternRef.current === 'plain' && !notebookRef.current) {
           backgroundRef.current = { stored: chosen, shown: chosen, painted: chosen };
         } else {
-          // Con estilo, el color lo pinta la capa: el motor vuelve a transparente.
+          // Con estilo, o en un cuaderno, el color lo pinta la capa (en el cuaderno, solo el
+          // papel; la mesa no cambia): el motor vuelve a transparente.
           backgroundRef.current = { stored: chosen, shown: 'transparent', painted: chosen };
           paintBackdrop();
           queueMicrotask(() =>

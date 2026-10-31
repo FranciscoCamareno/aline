@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DESK_COLOR, deskColorFor } from '../../src/features/canvas/canvasBackdrop.ts';
 import {
   clampScroll,
   columnRect,
@@ -73,5 +74,16 @@ describe('cuaderno: geometría de las páginas (plan 13)', () => {
   it('la página actual es la del centro de la vista', () => {
     const view = { scrollX: 400, scrollY: -(1123 + PAGE_GAP), zoom: 1, width: 1600, height: 900 };
     expect(currentPageIndex(view, pages)).toBe(1);
+  });
+});
+
+describe('cuaderno: la mesa siempre se distingue del papel', () => {
+  it('el color del fondo cambia solo el papel; si se parece a la mesa, la mesa cambia', () => {
+    expect(deskColorFor('#ffffff')).toBe(DESK_COLOR);
+    expect(deskColorFor('#121212')).toBe(DESK_COLOR);
+    expect(deskColorFor(DESK_COLOR)).not.toBe(DESK_COLOR);
+    expect(deskColorFor('#d0c9b8')).not.toBe(DESK_COLOR);
+    // Un color que no es hexadecimal (transparente, nombre) deja la mesa de siempre.
+    expect(deskColorFor('transparent')).toBe(DESK_COLOR);
   });
 });

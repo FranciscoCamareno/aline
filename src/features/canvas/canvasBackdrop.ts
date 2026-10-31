@@ -56,6 +56,27 @@ export function backdropStyle(
 
 /** Color de la mesa del cuaderno (alrededor de las páginas); en oscuro lo invierte el filtro. */
 export const DESK_COLOR = '#cfc8b6';
+/** Mesa alternativa cuando el papel elegido se parece demasiado a la de siempre. */
+const DESK_COLOR_DARK = '#8f8774';
+
+function luminance(color: string): number | null {
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())?.[1];
+  if (!hex) return null;
+  const full = hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex;
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
+/**
+ * La mesa del cuaderno: el color del fondo solo cambia el papel, y la mesa se aparta de él si se
+ * parecen, para que siempre se vea dónde está la hoja.
+ */
+export function deskColorFor(paper: string): string {
+  const p = luminance(paper);
+  const desk = luminance(DESK_COLOR)!;
+  if (p === null || Math.abs(p - desk) >= 0.12) return DESK_COLOR;
+  return DESK_COLOR_DARK;
+}
 
 /**
  * Fondo de un cuaderno (plan 13.3): la mesa y, encima, cada página visible con el color del papel,
@@ -82,7 +103,7 @@ export function drawNotebookBackdrop(
   if (!ctx) return;
   const { view } = options;
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  ctx.fillStyle = DESK_COLOR;
+  ctx.fillStyle = deskColorFor(options.paper);
   ctx.fillRect(0, 0, width, height);
   // De la escena a la pantalla: (x + scroll) · zoom.
   ctx.translate(view.scrollX * view.zoom, view.scrollY * view.zoom);
@@ -107,6 +128,10 @@ export function drawNotebookBackdrop(
     ctx.fillRect(page.x + 2 / view.zoom, page.y + 3 / view.zoom, page.width, page.height);
     ctx.fillStyle = options.paper;
     ctx.fillRect(page.x, page.y, page.width, page.height);
+    // Borde fino: la hoja se distingue aunque el papel sea del color de la mesa.
+    ctx.strokeStyle = 'rgba(38, 33, 24, 0.28)';
+    ctx.lineWidth = 1 / view.zoom;
+    ctx.strokeRect(page.x, page.y, page.width, page.height);
     if (options.pattern !== 'plain') {
       ctx.save();
       ctx.beginPath();
