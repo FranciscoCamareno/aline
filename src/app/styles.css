@@ -543,6 +543,23 @@ a {
   color: var(--text-secondary);
   white-space: nowrap;
 }
+/* La píldora y los textos invisibles en la misma celda: el hueco mide lo que el más largo y la
+   píldora se pega a la derecha (a Historial). */
+.status-slot {
+  display: inline-grid;
+  align-items: center;
+  justify-items: end;
+}
+.status-slot > .status {
+  grid-area: 1 / 1;
+}
+.status-sizer {
+  display: inline-grid;
+  visibility: hidden;
+}
+.status-sizer > span {
+  grid-area: 1 / 1;
+}
 .status-saved-local {
   color: var(--success);
   background: var(--success-bg);

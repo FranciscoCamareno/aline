@@ -164,6 +164,8 @@ export function ShareWorkspaceDialog({
   const [error, setError] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const memberIds = useMemo(() => new Set(members.map((d) => d.id)), [members]);
+  // Se recalcula al reindexar: un enlace recién guardado puede no estar aún en el índice.
+  const knowledgeVersion = useUiStore((s) => s.knowledgeVersion);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,7 +185,7 @@ export function ShareWorkspaceDialog({
     return () => {
       cancelled = true;
     };
-  }, [services, members, memberIds]);
+  }, [services, members, memberIds, knowledgeVersion]);
 
   const addTarget = async (to: DocumentRecord) => {
     await services.service.updateWorkspace(workspace.id, (w) => withMembers(w, [to.id]));

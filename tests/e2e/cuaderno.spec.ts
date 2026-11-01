@@ -186,9 +186,11 @@ test('cuaderno: crear, dibujar solo dentro, páginas, PDF por páginas y convert
   const pdf = (await readFile((await (await download).path())!)).toString('latin1');
   expect(pdf.match(/\/Type \/Page\b/g)).toHaveLength(2);
 
-  // Tras recargar sigue siendo un cuaderno.
+  // Tras recargar sigue siendo un cuaderno. Antes, el borrado de la página ya guardado (si no, la
+  // recarga podía llegar antes que el autoguardado y volver con tres páginas).
+  await expect.poll(async () => pagesOf((await saved(page)).elements).length).toBe(2);
   await page.reload();
-  await expect(page.getByTestId('notebook-count')).toHaveText(/de 2$/);
+  await expect(page.getByTestId('notebook-count')).toHaveText(/de 2$/, { timeout: 15_000 });
 
   // Convertir en lienzo infinito y, otra vez, en cuaderno.
   await page.getByTestId('canvas-background').click();

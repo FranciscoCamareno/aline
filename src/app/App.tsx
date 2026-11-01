@@ -41,7 +41,7 @@ import { useCalendarStore } from '../features/calendar/calendarStore.ts';
 import { startPomodoroRuntime, usePomodoro } from './pomodoro.ts';
 import { PomodoroChip } from '../features/pomodoro/PomodoroChip.tsx';
 import { PomodoroDialog } from '../features/pomodoro/PomodoroDialog.tsx';
-import { useUiStore } from './store.ts';
+import { useUiStore, type UiSaveStatus } from './store.ts';
 import { useTheme } from './theme.ts';
 import { Icon } from './ui/Icon.tsx';
 import { Menu } from './ui/Menu.tsx';
@@ -65,6 +65,16 @@ async function loadApp(firstCanvasTitle: string, temporary: boolean) {
     activeId: last?.id ?? visible[0]?.id ?? null,
   };
 }
+
+/** Estados que se alternan al editar con normalidad: el estado de guardado ocupa el ancho del mayor. */
+const STEADY_STATUSES: readonly UiSaveStatus[] = [
+  'idle',
+  'pending-changes',
+  'saved-local',
+  'pending-folder',
+  'pending-sync',
+  'synced',
+];
 
 export function App() {
   const { t } = useTranslation();
@@ -589,8 +599,17 @@ export function App() {
           <PomodoroChip />
           {pomodoroOn && <span className="topbar-spacer" />}
           {/* El estado de guardado va junto a Historial: es el estado de la versión. */}
-          <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
-            {t(`status.${saveStatus}`)}
+          {/* Hueco de ancho fijo (el del texto más largo de los habituales), con la píldora pegada
+              a Historial: al cambiar de estado no se mueven el pomodoro ni los botones. */}
+          <span className="status-slot">
+            <span className="status status-sizer" aria-hidden="true">
+              {STEADY_STATUSES.map((s) => (
+                <span key={s}>{t(`status.${s}`)}</span>
+              ))}
+            </span>
+            <span className={`status status-${saveStatus}`} role="status" data-testid="save-status">
+              {t(`status.${saveStatus}`)}
+            </span>
           </span>
           {active && (
             <button
