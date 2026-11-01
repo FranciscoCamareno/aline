@@ -65,6 +65,8 @@ export default defineConfig({
         globIgnores: ['**/fonts/Xiaolai/**', '**/fonts-extra/**'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: '/index.html',
+        // security.txt se sirve tal cual, también con la aplicación instalada.
+        navigateFallbackDenylist: [/^\/\.well-known\//],
         runtimeCaching: [
           {
             urlPattern: ({ url, sameOrigin }) =>

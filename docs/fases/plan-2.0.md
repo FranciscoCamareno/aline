@@ -7,8 +7,8 @@ Este documento empieza la preparación de la 2.0. El plan anterior (fases 0 a 10
 código y los documentos citan sus tareas como «plan 9.x» o «plan 10.x», y ahí siguen. Para no
 mezclar referencias, la numeración continúa: las fases de la 2.0 empiezan en la **11**.
 
-**De momento todo es local:** nada se empuja a GitHub ni se publica hasta que el propietario lo
-diga. Los puntos de la 2.0 pueden crecer; este documento recoge solo los primeros.
+**Versión 2.0.0** (etiqueta `v2.0.0`, 31/10/2026): fases 11 a 14. Lo que sigue pendiente de la
+1.0 (§1) y los puntos que crezcan después irán en versiones posteriores.
 
 ## 1. Lo que sigue pendiente de la 1.0
 

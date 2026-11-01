@@ -1,0 +1,4 @@
+Contact: https://github.com/FranciscoCamareno/aline/security/advisories/new
+Expires: 2027-10-31T23:59:59-06:00
+Preferred-Languages: es, en
+Canonical: https://app.aline.website/.well-known/security.txt
