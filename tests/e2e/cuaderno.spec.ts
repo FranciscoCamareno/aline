@@ -157,9 +157,10 @@ test('cuaderno: crear, dibujar solo dentro, páginas, PDF por páginas y convert
   await expect(panel.getByTestId('notebook-page')).toHaveCount(2);
   await panel.getByTestId('notebook-page').first().getByTestId('notebook-page-duplicate').click();
   await expect(panel.getByTestId('notebook-page')).toHaveCount(3);
+  // El autoguardado puede no haber empezado aún: se espera a la escena con las tres páginas.
+  await expect.poll(async () => pagesOf((await saved(page)).elements).length).toBe(3);
   await status(page);
   state = await saved(page);
-  expect(pagesOf(state.elements)).toHaveLength(3);
   // La copia (página 2) lleva su propio rectángulo, dentro de ella.
   const copyPage = pagesOf(state.elements)[1]!;
   expect(

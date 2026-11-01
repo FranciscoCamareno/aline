@@ -3,6 +3,8 @@ import { VaultDatabase } from '../../src/adapters/indexeddb/db.ts';
 import { DexieVaultRepository } from '../../src/adapters/indexeddb/DexieVaultRepository.ts';
 import { VaultService } from '../../src/application/VaultService.ts';
 import {
+  foreignMembers,
+  guardPackage,
   packageContent,
   packageFiles,
   planImport,
@@ -167,6 +169,45 @@ describe('entornos de trabajo (plan 12)', () => {
     expect(
       (await b.service.listDocuments()).find((d) => d.id === note.id)!.headRevisionIds,
     ).toHaveLength(2);
+  });
+
+  it('un paquete no cambia el tipo de un documento de aquí ni trae otros entornos (seguridad)', async () => {
+    const a = await fresh();
+    const note = await a.service.createDocument('note', 'Apunte');
+    await writeNote(a.service, note.id, 'hola');
+    const ws = await a.service.createWorkspace('Proyecto', 'agua');
+    await a.service.updateWorkspace(ws.id, (w) => withMembers(w, [note.id]));
+    const pkg = await share(a, ws.id, true);
+    const noteRecord = pkg.content.documents.find((d) => d.id === note.id)!;
+
+    // Aquí ese id es un lienzo: la nota del paquete no entra, ni sus revisiones.
+    const local = [{ ...noteRecord, kind: 'canvas' as const }];
+    const guarded = guardPackage(local, pkg.content, ws.id);
+    expect(guarded.rejected.map((d) => d.id)).toEqual([note.id]);
+    expect(guarded.content.revisions.some((r) => r.documentId === note.id)).toBe(false);
+    expect(guarded.content.documents.map((d) => d.id)).toEqual([ws.id]);
+
+    // Un entorno que no es el del paquete, o revisiones sueltas de otro documento, tampoco.
+    const other = crypto.randomUUID();
+    const stray = { ...pkg.content.revisions[0]!, id: crypto.randomUUID(), documentId: other };
+    const forged = guardPackage(
+      [],
+      { ...pkg.content, revisions: [...pkg.content.revisions, stray] },
+      other,
+    );
+    expect(forged.rejected.map((d) => d.id)).toEqual([ws.id]);
+    expect(forged.content.revisions.some((r) => r.documentId === other)).toBe(false);
+  });
+
+  it('un paquete no mete en el entorno documentos de aquí que no trae (seguridad)', () => {
+    const [shared, privada, nueva, ajena] = [1, 2, 3, 4].map(() => crypto.randomUUID());
+    expect(
+      foreignMembers(
+        [shared!, privada!, nueva!, ajena!],
+        { members: new Set([shared!]), localIds: new Set([shared!, privada!]) },
+        new Set([nueva!]),
+      ),
+    ).toEqual([privada]);
   });
 
   it('cifrado con contraseña: ida y vuelta, y otra contraseña falla', async () => {

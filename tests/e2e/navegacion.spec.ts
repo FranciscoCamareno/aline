@@ -37,6 +37,7 @@ test('biblioteca: Nuevo, buscador, pestañas, menú de fila y pie', async ({ pag
   const menu = page.getByRole('menu', { name: 'Nuevo' });
   await expect(menu.getByRole('menuitem')).toHaveText([
     'Lienzo',
+    'Cuaderno',
     'Nota',
     'Carpeta',
     'Importar archivos…',
@@ -77,6 +78,7 @@ test('biblioteca: Nuevo, buscador, pestañas, menú de fila y pie', async ({ pag
   await expect(page.getByTestId('open-profile')).toContainText('Perfil');
   await page.getByTestId('open-profile').click();
   await expect(page.getByRole('menuitem')).toHaveText([
+    'Pomodoro',
     'Almacenamiento',
     /^Preferencias e idioma/,
     /^Archivo\s*0$/,

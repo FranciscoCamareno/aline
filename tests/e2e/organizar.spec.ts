@@ -65,9 +65,10 @@ const folderRow = (page: Page, title: string) =>
     has: page.getByTestId('folder-title-text').filter({ hasText: new RegExp(`^${title}$`) }),
   });
 
-test('las secciones van en el orden Notas, Documentos, Calendario', async ({ page }) => {
+test('las secciones van en el orden Inicio, Notas, Documentos, Calendario', async ({ page }) => {
   await freshStart(page);
   await expect(page.getByRole('tablist', { name: 'Secciones' }).getByRole('tab')).toHaveText([
+    'Inicio',
     'Notas',
     'Documentos',
     'Calendario',

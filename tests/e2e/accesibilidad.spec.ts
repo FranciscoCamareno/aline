@@ -45,6 +45,9 @@ test('solo con teclado: llegar a «Nota», crearla y escribir, con el foco siemp
   // «Nuevo» abre su menú con Intro y deja el foco en el primer elemento (Lienzo).
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('new-canvas')).toBeFocused();
+  // Lienzo → Cuaderno → Nota.
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByTestId('new-notebook')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByTestId('new-note')).toBeFocused();
   expect(await outlineOf()).not.toBe('none');

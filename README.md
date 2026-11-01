@@ -469,6 +469,10 @@ Ejecución anterior: 17/10/2026, Windows 11, Node 24.21.
   - Hubo una auditoría defensiva automatizada el 13/10/2026 (informe fuera del repositorio);
     sus correcciones están descritas en el diseño §13.1 y en `tests/unit/seguridad.test.ts`.
     No es una revisión criptográfica especializada.
+  - Revisión de seguridad de la 2.0 el 31/10/2026: dependencias (`pnpm audit`; DOMPurify de
+    Mermaid y undici forzados a su parche, el resto justificado en `pnpm-workspace.yaml`),
+    patrones peligrosos en el código y la importación de paquetes `.aline` (que un paquete no
+    cambie el tipo de un documento de aquí ni meta documentos privados en un entorno).
 
 ## Funciones pendientes
 

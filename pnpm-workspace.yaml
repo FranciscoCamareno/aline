@@ -11,5 +11,14 @@ overrides:
   # fuerzan versiones compatibles (mismo mayor); el resto está justificado en la auditoría.
   '@excalidraw/excalidraw>nanoid': 3.3.20
   lodash-es: 4.18.1
+  # Revisión de seguridad 31/10/2026: DOMPurify de Mermaid (GHSA-c6gr-qvv4-5v3f y otros dos avisos),
+  # parche del mismo mayor. nanoid 4.0.2 (sin versión 4 corregida; solo afecta a tamaños 0,
+  # negativos o no enteros, que mermaid-to-excalidraw no usa) y katex 0.16 (aviso bajo, exige una
+  # contaminación de prototipo previa; el arreglo es 0.18 y mermaid pide ^0.16) se aceptan.
+  mermaid>dompurify: 3.4.17
+  # Solo de desarrollo (jsdom de los tests): undici con avisos altos, parche del mismo mayor. Lo de
+  # workbox-build (fast-uri, serialize-javascript, minimatch, glob, deepmerge) solo corre al compilar
+  # sobre configuración propia y no llega a la aplicación.
+  jsdom>undici: 8.12.2
 patchedDependencies:
   '@excalidraw/excalidraw@0.18.1': patches/@excalidraw__excalidraw@0.18.1.patch

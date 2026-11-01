@@ -4,6 +4,8 @@ import { excalidrawCanvasAdapter } from '../adapters/excalidraw/sceneCodec.ts';
 import { hiddenElementIds } from '../application/canvasTargets.ts';
 import { safeFilename } from '../application/portability.ts';
 import {
+  foreignMembers,
+  guardPackage,
   PACKAGE_EXTENSION,
   packageContent,
   packageFiles,
@@ -12,6 +14,7 @@ import {
 } from '../application/workspacePackage.ts';
 import { expandEvents, localDate } from '../domain/calendar.ts';
 import { parentsFirst } from '../domain/revision.ts';
+import { withoutMembers } from '../domain/workspace.ts';
 import { richDocToMarkdown } from '../domain/richDocMarkdown.ts';
 import { DEFAULT_UNZIP_LIMITS } from '../ports/Archiver.ts';
 import { isPasswordSealed, openWithPassword, sealWithPassword } from '../shared/crypto.ts';
@@ -95,6 +98,8 @@ export interface ImportSummary {
   updated: number;
   conflicts: number;
   same: number;
+  /** Documentos del paquete que no se importaron por no ser coherentes con los de aquí. */
+  rejected: number;
 }
 
 /**
@@ -107,24 +112,42 @@ export async function importWorkspacePackage(
   pkg: ReadPackage,
 ): Promise<ImportSummary> {
   const { service, knowledge, repo } = services;
+  const local = await service.listDocuments();
+  const workspaceId = pkg.manifest.workspaceId;
+  const { content, rejected } = guardPackage(local, pkg.content, workspaceId);
+  const before = new Map(local.map((d) => [d.id, d]));
+  const membersBefore = before.has(workspaceId)
+    ? new Set((await service.readWorkspace(workspaceId)).workspace.members)
+    : new Set<string>();
+  let summary: ImportSummary;
   if (!pkg.manifest.history) {
-    const summary = await service.importPackageVersions(pkg.content);
-    return summary;
+    summary = { ...(await service.importPackageVersions(content)), rejected: rejected.length };
+  } else {
+    await new DexieSyncStore(repo.db).applyRemote(parentsFirst(content.revisions), [
+      ...content.blobs.values(),
+    ]);
+    await knowledge.sync();
+    const after = new Map((await service.listDocuments()).map((d) => [d.id, d]));
+    summary = { created: 0, updated: 0, conflicts: 0, same: 0, rejected: rejected.length };
+    for (const doc of content.documents) {
+      const old = before.get(doc.id);
+      const now = after.get(doc.id);
+      if (!old) summary.created++;
+      else if ((now?.headRevisionIds.length ?? 0) > 1) summary.conflicts++;
+      else if (old.headRevisionIds.join() === now?.headRevisionIds.join()) summary.same++;
+      else summary.updated++;
+    }
   }
-  const before = new Map((await service.listDocuments()).map((d) => [d.id, d]));
-  await new DexieSyncStore(repo.db).applyRemote(parentsFirst(pkg.content.revisions), [
-    ...pkg.content.blobs.values(),
-  ]);
-  await knowledge.sync();
-  const after = new Map((await service.listDocuments()).map((d) => [d.id, d]));
-  const summary: ImportSummary = { created: 0, updated: 0, conflicts: 0, same: 0 };
-  for (const doc of pkg.content.documents) {
-    const old = before.get(doc.id);
-    const now = after.get(doc.id);
-    if (!old) summary.created++;
-    else if ((now?.headRevisionIds.length ?? 0) > 1) summary.conflicts++;
-    else if (old.headRevisionIds.join() === now?.headRevisionIds.join()) summary.same++;
-    else summary.updated++;
+  // El entorno importado no se queda con documentos de aquí que no venían en el paquete.
+  if (content.documents.some((d) => d.id === workspaceId)) {
+    const foreign = foreignMembers(
+      (await service.readWorkspace(workspaceId)).workspace.members,
+      { members: membersBefore, localIds: new Set(before.keys()) },
+      new Set(content.documents.map((d) => d.id)),
+    );
+    if (foreign.length > 0) {
+      await service.updateWorkspace(workspaceId, (w) => withoutMembers(w, foreign));
+    }
   }
   return summary;
 }

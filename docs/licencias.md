@@ -1,6 +1,6 @@
 # Inventario de licencias
 
-Generado con `node scripts/licenses.ts` el 2026-10-29 a partir de `pnpm licenses list --prod`. No editar a mano.
+Generado con `node scripts/licenses.ts` el 2026-11-01 a partir de `pnpm licenses list --prod`. No editar a mano.
 
 Requisito RNF-12: toda dependencia tiene una licencia compatible con el uso previsto. Se admiten las licencias permisivas de la lista del script; cualquier otra aparece en «Por revisar» y hace fallar `--check`.
 
@@ -328,7 +328,7 @@ Licencias comprobadas el 12/10/2026 en los metadatos de cada archivo WOFF2 (`scr
 | devlop | 1.1.0 | MIT |
 | dexie | 4.4.6 | Apache-2.0 |
 | docx | 9.8.1 | MIT |
-| dompurify | 3.4.16 | (MPL-2.0 OR Apache-2.0) |
+| dompurify | 3.4.17 | (MPL-2.0 OR Apache-2.0) |
 | es-toolkit | 1.52.0 | MIT |
 | es6-promise-pool | 2.5.0 | MIT |
 | escape-string-regexp | 5.0.0 | MIT |

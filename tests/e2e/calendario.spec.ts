@@ -4,7 +4,8 @@ import { expect, test, type Page } from '@playwright/test';
  * Calendario (DESIGN.md §8) y plantillas del lienzo: contenido nuevo del almacén (cambio de
  * arquitectura del 14/10/2026). Cada cambio es una revisión y sobrevive a recargar.
  */
-test.use({ locale: 'es-ES', timezoneId: 'Europe/Madrid' });
+const TIMEZONE = 'Europe/Madrid';
+test.use({ locale: 'es-ES', timezoneId: TIMEZONE });
 
 async function freshStart(page: Page) {
   await page.goto('/');
@@ -28,11 +29,14 @@ async function freshStart(page: Page) {
   await expect(page.getByTestId('tool-tray')).toBeVisible();
 }
 
-const today = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+/** Hoy en la zona del navegador de las pruebas (no la del equipo: cerca de medianoche difieren). */
+const today = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 
 test('calendario: crear, editar, ocultar y borrar eventos, y que se guarden', async ({ page }) => {
   await freshStart(page);

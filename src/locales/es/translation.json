@@ -1053,6 +1053,8 @@
       "problems_one": "{{count}} archivo del paquete no se pudo leer y se omite.",
       "problems_other": "{{count}} archivos del paquete no se pudieron leer y se omiten.",
       "confirm": "Importar",
+      "rejected_one": "{{count}} documento del paquete no se importó porque no encaja con lo que ya hay aquí (otro tipo de documento u otro entorno).",
+      "rejected_other": "{{count}} documentos del paquete no se importaron porque no encajan con lo que ya hay aquí (otro tipo de documento u otro entorno).",
       "done": "Importado: {{created}} nuevos, {{updated}} actualizados y {{conflicts}} en conflicto.",
       "failed": "No se pudo importar el paquete.",
       "open": "Abrir el entorno"

@@ -14,7 +14,7 @@ import {
 } from '../../app/workspaceShare.ts';
 import { homeWorkspaces } from '../../application/home.ts';
 import { reachesTarget } from '../../application/KnowledgeService.ts';
-import { planImport, type ReadPackage } from '../../application/workspacePackage.ts';
+import { guardPackage, planImport, type ReadPackage } from '../../application/workspacePackage.ts';
 import { EVENT_COLORS } from '../../domain/calendar.ts';
 import type { DocumentRecord } from '../../domain/revision.ts';
 import { withMembers } from '../../domain/workspace.ts';
@@ -375,9 +375,10 @@ export function ImportWorkspaceDialog({
       const local = await services.service.listDocuments();
       const marks = await services.service.packageImportMarks();
       const counts = { new: 0, update: 0, same: 0 };
+      // Lo que no se importará (revisión de seguridad) tampoco se cuenta en el resumen previo.
       for (const p of planImport(
         local,
-        read.content,
+        guardPackage(local, read.content, read.manifest.workspaceId).content,
         new Map(Object.entries(marks).map(([id, m]) => [id, m.source])),
         new Set(local.flatMap((d) => d.headRevisionIds)),
       )) {
@@ -492,6 +493,8 @@ export function ImportWorkspaceDialog({
               updated: summary.updated,
               conflicts: summary.conflicts,
             })}
+            {summary.rejected > 0 &&
+              ` ${t('workspaces.import.rejected', { count: summary.rejected })}`}
           </p>
         )}
         {problem && (

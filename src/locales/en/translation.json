@@ -1053,6 +1053,8 @@
       "problems_one": "{{count}} file in the package could not be read and is skipped.",
       "problems_other": "{{count}} files in the package could not be read and are skipped.",
       "confirm": "Import",
+      "rejected_one": "{{count}} document in the package was not imported because it does not match what is already here (a different document type or another workspace).",
+      "rejected_other": "{{count}} documents in the package were not imported because they do not match what is already here (a different document type or another workspace).",
       "done": "Imported: {{created}} new, {{updated}} updated and {{conflicts}} in conflict.",
       "failed": "The package could not be imported.",
       "open": "Open the workspace"

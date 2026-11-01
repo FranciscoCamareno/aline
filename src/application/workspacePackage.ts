@@ -145,3 +145,43 @@ export function planImport(
     return { document, action: known ? 'same' : 'update' };
   });
 }
+
+/**
+ * Lo que un paquete no puede tocar (revisión de seguridad 31/10/2026): un paquete llega de otra
+ * persona, así que solo entra lo coherente. Se quitan los documentos que aquí ya existen con otro
+ * tipo (los rompería), los entornos que no son el del paquete, las revisiones de otro tipo que su
+ * documento y las que no son de ningún documento del paquete (tocarían documentos de aquí).
+ */
+export function guardPackage(
+  local: readonly DocumentRecord[],
+  content: VaultContent,
+  workspaceId: Uuid,
+): { content: VaultContent; rejected: DocumentRecord[] } {
+  const localKinds = new Map(local.map((d) => [d.id, d.kind]));
+  const rejected: DocumentRecord[] = [];
+  const documents = content.documents.filter((doc) => {
+    const ok =
+      (localKinds.get(doc.id) ?? doc.kind) === doc.kind &&
+      (doc.kind !== 'workspace' || doc.id === workspaceId);
+    if (!ok) rejected.push(doc);
+    return ok;
+  });
+  const kinds = new Map(documents.map((d) => [d.id, d.kind]));
+  const revisions = content.revisions.filter((r) => kinds.get(r.documentId) === r.metadata.kind);
+  return { content: { ...content, documents, revisions }, rejected };
+}
+
+/**
+ * Miembros que un paquete no puede añadir a un entorno: documentos de este almacén que no vienen
+ * en el paquete y que no eran ya del entorno. Si entraran, al compartir el entorno otra vez se
+ * enviarían documentos privados cuyo id se conoce por un enlace (revisión de seguridad 31/10/2026).
+ */
+export function foreignMembers(
+  members: readonly string[],
+  before: { members: ReadonlySet<string>; localIds: ReadonlySet<string> },
+  packageIds: ReadonlySet<string>,
+): string[] {
+  return members.filter(
+    (id) => before.localIds.has(id) && !packageIds.has(id) && !before.members.has(id),
+  );
+}
